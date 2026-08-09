@@ -8,6 +8,7 @@ import {
 } from '../../lib/format/market.js';
 import EmptyState from '../../components/EmptyState.jsx';
 import ErrorState from '../../components/ErrorState.jsx';
+import InfoTip from '../../components/InfoTip.jsx';
 import PriceChart from './PriceChart.jsx';
 import TradingViewChart from './TradingViewChart.jsx';
 import TechnicalEvidence from './TechnicalEvidence.jsx';
@@ -44,9 +45,6 @@ function TickerHeader({ ticker }) {
             {ticker.tier}
           </span>
         )}
-        {ticker.notations?.length > 0 && (
-          <span className="badge badge-warning">{ticker.notations.join(', ')}</span>
-        )}
       </div>
     </div>
   );
@@ -66,23 +64,23 @@ function GradeBlock({ grade, stance, dataQuality }) {
       <div className="wb-grade__eyebrow" id="decision-summary-title">Decision summary</div>
       <div className="wb-grade__main">
         <div className="wb-grade__grade">
-          <span className="wb-grade__label">Evidence grade</span>
+          <span className="wb-grade__label">Evidence grade <InfoTip title="Evidence grade">A compact summary of the current supporting and contradicting evidence. It is not a recommendation or calibrated success probability.</InfoTip></span>
           <span className="wb-grade__letter" style={{ color: gradeColor(grade.grade) }}>{grade.grade}</span>
         </div>
         <div className="wb-grade__metric">
-          <span className="wb-grade__label">Evidence alignment</span>
+          <span className="wb-grade__label">Evidence alignment <InfoTip title="Evidence alignment">Agreement between model inputs, not win probability.</InfoTip></span>
           <span className="wb-grade__metric-value">
             {Number.isFinite(grade.confidence) ? `${Math.round(grade.confidence * 100)}%` : '—'}
           </span>
           <span className="wb-grade__metric-note">Agreement between model inputs, not win probability</span>
         </div>
         <div className="wb-grade__metric">
-          <span className="wb-grade__label">Market structure</span>
+          <span className="wb-grade__label">Market structure <InfoTip title="Market structure">The current regime and development phase inferred from price, trend, and range evidence.</InfoTip></span>
           <span className="wb-grade__metric-value wb-grade__metric-value--text">{grade.regime || 'Unknown'}</span>
           <span className="wb-grade__metric-note">{grade.structurePhase || 'Phase unavailable'}</span>
         </div>
         <div className="wb-grade__metric">
-          <span className="wb-grade__label">Data quality</span>
+          <span className="wb-grade__label">Data quality <InfoTip title="Data quality">Freshness and source coverage of delayed or end-of-day inputs, not predicted win probability.</InfoTip></span>
           <span className={`wb-grade__metric-value wb-grade__metric-value--text ${warnings.length ? 'text-warning' : 'text-positive'}`}>
             {warnings.length ? 'Degraded' : 'Complete'}
           </span>
@@ -108,7 +106,7 @@ function ScorecardTable({ scorecard }) {
   const summary = scorecard.summary || {};
   return (
     <div className="wb-scorecard">
-      <h3 className="wb-section__title text-tertiary">Scorecard</h3>
+      <h3 className="wb-section__title text-tertiary">Scorecard <InfoTip title="Scorecard">Directional evidence components. Bull, Bear, and Neutral describe input direction, not outcome probabilities.</InfoTip></h3>
       <div className="wb-scorecard__factors">
         {factors.map((f, i) => (
           <div key={i} className="wb-scorecard__factor">

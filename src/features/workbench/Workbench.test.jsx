@@ -165,11 +165,13 @@ describe('Workbench', () => {
     expect(screen.getByText('Supporting evidence')).toBeInTheDocument();
     expect(screen.getByText(/Risks and contradictions/i)).toBeInTheDocument();
 
-    expect(screen.getByText(/Evidence alignment/i)).toBeInTheDocument();
-    expect(screen.getByText(/not win probability/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Explain Evidence alignment/i })).toBeInTheDocument();
+    expect(screen.getAllByText(/not win probability/i)).toHaveLength(2);
+    expect(screen.getByRole('button', { name: /Explain Market structure/i })).toBeInTheDocument();
+    expect(screen.getByText(/not outcome probabilities/i)).toBeInTheDocument();
 
     // Scorecard
-    expect(screen.getByText(/Scorecard/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Explain Scorecard/i })).toBeInTheDocument();
 
     // Data Quality
     expect(screen.getByRole('heading', { name: 'Data Quality' })).toBeInTheDocument();
@@ -272,8 +274,8 @@ describe('Workbench', () => {
     expect(screen.queryByText('Pemerintah')).not.toBeInTheDocument();
     expect(screen.queryByText('Lokal')).not.toBeInTheDocument();
     expect(screen.queryByText('Asing')).not.toBeInTheDocument();
-    expect(screen.getByText('Rp229,975,060,500')).toBeInTheDocument();
-    expect(screen.getByText('-Rp229,975,060,500')).toBeInTheDocument();
+    expect(screen.getByText('Rp229.975.060.500')).toBeInTheDocument();
+    expect(screen.getByText('-Rp229.975.060.500')).toBeInTheDocument();
   });
 
   it('renders chart empty state when no chart data', async () => {
