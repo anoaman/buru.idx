@@ -1,0 +1,64 @@
+:root {
+  /* Backgrounds — near-black blue-gray foundation */
+  --bg-base: #0b0d12;
+  --bg-elevated: #11141c;
+  --bg-surface: #161a24;
+  --bg-hover: #1c2130;
+  --bg-active: #222838;
+
+  /* Borders — subtle, not heavy shadows */
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.10);
+  --border-strong: rgba(255, 255, 255, 0.16);
+
+  /* Text — high contrast for data, muted for labels */
+  --text-primary: #e8eaed;
+  --text-secondary: #9aa0a6;
+  --text-tertiary: #5f6368;
+  --text-disabled: #3c4043;
+
+  /* Semantic — IDX-familiar green/red, amber for warnings */
+  --color-positive: #34a853;
+  --color-positive-dim: rgba(52, 168, 83, 0.15);
+  --color-negative: #ea4335;
+  --color-negative-dim: rgba(234, 67, 53, 0.15);
+  --color-warning: #f9ab00;
+  --color-warning-dim: rgba(249, 171, 0, 0.15);
+  --color-info: #4285f4;
+  --color-info-dim: rgba(66, 133, 244, 0.15);
+
+  /* Freshness states */
+  --freshness-fresh: var(--color-positive);
+  --freshness-degraded: var(--color-warning);
+  --freshness-stale: var(--color-negative);
+  --freshness-unknown: var(--text-tertiary);
+
+  /* Typography */
+  --font-ui: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
+  --font-tabular: 'JetBrains Mono', 'SF Mono', monospace;
+
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Layout */
+  --sidebar-width: 200px;
+  --header-height: 52px;
+  --content-max: 1440px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+
+  /* Density */
+  --density-compact: 28px;
+  --density-normal: 36px;
+  --density-loose: 48px;
+}
