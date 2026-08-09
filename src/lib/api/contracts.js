@@ -38,11 +38,33 @@ export function guardAnalyze(raw) {
       }
     : data.broker;
 
+  // Dynamic levels (MA20/50/200 as S/R). Normalized so a malformed or partial
+  // block renders as "unavailable" rather than throwing inside the panel.
+  const dyn = data.dynamicLevels;
+  const normalizedDynamicLevels = dyn && typeof dyn === 'object' ? {
+    available: Boolean(dyn.available) && Array.isArray(dyn.levels) && dyn.levels.length > 0,
+    reason: dyn.reason || null,
+    levels: Array.isArray(dyn.levels) ? dyn.levels.map((l) => ({
+      period: l.period,
+      label: l.label || `MA${l.period}`,
+      price: Number(l.price),
+      role: l.role || 'unknown',
+      distancePct: Number.isFinite(l.distancePct) ? l.distancePct : null,
+      slope: l.slope || 'unknown',
+      slopePctPerSession: Number.isFinite(l.slopePctPerSession) ? l.slopePctPerSession : null,
+      confluence: Array.isArray(l.confluence) ? l.confluence : [],
+      converging: l.converging ?? null,
+    })) : [],
+    unavailable: Array.isArray(dyn.unavailable) ? dyn.unavailable : [],
+    nearest: dyn.nearest || { support: null, resistance: null },
+  } : null;
+
   return {
     ok: true,
     error: null,
     data: {
       ...data,
+      dynamicLevels: normalizedDynamicLevels,
       chart: normalizedChart,
       broker,
     },

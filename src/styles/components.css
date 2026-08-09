@@ -488,6 +488,67 @@
   font-weight: 700;
 }
 
+/* Dynamic levels: its own card, so moving averages never read as pivot levels. */
+.wb-dyn {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+
+.wb-dyn__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.wb-dyn__table th,
+.wb-dyn__table td {
+  text-align: left;
+  padding: var(--space-2) var(--space-3) var(--space-2) 0;
+  white-space: nowrap;
+}
+
+.wb-dyn__table thead th {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.wb-dyn__row + .wb-dyn__row th,
+.wb-dyn__row + .wb-dyn__row td {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.wb-dyn__label {
+  font-weight: 700;
+}
+
+.wb-dyn__confluence {
+  margin-left: var(--space-2);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
+
+.wb-dyn__note,
+.wb-dyn__empty {
+  margin: var(--space-3) 0 0;
+  font-size: 11px;
+}
+
+@media (max-width: 600px) {
+  .wb-dyn__table {
+    font-size: 12px;
+  }
+
+  .wb-dyn__table th,
+  .wb-dyn__table td {
+    padding-right: var(--space-2);
+  }
+}
+
 .wb-broker {
   background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);

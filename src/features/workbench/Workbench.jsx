@@ -13,6 +13,7 @@ import PriceChart from './PriceChart.jsx';
 import TradingViewChart from './TradingViewChart.jsx';
 import TechnicalEvidence from './TechnicalEvidence.jsx';
 import TradeGeometry from './TradeGeometry.jsx';
+import DynamicLevels from './DynamicLevels.jsx';
 import BrokerEvidence from './BrokerEvidence.jsx';
 import EvidenceDebate from './EvidenceDebate.jsx';
 
@@ -231,6 +232,8 @@ export default function Workbench() {
           <GradeBlock grade={state.data.grade} stance={state.data.stance} dataQuality={state.data.dataQuality} />
 
           <TradeGeometry geometry={state.data.riskGeometry} />
+
+          <DynamicLevels dynamicLevels={state.data.dynamicLevels} />
 
           <EvidenceDebate debate={state.data.debate} stance={state.data.stance} />
 
