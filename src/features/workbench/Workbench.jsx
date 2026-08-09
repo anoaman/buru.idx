@@ -64,23 +64,23 @@ function GradeBlock({ grade, stance, dataQuality }) {
       <div className="wb-grade__eyebrow" id="decision-summary-title">Decision summary</div>
       <div className="wb-grade__main">
         <div className="wb-grade__grade">
-          <span className="wb-grade__label">Evidence grade <InfoTip title="Evidence grade">A compact summary of the current supporting and contradicting evidence. It is not a recommendation or calibrated success probability.</InfoTip></span>
+          <span className="wb-grade__label">Evidence grade <InfoTip title="Evidence grade">Four lenses each score 0–1: Bandar Flow (top-5 concentration + preferred-broker share + foreign flow), Momentum (MA stack, volume vs baseline, RSI14, 20-day return), Structure (range position, volume trend, 60-day return) and Risk (net R:R, stop distance in ATR, cost drag, notations). They are weighted by regime — trending 0.34 momentum / 0.28 bandar / 0.20 structure / 0.18 risk, rangebound 0.36 bandar / 0.24 structure / 0.22 momentum / 0.18 risk — then cut into letters at 0.82 A, 0.68 B, 0.54 C, 0.40 D, below that F. Not a recommendation or a calibrated success probability.</InfoTip></span>
           <span className="wb-grade__letter" style={{ color: gradeColor(grade.grade) }}>{grade.grade}</span>
         </div>
         <div className="wb-grade__metric">
-          <span className="wb-grade__label">Evidence alignment <InfoTip title="Evidence alignment">Agreement between model inputs, not win probability.</InfoTip></span>
+          <span className="wb-grade__label">Evidence alignment <InfoTip title="Evidence alignment">0.38 + min(regime strength, 12) / 28 + (1 − lens spread) × 0.28, capped at 0.95. Lens spread is the gap between the highest and lowest of the four lens scores, so a high reading means the lenses agree and the regime is decisive. It measures agreement among inputs, not win probability.</InfoTip></span>
           <span className="wb-grade__metric-value">
             {Number.isFinite(grade.confidence) ? `${Math.round(grade.confidence * 100)}%` : '—'}
           </span>
           <span className="wb-grade__metric-note">Agreement between model inputs, not win probability</span>
         </div>
         <div className="wb-grade__metric">
-          <span className="wb-grade__label">Market structure <InfoTip title="Market structure">The current regime and development phase inferred from price, trend, and range evidence.</InfoTip></span>
+          <span className="wb-grade__label">Market structure <InfoTip title="Market structure">Regime = trending when MA20/MA50 spread as % of price × 1.8, plus |20-day return| + |60-day return| / 2, plus |distance from MA20| × 0.5 reaches 7; otherwise rangebound. Phase reads the 60-session range, where position is (last − low) / (high − low) and volume trend is the last 10 sessions over the 60-session average: markup at ≥12% return, position ≥0.72 and an aligned up stack; markdown at ≤−12%, position ≤0.28 and an aligned down stack; accumulation below 0.40 with volume ≥1.05x and return above −8%; distribution above 0.60 with volume ≥1.02x and return under 8%; otherwise rangebound.</InfoTip></span>
           <span className="wb-grade__metric-value wb-grade__metric-value--text">{grade.regime || 'Unknown'}</span>
           <span className="wb-grade__metric-note">{grade.structurePhase || 'Phase unavailable'}</span>
         </div>
         <div className="wb-grade__metric">
-          <span className="wb-grade__label">Data quality <InfoTip title="Data quality">Freshness and source coverage of delayed or end-of-day inputs, not predicted win probability.</InfoTip></span>
+          <span className="wb-grade__label">Data quality <InfoTip title="Data quality">Two checks on the price history the levels are built from. It reads Degraded when daily history is unavailable, or when the 60-session high / low ratio reaches 3, which means the range is dislocated enough that distant support and resistance were dropped rather than trusted. Complete means neither fired. This is about input integrity only, not about the setup.</InfoTip></span>
           <span className={`wb-grade__metric-value wb-grade__metric-value--text ${warnings.length ? 'text-warning' : 'text-positive'}`}>
             {warnings.length ? 'Degraded' : 'Complete'}
           </span>
@@ -106,7 +106,7 @@ function ScorecardTable({ scorecard }) {
   const summary = scorecard.summary || {};
   return (
     <div className="wb-scorecard">
-      <h3 className="wb-section__title text-tertiary">Scorecard <InfoTip title="Scorecard">Directional evidence components. Bull, Bear, and Neutral describe input direction, not outcome probabilities.</InfoTip></h3>
+      <h3 className="wb-section__title text-tertiary">Scorecard <InfoTip title="Scorecard">Eight components, each reduced to the sign of one measurement rather than a weight: broker concentration (sign of top-5 net value), preferred-broker share (above or below the 25% even-split baseline), foreign flow (sign of 20-session net), trend / MA stack (aligned up or down), volume vs baseline (≥1x paired with the direction of the price move), risk geometry (Bull at net R:R ≥1.5), book pressure (Bull ≥60% bid frequency, Bear ≤40%, and only counted for third-liners), and notations / UMA (Bear if any flag is present). The leaning is a raw count of Bull against Bear, so it says how many things point which way, not outcome probabilities.</InfoTip></h3>
       <div className="wb-scorecard__factors">
         {factors.map((f, i) => (
           <div key={i} className="wb-scorecard__factor">

@@ -151,7 +151,8 @@ describe('Workbench', () => {
 
     // Technical Evidence
     expect(screen.getByText(/Technical Evidence/i)).toBeInTheDocument();
-    expect(screen.getByText(/RSI14/i)).toBeInTheDocument();
+    // Exact match: the evidence-grade tooltip also names RSI14 when describing the method.
+    expect(screen.getByText('RSI14')).toBeInTheDocument();
 
     // Trade Geometry
     expect(screen.getByText(/Risk and level map/i)).toBeInTheDocument();
