@@ -113,8 +113,20 @@ function ArchiveHealthStrip({ health, loading, error, onRetry }) {
       className={`bi-health ${calendar?.status === 'degraded' ? 'bi-health--degraded' : ''} ${latest && !latest.complete ? 'bi-health--partial' : ''}`}
     >
       <div className="bi-health__item">
-        <span className="bi-health__label">Latest completed</span>
-        <span className="bi-health__value tabular">{data.latestCompletedDate || '—'}</span>
+        <span className="bi-health__label">Full-universe complete</span>
+        <span
+          className={`bi-health__value tabular ${data.completedCoverageStalled ? 'text-warning' : ''}`}
+          title={data.completedCoverageStalled
+            ? `${data.completedCoverageReason} Daily data continues past this date; see Latest available.`
+            : 'Every canonical ticker is accounted for on this date.'}
+        >
+          {data.latestCompletedDate || '—'}
+        </span>
+        {data.completedCoverageStalled && data.completedLagSessions > 0 && (
+          <span className="bi-health__note text-tertiary">
+            stalled · {data.completedLagSessions} sessions of partial data since
+          </span>
+        )}
       </div>
       <div className="bi-health__item">
         <span className="bi-health__label">Earliest archive</span>

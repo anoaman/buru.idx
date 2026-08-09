@@ -1,7 +1,12 @@
 import { createReadStream, existsSync, statSync } from 'fs';
 import { createServer, request as httpRequest } from 'http';
 import { extname, join, normalize } from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
+import {
+  checkRateLimit,
+  resolvePublicApiRequest,
+  UPSTREAM_TIMEOUT_MS,
+} from './src/lib/public-api-allowlist.js';
 
 const ROOT = fileURLToPath(new URL('./dist/', import.meta.url));
 const HOST = process.env.STOCK_ANALYSIS_HOST || '127.0.0.1';
@@ -18,27 +23,75 @@ const contentTypes = {
   '.svg': 'image/svg+xml',
 };
 
+function sendJson(res, status, body, extraHeaders = {}) {
+  res.writeHead(status, {
+    'content-type': 'application/json; charset=utf-8',
+    'cache-control': 'no-store',
+    'x-content-type-options': 'nosniff',
+    ...extraHeaders,
+  });
+  res.end(JSON.stringify(body));
+}
+
+function clientKey(req) {
+  return req.socket.remoteAddress || 'unknown';
+}
+
 function proxyApi(req, res) {
+  const limit = checkRateLimit(clientKey(req), Date.now());
+  if (!limit.allowed) {
+    return sendJson(res, 429, { success: false, error: 'Too many requests. Try again shortly.' }, {
+      'retry-after': String(limit.retryAfterSec),
+    });
+  }
+
+  const decision = resolvePublicApiRequest(req.method, req.url || '/');
+  if (!decision.ok) {
+    return sendJson(res, decision.status, { success: false, error: decision.error });
+  }
+
   const upstream = httpRequest({
     protocol: API_ORIGIN.protocol,
     hostname: API_ORIGIN.hostname,
     port: API_ORIGIN.port,
-    method: req.method,
-    path: req.url,
-    headers: { accept: req.headers.accept || 'application/json' },
+    method: 'GET',
+    path: decision.path,
+    headers: { accept: 'application/json' },
   }, (upstreamRes) => {
-    res.writeHead(upstreamRes.statusCode || 502, {
+    const status = upstreamRes.statusCode || 502;
+    // A 5xx body from the private API is an unhandled exception message. One of
+    // them reads "401 Unauthorized — token likely expired. Run: npm run grab-token":
+    // an operator runbook served to whoever asked. 4xx bodies are validation text
+    // written for a caller, so those pass through.
+    if (status >= 500) {
+      upstreamRes.resume();
+      console.error(`[proxy] upstream ${status} for ${decision.path}`);
+      return sendJson(res, status, {
+        success: false,
+        error: 'Analysis is temporarily unavailable while the data cache refreshes.',
+      });
+    }
+    res.writeHead(status, {
       'content-type': upstreamRes.headers['content-type'] || 'application/json',
-      'cache-control': 'public, max-age=60, stale-while-revalidate=300',
+      'cache-control': status === 200
+        ? 'public, max-age=60, stale-while-revalidate=300'
+        : 'no-store',
       'x-content-type-options': 'nosniff',
     });
     upstreamRes.pipe(res);
   });
-  upstream.on('error', (error) => {
-    res.writeHead(502, { 'content-type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify({ success: false, error: `API unavailable: ${error.message}` }));
+  upstream.setTimeout(UPSTREAM_TIMEOUT_MS, () => {
+    upstream.destroy(new Error('upstream timed out'));
   });
-  req.pipe(upstream);
+  upstream.on('error', (error) => {
+    if (res.headersSent) return res.destroy();
+    // The upstream message can name internal hosts, ports and maintenance
+    // commands. The caller gets the status, not the internals.
+    console.error(`[proxy] ${decision.path}: ${error.message}`);
+    sendJson(res, 502, { success: false, error: 'Analysis service is temporarily unavailable.' });
+  });
+  // Nothing from the client body is forwarded; only allowlisted GETs get here.
+  upstream.end();
 }
 
 function resolveStaticPath(urlPath) {
@@ -49,7 +102,7 @@ function resolveStaticPath(urlPath) {
   return join(ROOT, 'index.html');
 }
 
-const server = createServer((req, res) => {
+export const server = createServer((req, res) => {
   if (req.url?.startsWith('/api/')) return proxyApi(req, res);
   const path = resolveStaticPath(req.url || '/');
   if (!path || !existsSync(path)) {
@@ -65,6 +118,9 @@ const server = createServer((req, res) => {
   createReadStream(path).pipe(res);
 });
 
-server.listen(PORT, HOST, () => {
-  console.log(`stock analysis listening on http://${HOST}:${PORT}`);
-});
+// Importing this module for its allowlist must not open a socket.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  server.listen(PORT, HOST, () => {
+    console.log(`stock analysis listening on http://${HOST}:${PORT}`);
+  });
+}

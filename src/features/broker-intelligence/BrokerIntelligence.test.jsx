@@ -292,7 +292,7 @@ describe('BrokerIntelligence', () => {
     expect(screen.getByText(/Loading archive health/i)).toBeInTheDocument();
     await act(async () => { resolveHealth(HEALTH_OK); });
     await waitFor(() => {
-      expect(screen.getByText(/Latest completed/i)).toBeInTheDocument();
+      expect(screen.getByText(/Full-universe complete/i)).toBeInTheDocument();
     });
   });
 
@@ -524,7 +524,7 @@ describe('BrokerIntelligence', () => {
     expect(await screen.findByText('Bank Central Asia')).toBeInTheDocument();
     expect(screen.getByText(/Archive unavailable/i)).toBeInTheDocument();
     expect(screen.getByText(/database_missing/i)).toBeInTheDocument();
-    expect(screen.queryByText(/Latest completed/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Full-universe complete/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/0\/0 stock-days/i)).not.toBeInTheDocument();
     expect(screen.getAllByText('YP').length).toBeGreaterThan(0);
   });
