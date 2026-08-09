@@ -336,6 +336,9 @@ export default function BrokerIntelligence() {
   const [searchParams, setSearchParams] = useSearchParams();
   const lens = normalizeLens(searchParams.get('lens'));
   const days = normalizeDays(searchParams.get('days'));
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(searchParams.get('date') || '')
+    ? searchParams.get('date')
+    : '';
   const ticker = (searchParams.get('ticker') || DEFAULT_TICKER).toUpperCase();
   const code = (searchParams.get('code') || '').toUpperCase();
 
@@ -414,8 +417,8 @@ export default function BrokerIntelligence() {
     });
 
     const request = lens === 'stock'
-      ? getStockBrokerIntelligence({ ticker, days })
-      : getBrokerStockIntelligence({ code, days, limit: 25 });
+      ? getStockBrokerIntelligence({ ticker, days, ...(date ? { date } : {}) })
+      : getBrokerStockIntelligence({ code, days, ...(date ? { date } : {}), limit: 25 });
 
     request
       .then((raw) => {
@@ -425,6 +428,10 @@ export default function BrokerIntelligence() {
           : guardBrokerStockIntelligence(raw);
         if (!result.ok) {
           setLensState({ loading: false, refreshing: false, result: null, error: result.error });
+          return;
+        }
+        if (date && result.data?.window?.asOf !== date) {
+          setLensState({ loading: false, refreshing: false, result: null, error: `No broker data is available for ${date}.` });
           return;
         }
         setLensState({ loading: false, refreshing: false, result, error: null });
@@ -441,11 +448,11 @@ export default function BrokerIntelligence() {
       });
 
     return () => { cancelled = true; };
-  }, [lens, ticker, code, days, lensRetry]);
+  }, [lens, ticker, code, days, date, lensRetry]);
 
   // Prefetch other windows after first successful identity load
   useEffect(() => {
-    if (lensState.loading || lensState.error || !lensState.result) return;
+    if (lensState.loading || lensState.error || !lensState.result || date) return;
     const timer = setTimeout(() => {
       const others = ALLOWED_DAYS.filter((d) => d !== days);
       for (const d of others) {
@@ -464,7 +471,7 @@ export default function BrokerIntelligence() {
       }
     }, 300);
     return () => clearTimeout(timer);
-  }, [lensState.loading, lensState.error, lensState.result, lens, ticker, code, days]);
+  }, [lensState.loading, lensState.error, lensState.result, lens, ticker, code, days, date]);
 
   const updateParams = useCallback((next) => {
     const params = new URLSearchParams();
@@ -472,13 +479,15 @@ export default function BrokerIntelligence() {
     const nextDays = normalizeDays(next.days ?? days);
     params.set('lens', nextLens);
     params.set('days', String(nextDays));
+    const nextDate = next.date === undefined ? date : next.date;
+    if (nextDate) params.set('date', nextDate);
     if (nextLens === 'stock') {
       params.set('ticker', String(next.ticker ?? ticker).toUpperCase());
     } else {
       params.set('code', String(next.code ?? code).toUpperCase());
     }
     setSearchParams(params);
-  }, [lens, days, ticker, code, setSearchParams]);
+  }, [lens, days, date, ticker, code, setSearchParams]);
 
   const handleLensChange = (nextLens) => {
     if (nextLens === lens) return;
@@ -587,7 +596,7 @@ export default function BrokerIntelligence() {
             aria-pressed={lens === 'broker'}
             onClick={() => handleLensChange('broker')}
           >
-            Broker Lens
+            Broker Lens · Across Market
           </button>
         </div>
 
@@ -634,6 +643,19 @@ export default function BrokerIntelligence() {
               </button>
             ))}
           </div>
+          <label className="bi-date">
+            <span className="text-tertiary">As-of date</span>
+            <input
+              aria-label="As-of date"
+              type="date"
+              value={date}
+              max={healthState.result?.data?.latestCompletedDate || undefined}
+              onChange={(event) => updateParams({ date: event.target.value })}
+            />
+            {date && (
+              <button type="button" onClick={() => updateParams({ date: '' })}>Latest</button>
+            )}
+          </label>
           <p className="bi-window__note text-tertiary">
             Calendar days; weekends and verified IDX holidays excluded.
           </p>
@@ -687,6 +709,15 @@ export default function BrokerIntelligence() {
                 )}
               </div>
               <div className="bi-summary__metrics">
+                <div className="bi-summary__primary">
+                  <span className="text-tertiary">Preferred-broker share</span>
+                  <strong className="tabular">
+                    {stockData.preferredBroker.share == null ? '—' : `${(stockData.preferredBroker.share * 100).toFixed(1)}%`}
+                  </strong>
+                  <small className="text-tertiary">
+                    {(stockData.preferredBroker.observedCodes || []).join(', ') || 'No preferred broker observed'}
+                  </small>
+                </div>
                 <div>
                   <span className="text-tertiary">Observed net value</span>
                   <span className={`tabular ${stockData.observedFlow.netValue > 0 ? 'text-positive' : stockData.observedFlow.netValue < 0 ? 'text-negative' : ''}`}>
@@ -708,6 +739,15 @@ export default function BrokerIntelligence() {
                   <span className="tabular">{formatIDR(stockData.observedFlow.sellValue)}</span>
                 </div>
               </div>
+              {stockData.rotationHandoff && (
+                <div className="bi-rotation" role="status">
+                  <strong>Broker handoff detected</strong>
+                  <span>{stockData.rotationHandoff.outgoingBroker} → {stockData.rotationHandoff.incomingBroker}</span>
+                  <span className="text-tertiary">
+                    {stockData.rotationHandoff.split.earlyFrom}–{stockData.rotationHandoff.split.lateTo}
+                  </span>
+                </div>
+              )}
             </section>
           ) : (
             <section className="bi-summary" aria-label="Broker window summary">

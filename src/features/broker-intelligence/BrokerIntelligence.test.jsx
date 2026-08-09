@@ -113,6 +113,14 @@ const STOCK_OK = {
       sellValue: 70_000_000_000,
       daily: [],
     },
+    preferredBroker: {
+      codes: ['AK', 'BK', 'CC', 'ZP'],
+      observedCodes: ['AK'],
+      netValue: 30_000_000_000,
+      totalPositiveNetValue: 50_000_000_000,
+      share: 0.6,
+    },
+    rotationHandoff: null,
     accumulation: [{
       code: 'YP',
       sourceType: 'Foreign',
@@ -329,6 +337,21 @@ describe('BrokerIntelligence', () => {
         expect(getStockBrokerIntelligence).toHaveBeenCalledWith({ ticker: 'BBCA', days: d });
       });
     }
+  });
+
+  it('promotes preferred-broker share and has no consistent-buyer flag', async () => {
+    renderAt('/broker-intelligence?lens=stock&ticker=BBCA&days=30');
+    expect(await screen.findByText('60.0%')).toBeInTheDocument();
+    expect(screen.getByText('Preferred-broker share')).toBeInTheDocument();
+    expect(screen.queryByText(/consistent buyer/i)).not.toBeInTheDocument();
+  });
+
+  it('passes an explicit date and refuses a mismatched stale response', async () => {
+    renderAt('/broker-intelligence?lens=stock&ticker=BBCA&days=1&date=2026-07-20');
+    await waitFor(() => {
+      expect(getStockBrokerIntelligence).toHaveBeenCalledWith({ ticker: 'BBCA', days: 1, date: '2026-07-20' });
+    });
+    expect(await screen.findByText(/No broker data is available for 2026-07-20/i)).toBeInTheDocument();
   });
 
   it('shows stock summary with exact coverage counts', async () => {

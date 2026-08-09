@@ -290,6 +290,16 @@ export function guardStockBrokerIntelligence(raw) {
         sellValue: preserveFiniteOrZero(observedFlow.sellValue),
         daily: Array.isArray(observedFlow.daily) ? observedFlow.daily : [],
       },
+      preferredBroker: {
+        codes: Array.isArray(data.preferredBroker?.codes) ? data.preferredBroker.codes : [],
+        observedCodes: Array.isArray(data.preferredBroker?.observedCodes) ? data.preferredBroker.observedCodes : [],
+        netValue: preserveFiniteOrZero(data.preferredBroker?.netValue),
+        totalPositiveNetValue: preserveFiniteOrZero(data.preferredBroker?.totalPositiveNetValue),
+        share: preserveFiniteOrNull(data.preferredBroker?.share),
+      },
+      rotationHandoff: data.rotationHandoff && typeof data.rotationHandoff === 'object'
+        ? data.rotationHandoff
+        : null,
       accumulation: normalizeBrokerRows(data.accumulation, normalizeStockBrokerRow),
       distribution: normalizeBrokerRows(data.distribution, normalizeStockBrokerRow),
       brokers: normalizeBrokerRows(data.brokers, normalizeStockBrokerRow),

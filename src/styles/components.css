@@ -1124,6 +1124,47 @@
   font-size: 11px;
 }
 
+.bi-date {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.bi-date input,
+.bi-date button {
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  padding: 6px 8px;
+}
+
+.bi-summary__metrics > .bi-summary__primary {
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border-subtle));
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  padding: 12px;
+}
+
+.bi-summary__primary strong {
+  font-size: 24px;
+}
+
+.bi-summary__primary small {
+  display: block;
+}
+
+.bi-rotation {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--warning);
+  background: color-mix(in srgb, var(--warning) 8%, transparent);
+}
+
 .bi-loading {
   font-size: 12px;
 }
