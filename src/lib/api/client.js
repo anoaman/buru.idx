@@ -116,6 +116,14 @@ export function simulateRisk({ entry, stop, target, capital, maxRiskPct }) {
   return request(`/api/risk-simulation?${params.toString()}`);
 }
 
+export function getOpportunities() {
+  return request('/api/opportunities');
+}
+
+export function getCases() {
+  return request('/api/watchlist');
+}
+
 export function getBrokerArchiveHealth() {
   return request('/api/broker-intelligence/health');
 }

@@ -19,6 +19,8 @@ describe('public API allowlist', () => {
       ok: true,
       path: '/api/broker-intelligence/stock?ticker=BBCA&days=7',
     });
+    expect(resolvePublicApiRequest('GET', '/api/opportunities').ok).toBe(true);
+    expect(resolvePublicApiRequest('GET', '/api/watchlist').ok).toBe(true);
   });
 
   // An allowlist that silently drops a parameter the app depends on is a broken
@@ -58,13 +60,11 @@ describe('public API allowlist', () => {
     }
   });
 
-  it('hides the private routes entirely, not just from the frontend', () => {
+  it('hides workflow mutation and internal routes from the read-only workstation proxy', () => {
     for (const path of [
-      '/api/watchlist',
       '/api/trade-plans',
       '/api/journal',
       '/api/calibration',
-      '/api/opportunities',
       '/api/market-overview',
       '/api/data-health',
       '/api/fca',

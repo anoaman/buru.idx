@@ -16,6 +16,8 @@ const PUBLIC_ROUTES = new Map([
   // this a caller could simply ask for mode=live and get the live read.
   ['/api/analyze', { params: ['ticker'], force: { mode: 'delayed' } }],
   ['/api/risk-simulation', { params: ['entry', 'stop', 'target', 'capital', 'maxRiskPct'] }],
+  ['/api/opportunities', { params: [] }],
+  ['/api/watchlist', { params: [] }],
   ['/api/broker-intelligence/health', { params: [] }],
   ['/api/broker-intelligence/stock', { params: ['ticker', 'days', 'date'] }],
   ['/api/broker-intelligence/broker', { params: ['code', 'days', 'limit', 'date'] }],
@@ -60,6 +62,10 @@ export function resolvePublicApiRequest(method, rawUrl) {
     return { ok: false, status: 405, error: 'This endpoint is read-only.' };
   }
   let url;
+  const rawPath = String(rawUrl || '').split('?')[0];
+  if (/(^|\/)\.\.?($|\/)/.test(rawPath)) {
+    return { ok: false, status: 400, error: 'Malformed request.' };
+  }
   try {
     url = new URL(rawUrl, 'http://internal');
   } catch {
