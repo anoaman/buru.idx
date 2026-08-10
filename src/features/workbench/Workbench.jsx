@@ -3,19 +3,19 @@ import { useSearchParams } from 'react-router';
 import { analyzeTicker } from '../../lib/api/client.js';
 import { guardAnalyze } from '../../lib/api/contracts.js';
 import {
-  formatPrice, formatPct, formatVolume,
+  formatIDR, formatNumber, formatPrice, formatPct, formatVolume,
 } from '../../lib/format/market.js';
 import EmptyState from '../../components/EmptyState.jsx';
 import ErrorState from '../../components/ErrorState.jsx';
 import InfoTip from '../../components/InfoTip.jsx';
-import TradingViewChart from './TradingViewChart.jsx';
+import MarketChart from './MarketChart.jsx';
 import TechnicalEvidence from './TechnicalEvidence.jsx';
 import DynamicLevels from './DynamicLevels.jsx';
 import BrokerEvidence from './BrokerEvidence.jsx';
 import InvestigationBrief from './InvestigationBrief.jsx';
 import RiskSimulator from './RiskSimulator.jsx';
 
-function TickerHeader({ ticker }) {
+function TickerHeader({ ticker, priceHistory }) {
   if (!ticker) return null;
   const changeColor = ticker.changePct > 0 ? 'text-positive' : ticker.changePct < 0 ? 'text-negative' : 'text-secondary';
   return (
@@ -31,13 +31,23 @@ function TickerHeader({ ticker }) {
         </span>
       </div>
       <div className="wb-header__meta">
-        <span className="text-tertiary">Vol {formatVolume(ticker.volume)}</span>
         {ticker.tier && (
           <span className={`badge ${ticker.tier === 'liquid' ? 'badge-positive' : ticker.tier === 'mid' ? 'badge-warning' : 'badge-neutral'}`}>
             {ticker.tier}
           </span>
         )}
       </div>
+      <div className="wb-overview-grid">
+        <div><span>Open / High / Low</span><strong>{formatPrice(ticker.open)} / {formatPrice(ticker.high)} / {formatPrice(ticker.low)}</strong></div>
+        <div><span>VWAP</span><strong>{formatPrice(ticker.vwap)}</strong></div>
+        <div><span>Traded value</span><strong>{formatIDR(ticker.value)}</strong></div>
+        <div><span>Volume</span><strong>{formatVolume(ticker.volume)} · {ticker.volumeVsBaseline?.ratio?.toFixed(2) || '—'}x base</strong></div>
+        <div><span>Frequency</span><strong>{formatNumber(ticker.frequency)}</strong></div>
+        <div><span>Foreign net</span><strong className={ticker.fnet > 0 ? 'text-positive' : ticker.fnet < 0 ? 'text-negative' : ''}>{formatIDR(ticker.fnet)}</strong></div>
+        <div><span>RSI14 / ATR14</span><strong>{priceHistory?.rsi14?.toFixed(1) || '—'} / {formatPct(priceHistory?.atr14Pct)}</strong></div>
+        <div><span>Returns 5 / 20 / 60</span><strong>{formatPct(priceHistory?.ret5d)} / {formatPct(priceHistory?.ret20d)} / {formatPct(priceHistory?.ret60d)}</strong></div>
+      </div>
+      {(ticker.notations?.length > 0 || ticker.uma) && <div className="wb-overview-flags text-warning">{[...(ticker.notations || []), ...(ticker.uma ? ['UMA'] : [])].join(' · ')}</div>}
     </div>
   );
 }
@@ -83,23 +93,6 @@ function EvidenceSummary({ grade, stance, scorecard, dataQuality }) {
   );
 }
 
-function ProprietaryLevelStrip({ geometry, dynamicLevels }) {
-  const best = geometry?.bestSetup;
-  const levels = dynamicLevels?.levels || [];
-  return (
-    <div className="wb-level-strip" aria-label="NALAR proprietary levels">
-      <div><span>Support</span><strong>{formatPrice(geometry?.nearestSupport)}</strong></div>
-      <div><span>Resistance</span><strong>{formatPrice(geometry?.nearestResistance)}</strong></div>
-      <div><span>Invalidation</span><strong>{formatPrice(best?.stop)}</strong></div>
-      <div><span>Target</span><strong>{formatPrice(best?.target)}</strong></div>
-      <div><span>Net R:R</span><strong>{(best?.netRR ?? best?.rr)?.toFixed(2) || '—'}</strong></div>
-      <div className="wb-level-strip__mas">
-        {levels.map((level) => <span key={level.label}>{level.label} <strong>{formatPrice(level.price)}</strong></span>)}
-      </div>
-    </div>
-  );
-}
-
 export default function Workbench() {
   const [searchParams, setSearchParams] = useSearchParams();
   const tickerParam = searchParams.get('ticker') || '';
@@ -139,8 +132,6 @@ export default function Workbench() {
     }
   };
 
-  const activeTicker = state.data?.ticker?.symbol || query.toUpperCase();
-
   return (
     <div className="workbench">
       <form className="wb-search" onSubmit={handleSubmit}>
@@ -165,12 +156,11 @@ export default function Workbench() {
 
       {state.data && !state.loading && (
         <div className="wb-result">
-          <TickerHeader ticker={state.data.ticker} />
+          <TickerHeader ticker={state.data.ticker} priceHistory={state.data.priceHistory} />
           <InvestigationBrief investigation={state.data.investigation} />
 
           <div className="wb-chart-panel">
-            <TradingViewChart ticker={activeTicker} />
-            <ProprietaryLevelStrip geometry={state.data.riskGeometry} dynamicLevels={state.data.dynamicLevels} />
+            <MarketChart chart={state.data.chart} geometry={state.data.riskGeometry} ticker={state.data.ticker} />
           </div>
 
           <RiskSimulator ticker={state.data.ticker} geometry={state.data.riskGeometry} />

@@ -631,19 +631,6 @@ export default function BrokerIntelligence() {
               </button>
             ))}
           </div>
-          <label className="bi-date">
-            <span className="text-tertiary">As-of date</span>
-            <input
-              aria-label="As-of date"
-              type="date"
-              value={date}
-              max={healthState.result?.data?.latestCompletedDate || undefined}
-              onChange={(event) => updateParams({ date: event.target.value })}
-            />
-            {date && (
-              <button type="button" onClick={() => updateParams({ date: '' })}>Latest</button>
-            )}
-          </label>
           <p className="bi-window__note text-tertiary">
             Calendar days; weekends and verified IDX holidays excluded.
           </p>

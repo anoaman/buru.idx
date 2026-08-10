@@ -364,6 +364,20 @@
   padding: var(--space-5);
 }
 
+.inv-timeline--primary {
+  border: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+}
+
+.inv-section-head--timeline { justify-content: space-between; align-items: center; }
+.inv-section-head--timeline > div:first-child { display: flex; gap: var(--space-3); align-items: center; }
+.inv-periods { display: flex; border: 1px solid var(--border-default); }
+.inv-periods button { padding: 6px 10px; color: var(--text-tertiary); font: 600 9px var(--font-tabular); }
+.inv-periods button + button { border-left: 1px solid var(--border-default); }
+.inv-periods button.is-active { background: var(--color-accent-dim); color: var(--color-accent); }
+.inv-timeline__intro { margin-top: var(--space-2); color: var(--text-tertiary); font-size: 11px; }
+.inv-timeline__empty { margin-top: var(--space-4); padding: var(--space-4); border: 1px dashed var(--border-default); }
+
 .inv-contradictions {
   border-left: 1px solid var(--border-default);
 }
@@ -789,6 +803,29 @@
   font-size: 11px;
 }
 
+.wb-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  border-top: 1px solid var(--border-subtle);
+  border-left: 1px solid var(--border-subtle);
+}
+.wb-overview-grid > div { display: grid; gap: 4px; padding: 10px 12px; border-right: 1px solid var(--border-subtle); border-bottom: 1px solid var(--border-subtle); }
+.wb-overview-grid span { color: var(--text-tertiary); font: 9px var(--font-tabular); letter-spacing: .05em; text-transform: uppercase; }
+.wb-overview-grid strong { font: 600 11px var(--font-tabular); }
+.wb-overview-flags { font: 10px var(--font-tabular); }
+
+.wb-market-chart { border: 1px solid var(--border-default); background: var(--bg-elevated); }
+.wb-market-chart header { display: flex; justify-content: space-between; gap: var(--space-4); padding: 12px 14px; border-bottom: 1px solid var(--border-subtle); }
+.wb-market-chart header div { display: grid; gap: 3px; }
+.wb-market-chart header strong { font-size: 12px; }
+.wb-market-chart header span, .wb-market-chart header a { color: var(--text-tertiary); font-size: 10px; }
+.wb-market-chart header a:hover { color: var(--color-accent); }
+.wb-market-chart__canvas { min-height: 480px; }
+.wb-market-chart footer { display: flex; flex-wrap: wrap; gap: 12px; padding: 8px 14px; border-top: 1px solid var(--border-subtle); }
+.wb-market-chart footer span { display: flex; align-items: center; gap: 5px; color: var(--text-tertiary); font: 9px var(--font-tabular); }
+.wb-market-chart footer i { width: 12px; height: 2px; }
+.wb-market-chart--empty { padding: var(--space-6); color: var(--text-tertiary); }
+
 .wb-grade {
   background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
@@ -1055,6 +1092,12 @@
 }
 
 .wb-broker__head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-4); }
+.wb-broker__presets { display: flex; flex-wrap: wrap; gap: 4px; margin-top: var(--space-3); }
+.wb-broker__presets button { padding: 6px 9px; border: 1px solid var(--border-default); color: var(--text-tertiary); font: 600 9px var(--font-tabular); }
+.wb-broker__presets button.is-active { border-color: var(--color-accent); background: var(--color-accent-dim); color: var(--color-accent); }
+.wb-broker__custom { display: flex; gap: var(--space-3); margin-top: var(--space-3); }
+.wb-broker__custom label { display: grid; gap: 4px; color: var(--text-tertiary); font-size: 9px; text-transform: uppercase; }
+.wb-broker__custom input { padding: 7px 9px; border: 1px solid var(--border-default); color: var(--text-primary); color-scheme: dark; font: 10px var(--font-tabular); }
 .wb-broker__date { display: grid; gap: 5px; color: var(--text-tertiary); font-size: 9px; text-transform: uppercase; }
 .wb-broker__date input { min-height: 34px; padding: 0 var(--space-2); border: 1px solid var(--border-default); background: var(--bg-base); color: var(--text-primary); color-scheme: dark; }
 .wb-broker__workspace { display: grid; grid-template-columns: minmax(280px, .8fr) minmax(360px, 1.2fr); gap: var(--space-5); margin-top: var(--space-3); }
@@ -2353,6 +2396,9 @@
 .actor-map__bar.is-negative { background: var(--color-negative); }
 
 @media (max-width: 640px) {
+  .wb-overview-grid { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+  .wb-market-chart header { flex-direction: column; }
+  .wb-broker__custom { flex-direction: column; }
   .actor-map { padding: var(--space-3); }
   .actor-map__header { flex-direction: column; }
   .actor-map__quadrant { width: 100%; }

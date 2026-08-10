@@ -128,20 +128,26 @@ export function getBrokerArchiveHealth() {
   return request('/api/broker-intelligence/health');
 }
 
-export function getStockBrokerIntelligence({ ticker, days, date = null }) {
+export function getStockBrokerIntelligence({ ticker, days = 1, date = null, preset = null, from = null, to = null }) {
   const params = new URLSearchParams();
   params.set('ticker', String(ticker || '').toUpperCase());
   params.set('days', String(days));
   if (date) params.set('date', date);
+  if (preset) params.set('preset', preset);
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
   return request(`/api/broker-intelligence/stock?${params.toString()}`);
 }
 
-export function getBrokerStockIntelligence({ code, days, date = null, limit = 25 }) {
+export function getBrokerStockIntelligence({ code, days = 1, date = null, preset = null, from = null, to = null, limit = 25 }) {
   const params = new URLSearchParams();
   params.set('code', String(code || '').toUpperCase());
   params.set('days', String(days));
   params.set('limit', String(limit));
   if (date) params.set('date', date);
+  if (preset) params.set('preset', preset);
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
   return request(`/api/broker-intelligence/broker?${params.toString()}`);
 }
 

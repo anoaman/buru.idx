@@ -167,7 +167,7 @@ describe('Workbench', () => {
     // Grade
     expect(screen.getByText('B+')).toBeInTheDocument();
 
-    expect(screen.getByTitle('TradingView chart for IDX:BBRI')).toBeInTheDocument();
+    expect(screen.getByText('NALAR Market Chart')).toBeInTheDocument();
 
     // Technical Evidence
     expect(screen.getByText(/Technical Evidence/i)).toBeInTheDocument();
@@ -187,7 +187,7 @@ describe('Workbench', () => {
     expect(screen.queryByText(/What supports or challenges the setup/i)).not.toBeInTheDocument();
   });
 
-  it('uses TradingView as the only primary chart with NALAR levels below', async () => {
+  it('uses one TradingView-powered NALAR market chart', async () => {
     analyzeTicker.mockResolvedValue({ success: true, data: mockData });
     render(
       <MemoryRouter initialEntries={['/?ticker=BBRI']}>
@@ -195,8 +195,9 @@ describe('Workbench', () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByTitle('TradingView chart for IDX:BBRI')).toBeInTheDocument();
-    expect(screen.getByLabelText(/NALAR proprietary levels/i)).toBeInTheDocument();
+    expect(await screen.findByText('NALAR Market Chart')).toBeInTheDocument();
+    expect(screen.getAllByText('MA5').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('MA200').length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: /NALAR Analysis/i })).not.toBeInTheDocument();
   });
 
@@ -208,7 +209,7 @@ describe('Workbench', () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByTitle('TradingView chart for IDX:BBRI')).toBeInTheDocument();
+    expect(await screen.findByText('NALAR Market Chart')).toBeInTheDocument();
 
     const tlkmData = {
       ...mockData,
@@ -221,12 +222,10 @@ describe('Workbench', () => {
     fireEvent.click(screen.getByRole('button', { name: /Analyze/i }));
 
     expect(await screen.findByText('TLKM')).toBeInTheDocument();
-    expect(screen.getByTitle('TradingView chart for IDX:TLKM')).toBeInTheDocument();
-    expect(screen.getByTitle('TradingView chart for IDX:TLKM').getAttribute('src'))
-      .toContain('symbol=IDX%3ATLKM');
+    expect(screen.getByRole('link', { name: /Open full TradingView/i }).getAttribute('href')).toContain('IDX%3ATLKM');
   });
 
-  it('loads TradingView with default volume and RSI studies', async () => {
+  it('loads the market chart with volume and moving-average legend', async () => {
     analyzeTicker.mockResolvedValue({ success: true, data: mockData });
     render(
       <MemoryRouter initialEntries={['/?ticker=BBRI']}>
@@ -234,9 +233,8 @@ describe('Workbench', () => {
       </MemoryRouter>
     );
 
-    const iframe = await screen.findByTitle('TradingView chart for IDX:BBRI');
-    expect(decodeURIComponent(iframe.getAttribute('src'))).toContain('Volume@tv-basicstudies');
-    expect(decodeURIComponent(iframe.getAttribute('src'))).toContain('RSI@tv-basicstudies');
+    expect(await screen.findByText('NALAR Market Chart')).toBeInTheDocument();
+    expect(screen.getAllByText('MA20').length).toBeGreaterThan(0);
   });
 
   it('shows Local and Foreign broker rows with full Rupiah values', async () => {
@@ -257,7 +255,7 @@ describe('Workbench', () => {
     expect(screen.getAllByText('-Rp229.975.060.500').length).toBeGreaterThan(0);
   });
 
-  it('keeps TradingView available when proprietary chart history is absent', async () => {
+  it('shows a clear chart empty state when history is absent', async () => {
     const noChart = { ...mockData, chart: null };
     analyzeTicker.mockResolvedValue({ success: true, data: noChart });
     render(
@@ -265,7 +263,7 @@ describe('Workbench', () => {
         <Workbench />
       </MemoryRouter>
     );
-    expect(await screen.findByTitle('TradingView chart for IDX:BBRI')).toBeInTheDocument();
+    expect(await screen.findByText('Chart history unavailable.')).toBeInTheDocument();
   });
 
   it('renders technical evidence unavailable state', async () => {
@@ -302,7 +300,7 @@ describe('Workbench', () => {
     const link = await screen.findByRole('link', { name: /Open full Broker Map/i });
     expect(link).toHaveAttribute(
       'href',
-      '/broker-intelligence?lens=stock&ticker=BBRI&days=1&date=2026-07-17',
+      '/broker-intelligence?lens=stock&ticker=BBRI&days=1',
     );
   });
 
@@ -337,7 +335,7 @@ describe('Workbench', () => {
     fireEvent.click(screen.getByRole('button', { name: /Analyze/i }));
 
     // Analysis result renders (mock data is BBRI, but form submission works)
-    expect(await screen.findByTitle('TradingView chart for IDX:BBRI')).toBeInTheDocument();
+    expect(await screen.findByText('NALAR Market Chart')).toBeInTheDocument();
   });
 
   it('shows error for invalid ticker format', () => {

@@ -9,8 +9,9 @@ case tracking from the retiring cockpit without duplicating backend engines.
 ## Boundaries
 
 - `src/features/workbench/` owns ticker analysis presentation and chart views.
-  Its Phase 2 investigation order is current question, chart, setup timeline,
-  contradictions, invalidation simulator, then the collapsed evidence ledger.
+  Its investigation order is market overview, setup timeline, annotated market
+  chart, invalidation simulator, then the collapsed evidence ledger. The chart
+  uses TradingView Lightweight Charts so first-party levels remain auditable.
 - `src/features/broker-intelligence/` owns stock/broker lenses and inventory
   curve presentation.
 - `src/lib/api/client.js` is the only first-party network boundary and prefixes
@@ -54,8 +55,9 @@ turn the proxy into a wildcard forwarder.
 
 - Existing routes remain `/workbench` and `/broker-intelligence` until the new
   shell lands.
-- Broker Intelligence defaults to one calendar day. The 7/14/30/60-day windows
-  are explicit comparisons and must display the full resolved range.
+- Broker Intelligence defaults to one completed trading session. Named ranges
+  and custom inclusive dates must display both resolved endpoints and the
+  observed trading-session count.
 - Cockpit data remains canonical in `trading-db/idx.db`; no migration, copy, or
   deletion occurs during shell work.
 - Opportunity evaluations, frozen watchlist snapshots, trade plans, and trade
