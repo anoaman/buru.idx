@@ -16,8 +16,12 @@ case tracking from the retiring cockpit without duplicating backend engines.
 - `src/lib/api/contracts.js` normalizes only the contracts consumed by these two
   features.
 - `src/lib/format/market.js` owns only the market formatters they consume.
-- `src/components/PublicShell.jsx` owns the current navigation and delayed-data
-  disclosure. Phase 1 replaces it with the private Analysis shell.
+- `src/components/AnalysisShell.jsx` owns private navigation and the global
+  ticker/window command bar.
+- `src/components/AnalysisContext.jsx` owns cross-route ticker, window and as-of
+  context. Feature pages remain responsible for their own network state.
+- `src/features/radar/` and `src/features/cases/` are Phase 1 route foundations;
+  they contain no duplicated scanner or workflow logic.
 
 The frontend performs no analysis, ranking, broker inventory, or coverage
 calculation. Those remain backend responsibilities.
@@ -26,6 +30,8 @@ calculation. Those remain backend responsibilities.
 
 - `/workbench`
 - `/broker-intelligence`
+- `/radar`
+- `/cases`
 
 The root and unknown routes redirect to `/workbench`.
 
