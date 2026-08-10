@@ -798,6 +798,16 @@ export default function BrokerIntelligence() {
                     {signedLots(brokerData.summary.netLots)}
                   </span>
                 </div>
+                {brokerData.fingerprint && (
+                  <div className="bi-summary__primary">
+                    <span className="text-tertiary">Behavioral fingerprint</span>
+                    <strong>{brokerData.fingerprint.style} · {String(brokerData.fingerprint.bias).replaceAll('_', ' ')}</strong>
+                    <small className="text-tertiary">
+                      Top-5 concentration {brokerData.fingerprint.concentration == null ? '—' : `${Math.round(brokerData.fingerprint.concentration * 100)}%`}
+                      {' · '}repeatability {brokerData.fingerprint.repeatability == null ? '—' : `${Math.round(brokerData.fingerprint.repeatability * 100)}%`}
+                    </small>
+                  </div>
+                )}
               </div>
             </section>
           )}

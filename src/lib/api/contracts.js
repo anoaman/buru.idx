@@ -397,6 +397,9 @@ export function guardBrokerStockIntelligence(raw) {
         netValue: preserveFiniteOrZero(summary.netValue),
         netLots: preserveFiniteOrZero(summary.netLots),
       },
+      fingerprint: data.fingerprint && typeof data.fingerprint === 'object'
+        ? data.fingerprint
+        : null,
       accumulation: normalizeBrokerRows(data.accumulation, normalizeBrokerStockRow),
       distribution: normalizeBrokerRows(data.distribution, normalizeBrokerStockRow),
     },
