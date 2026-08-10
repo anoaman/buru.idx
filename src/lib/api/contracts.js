@@ -71,6 +71,18 @@ export function guardAnalyze(raw) {
   };
 }
 
+export function guardRiskSimulation(raw) {
+  if (!raw || raw.success === false || !raw.data) {
+    return { ok: false, error: raw?.error || 'Invalid risk simulation', data: null };
+  }
+  const data = raw.data;
+  const required = ['entry', 'stop', 'target', 'capital', 'maxRiskPct', 'lots', 'shares'];
+  if (!required.every((key) => Number.isFinite(data[key]))) {
+    return { ok: false, error: 'Incomplete risk simulation', data: null };
+  }
+  return { ok: true, error: null, data };
+}
+
 function normalizeDisclosures(raw) {
   if (!Array.isArray(raw)) return [];
   return raw

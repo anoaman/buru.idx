@@ -9,6 +9,8 @@ case tracking from the retiring cockpit without duplicating backend engines.
 ## Boundaries
 
 - `src/features/workbench/` owns ticker analysis presentation and chart views.
+  Its Phase 2 investigation order is current question, chart, setup timeline,
+  contradictions, invalidation simulator, then the collapsed evidence ledger.
 - `src/features/broker-intelligence/` owns stock/broker lenses and inventory
   curve presentation.
 - `src/lib/api/client.js` is the only first-party network boundary and prefixes

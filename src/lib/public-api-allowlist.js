@@ -15,6 +15,7 @@ const PUBLIC_ROUTES = new Map([
   // mode is forced: the public product is delayed/EOD by decision, and without
   // this a caller could simply ask for mode=live and get the live read.
   ['/api/analyze', { params: ['ticker'], force: { mode: 'delayed' } }],
+  ['/api/risk-simulation', { params: ['entry', 'stop', 'target', 'capital', 'maxRiskPct'] }],
   ['/api/broker-intelligence/health', { params: [] }],
   ['/api/broker-intelligence/stock', { params: ['ticker', 'days', 'date'] }],
   ['/api/broker-intelligence/broker', { params: ['code', 'days', 'limit', 'date'] }],

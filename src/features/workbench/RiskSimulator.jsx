@@ -1,0 +1,73 @@
+import { useEffect, useState } from 'react';
+import { simulateRisk } from '../../lib/api/client.js';
+import { guardRiskSimulation } from '../../lib/api/contracts.js';
+import { formatIDR, formatNumber, formatPct, formatPrice } from '../../lib/format/market.js';
+
+export default function RiskSimulator({ ticker, geometry }) {
+  const best = geometry?.bestSetup;
+  const [form, setForm] = useState({
+    entry: ticker?.close || '',
+    stop: best?.stop || '',
+    target: best?.target || '',
+    capital: 100_000_000,
+    maxRiskPct: 1,
+  });
+  const [state, setState] = useState({ loading: false, data: null, error: null });
+
+  useEffect(() => {
+    setForm((current) => ({
+      ...current,
+      entry: ticker?.close || '',
+      stop: best?.stop || '',
+      target: best?.target || '',
+    }));
+    setState({ loading: false, data: null, error: null });
+  }, [ticker?.symbol, ticker?.close, best?.stop, best?.target]);
+
+  if (!ticker || !best) return null;
+
+  const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  const submit = async (event) => {
+    event.preventDefault();
+    setState({ loading: true, data: null, error: null });
+    const result = guardRiskSimulation(await simulateRisk(form));
+    setState(result.ok
+      ? { loading: false, data: result.data, error: null }
+      : { loading: false, data: null, error: result.error });
+  };
+
+  return (
+    <section className="inv-simulator" aria-labelledby="simulator-title">
+      <div className="inv-section-head">
+        <span>03</span>
+        <div>
+          <h3 id="simulator-title">Invalidation simulator</h3>
+          <p>Server-calculated position size using IDX ticks, fees, capital, and maximum risk.</p>
+        </div>
+      </div>
+      <form onSubmit={submit}>
+        {[
+          ['entry', 'Entry'], ['stop', 'Invalidation'], ['target', 'Target'],
+          ['capital', 'Capital'], ['maxRiskPct', 'Max risk %'],
+        ].map(([key, label]) => (
+          <label key={key}>
+            <span>{label}</span>
+            <input type="number" min="0" step="any" value={form[key]} onChange={(event) => update(key, event.target.value)} />
+          </label>
+        ))}
+        <button type="submit" disabled={state.loading}>{state.loading ? 'CALCULATING' : 'CALCULATE SIZE'}</button>
+      </form>
+      {state.error && <p className="inv-simulator__error">{state.error}</p>}
+      {state.data && (
+        <div className="inv-simulator__result">
+          <div><span>Position</span><strong>{formatNumber(state.data.lots)} lots</strong></div>
+          <div><span>Capital deployed</span><strong>{formatIDR(state.data.deployedCapital)}</strong></div>
+          <div><span>Estimated risk</span><strong>{formatIDR(state.data.estimatedRisk)} · {formatPct(state.data.estimatedRiskPct)}</strong></div>
+          <div><span>Net R:R</span><strong>{state.data.netRR?.toFixed(2) || '—'}</strong></div>
+          <div><span>Tick-aligned levels</span><strong>{formatPrice(state.data.entry)} / {formatPrice(state.data.stop)} / {formatPrice(state.data.target)}</strong></div>
+          <div><span>Constraint</span><strong>{state.data.bindingConstraint}</strong></div>
+        </div>
+      )}
+    </section>
+  );
+}

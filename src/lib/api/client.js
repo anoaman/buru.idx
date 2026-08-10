@@ -105,6 +105,17 @@ export function analyzeTicker(ticker) {
   return request(`/api/analyze?${params.toString()}`);
 }
 
+export function simulateRisk({ entry, stop, target, capital, maxRiskPct }) {
+  const params = new URLSearchParams({
+    entry: String(entry),
+    stop: String(stop),
+    target: String(target),
+    capital: String(capital),
+    maxRiskPct: String(maxRiskPct),
+  });
+  return request(`/api/risk-simulation?${params.toString()}`);
+}
+
 export function getBrokerArchiveHealth() {
   return request('/api/broker-intelligence/health');
 }

@@ -16,6 +16,8 @@ import TradeGeometry from './TradeGeometry.jsx';
 import DynamicLevels from './DynamicLevels.jsx';
 import BrokerEvidence from './BrokerEvidence.jsx';
 import EvidenceDebate from './EvidenceDebate.jsx';
+import InvestigationBrief from './InvestigationBrief.jsx';
+import RiskSimulator from './RiskSimulator.jsx';
 
 function TickerHeader({ ticker }) {
   if (!ticker) return null;
@@ -224,18 +226,7 @@ export default function Workbench() {
       {state.data && !state.loading && (
         <div className="wb-result">
           <TickerHeader ticker={state.data.ticker} />
-          <div className="wb-actions">
-            <span className="wb-actions__disclosure">
-              Delayed decision-support view. No watchlist, order entry, or trade-plan actions are available here.
-            </span>
-          </div>
-          <GradeBlock grade={state.data.grade} stance={state.data.stance} dataQuality={state.data.dataQuality} />
-
-          <TradeGeometry geometry={state.data.riskGeometry} />
-
-          <DynamicLevels dynamicLevels={state.data.dynamicLevels} />
-
-          <EvidenceDebate debate={state.data.debate} stance={state.data.stance} />
+          <InvestigationBrief investigation={state.data.investigation} />
 
           <div className="wb-chart-panel">
             <ChartViewToggle view={chartView} onChange={setChartView} />
@@ -246,28 +237,47 @@ export default function Workbench() {
             )}
           </div>
 
-          <TechnicalEvidence
-            priceHistory={state.data.priceHistory}
-            ticker={state.data.ticker}
-          />
+          <RiskSimulator ticker={state.data.ticker} geometry={state.data.riskGeometry} />
 
-          <ScorecardTable scorecard={state.data.scorecard} />
+          <details className="inv-ledger">
+            <summary>
+              <span>04</span>
+              <strong>Evidence ledger</strong>
+              <small>Full deterministic inputs, geometry, scorecard, and provenance</small>
+            </summary>
+            <div className="inv-ledger__body">
+              <GradeBlock grade={state.data.grade} stance={state.data.stance} dataQuality={state.data.dataQuality} />
 
-          <BrokerEvidence broker={state.data.broker} />
+              <TradeGeometry geometry={state.data.riskGeometry} />
 
-          {state.data.dataQuality && (
-            <div className="wb-quality">
-              <h3 className="wb-section__title text-tertiary">Data Quality</h3>
-              <div className="wb-quality__items">
-                {state.data.dataQuality.sources && (
-                  <span className="text-secondary">Sources: {state.data.dataQuality.sources.join(', ')}</span>
-                )}
-                {state.data.dataQuality.warnings?.map((w, i) => (
-                  <span key={i} className="text-warning">⚠ {w}</span>
-                ))}
-              </div>
+              <DynamicLevels dynamicLevels={state.data.dynamicLevels} />
+
+              <EvidenceDebate debate={state.data.debate} stance={state.data.stance} />
+
+              <TechnicalEvidence
+                priceHistory={state.data.priceHistory}
+                ticker={state.data.ticker}
+              />
+
+              <ScorecardTable scorecard={state.data.scorecard} />
+
+              <BrokerEvidence broker={state.data.broker} />
+
+              {state.data.dataQuality && (
+                <div className="wb-quality">
+                  <h3 className="wb-section__title text-tertiary">Data Quality</h3>
+                  <div className="wb-quality__items">
+                    {state.data.dataQuality.sources && (
+                      <span className="text-secondary">Sources: {state.data.dataQuality.sources.join(', ')}</span>
+                    )}
+                    {state.data.dataQuality.warnings?.map((w, i) => (
+                      <span key={i} className="text-warning">⚠ {w}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+          </details>
         </div>
       )}
 

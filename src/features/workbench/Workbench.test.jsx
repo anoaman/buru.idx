@@ -6,6 +6,7 @@ import Workbench from './Workbench.jsx';
 // Mock the API client
 vi.mock('../../lib/api/client.js', () => ({
   analyzeTicker: vi.fn(),
+  simulateRisk: vi.fn(),
 }));
 
 import { analyzeTicker } from '../../lib/api/client.js';
@@ -110,6 +111,11 @@ describe('Workbench', () => {
       bear: [{ factor: 'Valuation', reason: 'P/E above sector median' }],
     },
     dataQuality: { sources: ['stockbit', 'yahoo'], warnings: [] },
+    investigation: {
+      question: { code: 'CONFIRMATION_TEST', title: 'What confirms the structure?', detail: 'Trending with usable geometry.' },
+      timeline: [{ date: '2026-07-17', type: 'state', title: 'Current phase', detail: 'Evidence aligned.' }],
+      contradictions: [{ code: 'NO_MAJOR_CONTRADICTION', title: 'No dominant contradiction', evidence: ['Recheck tomorrow'] }],
+    },
   };
 
   it('renders empty state when no ticker', () => {

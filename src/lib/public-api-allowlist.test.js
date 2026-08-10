@@ -11,6 +11,10 @@ describe('public API allowlist', () => {
       ok: true,
       path: '/api/broker-intelligence/health',
     });
+    expect(resolvePublicApiRequest('GET', '/api/risk-simulation?entry=100&stop=90&target=120&capital=1000000&maxRiskPct=1')).toEqual({
+      ok: true,
+      path: '/api/risk-simulation?entry=100&stop=90&target=120&capital=1000000&maxRiskPct=1',
+    });
     expect(resolvePublicApiRequest('GET', '/api/broker-intelligence/stock?ticker=BBCA&days=7')).toEqual({
       ok: true,
       path: '/api/broker-intelligence/stock?ticker=BBCA&days=7',
