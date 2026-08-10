@@ -287,6 +287,195 @@ export function guardBrokerArchiveHealth(raw) {
   };
 }
 
+// ── Radar and Cases ───────────────────────────────────────────────
+//
+// Both surfaces used to read store rows directly. They arrive as raw SQLite
+// shapes (snake_case run columns, JSON blobs) and carry one field that is
+// actively misleading: `confidence` is a deprecated pre-1.2 alias that measures
+// source freshness and coverage, not outcome probability. The backend states
+// that new consumers must display it as data quality, so the view models expose
+// `dataQuality` only and there is no `confidence` key left for a component to
+// render under the wrong label.
+
+const DATA_QUALITY_LEVELS = ['high', 'medium', 'low'];
+
+function normalizeDataQuality(raw) {
+  const value = String(raw ?? '').toLowerCase();
+  return DATA_QUALITY_LEVELS.includes(value) ? value : 'unknown';
+}
+
+function normalizeStringList(raw, limit) {
+  if (!Array.isArray(raw)) return [];
+  const items = raw
+    .filter((item) => typeof item === 'string' && item.trim())
+    .map((item) => item.trim());
+  return Number.isFinite(limit) ? items.slice(0, limit) : items;
+}
+
+function normalizeOpportunityLevels(raw) {
+  const levels = raw && typeof raw === 'object' ? raw : {};
+  return {
+    last: preserveFiniteOrNull(levels.last),
+    support: preserveFiniteOrNull(levels.support),
+    resistance: preserveFiniteOrNull(levels.resistance),
+    trigger: preserveFiniteOrNull(levels.trigger),
+    invalidation: preserveFiniteOrNull(levels.invalidation),
+    netRewardRisk: preserveFiniteOrNull(levels.netRewardRisk),
+  };
+}
+
+function normalizeOpportunityFreshness(raw) {
+  const freshness = raw && typeof raw === 'object' ? raw : {};
+  return {
+    priceDate: freshness.priceDate || null,
+    priceAgeDays: preserveFiniteOrNull(freshness.priceAgeDays),
+    priceSource: freshness.priceSource || null,
+    brokerDate: freshness.brokerDate || null,
+    marketDate: freshness.marketDate || null,
+  };
+}
+
+function normalizeOpportunityRow(row) {
+  if (!row || typeof row !== 'object' || !row.ticker) return null;
+  const features = row.features && typeof row.features === 'object' ? row.features : {};
+  return {
+    ticker: String(row.ticker).toUpperCase(),
+    lane: row.lane || null,
+    rank: Number.isFinite(row.rank) ? row.rank : null,
+    score: preserveFiniteOrNull(row.score),
+    dataQuality: normalizeDataQuality(row.dataQuality ?? row.confidence),
+    // Absent is not the same as false. The default scan query only returns
+    // eligible rows, so only an explicit false may be shown as a gate failure.
+    ineligible: row.eligible === false,
+    isFca: features.isFca === true,
+    levels: normalizeOpportunityLevels(row.levels),
+    freshness: normalizeOpportunityFreshness(row.freshness),
+    reasons: normalizeStringList(row.reasons, 6),
+    risks: normalizeStringList(row.risks, 8),
+  };
+}
+
+export function guardOpportunities(raw) {
+  if (!raw || raw.success === false) {
+    return { ok: false, error: raw?.error || 'Invalid response', data: null };
+  }
+  const data = raw.data;
+  if (!data || typeof data !== 'object') {
+    return { ok: false, error: 'Missing scan data', data: null };
+  }
+
+  const run = data.run && typeof data.run === 'object' ? data.run : null;
+  const candidates = Array.isArray(data.opportunities)
+    ? data.opportunities.map(normalizeOpportunityRow).filter(Boolean)
+    : [];
+
+  // A tally, not a re-score. Radar shows how many candidates the backend graded
+  // at each data-quality level so a shortlist built on thin sources is visible
+  // before any row is opened.
+  const dataQualityTally = { high: 0, medium: 0, low: 0, unknown: 0 };
+  for (const candidate of candidates) dataQualityTally[candidate.dataQuality] += 1;
+
+  return {
+    ok: true,
+    error: null,
+    data: {
+      run: run
+        ? {
+            id: Number.isFinite(run.id) ? run.id : null,
+            scannedAt: run.scanned_at || null,
+            dataAsOf: run.data_as_of || null,
+            universe: run.universe || null,
+            configVersion: run.config_version || null,
+            totalSeen: Number.isFinite(run.total_seen) ? run.total_seen : null,
+            totalEligible: Number.isFinite(run.total_eligible) ? run.total_eligible : null,
+            totalShortlisted: Number.isFinite(run.total_shortlisted) ? run.total_shortlisted : null,
+            marketCacheAsOf: run.market_cache_as_of || null,
+          }
+        : null,
+      candidates,
+      lanes: [...new Set(candidates.map((row) => row.lane).filter(Boolean))].sort(),
+      dataQualityTally,
+    },
+  };
+}
+
+function normalizeCaseMonitoring(raw) {
+  const monitoring = raw && typeof raw === 'object' ? raw : {};
+  const current = monitoring.current && typeof monitoring.current === 'object'
+    ? monitoring.current
+    : null;
+  const state = ['meaningful_change', 'no_material_change', 'unavailable'].includes(monitoring.state)
+    ? monitoring.state
+    : 'unavailable';
+  return {
+    state,
+    material: monitoring.material === true,
+    // Tri-state on purpose: null means the frozen snapshot carried no price date,
+    // which is not the same as a snapshot known to be current.
+    snapshotStale: typeof monitoring.snapshotStale === 'boolean' ? monitoring.snapshotStale : null,
+    snapshotAgeDays: preserveFiniteOrNull(monitoring.snapshotAgeDays),
+    current: current
+      ? {
+          runId: Number.isFinite(current.runId) ? current.runId : null,
+          scannedAt: current.scannedAt || null,
+          lane: current.lane || null,
+          eligible: current.eligible === true,
+          score: preserveFiniteOrNull(current.score),
+          dataQuality: normalizeDataQuality(current.dataQuality ?? current.confidence),
+          scoreDelta: preserveFiniteOrNull(current.scoreDelta),
+          reasons: normalizeStringList(current.reasons, 6),
+          risks: normalizeStringList(current.risks, 8),
+        }
+      : null,
+  };
+}
+
+function normalizeCaseItem(item) {
+  // Identity only needs to exist and be stable. Rejecting a non-numeric id would
+  // silently drop a real saved case, which is the one failure this module cannot
+  // have.
+  if (!item || typeof item !== 'object' || !item.ticker || item.id == null) return null;
+  const snapshot = item.snapshot && typeof item.snapshot === 'object' ? item.snapshot : {};
+  return {
+    id: item.id,
+    ticker: String(item.ticker).toUpperCase(),
+    status: item.status || 'watching',
+    thesis: typeof item.thesis === 'string' && item.thesis.trim() ? item.thesis.trim() : null,
+    triggerPrice: preserveFiniteOrNull(item.triggerPrice),
+    invalidationPrice: preserveFiniteOrNull(item.invalidationPrice),
+    snapshot: {
+      lane: snapshot.lane || null,
+      score: preserveFiniteOrNull(snapshot.score),
+      dataQuality: normalizeDataQuality(snapshot.dataQuality ?? snapshot.confidence),
+      reasons: normalizeStringList(snapshot.reasons, 6),
+      risks: normalizeStringList(snapshot.risks, 8),
+      levels: normalizeOpportunityLevels(snapshot.levels),
+      freshness: normalizeOpportunityFreshness(snapshot.freshness),
+    },
+    monitoring: normalizeCaseMonitoring(item.monitoring),
+    addedAt: item.addedAt || null,
+    updatedAt: item.updatedAt || null,
+  };
+}
+
+export function guardCases(raw) {
+  if (!raw || raw.success === false) {
+    return { ok: false, error: raw?.error || 'Invalid response', data: null };
+  }
+  const items = Array.isArray(raw.data?.items)
+    ? raw.data.items.map(normalizeCaseItem).filter(Boolean)
+    : [];
+  return {
+    ok: true,
+    error: null,
+    data: {
+      items,
+      changedCount: items.filter((item) => item.monitoring.state === 'meaningful_change').length,
+      staleCount: items.filter((item) => item.monitoring.snapshotStale === true).length,
+    },
+  };
+}
+
 export function guardStockBrokerIntelligence(raw) {
   if (!raw || raw.success === false) {
     return { ok: false, error: raw?.error || 'Invalid response', data: null, meta: null };

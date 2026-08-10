@@ -1,19 +1,125 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { getCases } from '../../lib/api/client.js';
+import { guardCases } from '../../lib/api/contracts.js';
+import { formatPrice, formatRelativeDays } from '../../lib/format/market.js';
+import EmptyState from '../../components/EmptyState.jsx';
+import ErrorState from '../../components/ErrorState.jsx';
+import InfoTip from '../../components/InfoTip.jsx';
 import { useAnalysisContext } from '../../components/AnalysisContext.jsx';
+
+const MONITORING_LABEL = {
+  meaningful_change: 'Changed since freeze',
+  no_material_change: 'No material change',
+  unavailable: 'Not in latest scan',
+};
+
+const MONITORING_CLASS = {
+  meaningful_change: 'text-warning',
+  no_material_change: 'text-positive',
+  unavailable: 'text-tertiary',
+};
+
+function SnapshotAge({ monitoring }) {
+  const { snapshotStale, snapshotAgeDays } = monitoring;
+  if (snapshotStale === null) {
+    return <span className="case-card__age text-tertiary">Frozen evidence carries no price date</span>;
+  }
+  const age = snapshotAgeDays === null ? 'unknown age' : `${snapshotAgeDays}d old`;
+  return (
+    <span className={`case-card__age ${snapshotStale ? 'text-warning' : 'text-tertiary'}`}>
+      {snapshotStale ? `Frozen evidence is stale · ${age}` : `Frozen evidence ${age}`}
+    </span>
+  );
+}
+
+function CaseCard({ item, onReopen, onActors }) {
+  const { monitoring, snapshot } = item;
+  const delta = monitoring.current?.scoreDelta;
+  return (
+    <article className="case-card" role="listitem">
+      <div className="case-card__top">
+        <span className="case-card__status">{item.status}</span>
+        <span className={`case-card__monitoring ${MONITORING_CLASS[monitoring.state]}`}>
+          {MONITORING_LABEL[monitoring.state]}
+        </span>
+      </div>
+      <h3>{item.ticker}</h3>
+      <p className="case-card__thesis">
+        {item.thesis || snapshot.reasons[0] || 'Thesis not recorded yet.'}
+      </p>
+
+      <dl className="case-card__levels">
+        <div>
+          <dt>Trigger</dt>
+          <dd>{formatPrice(item.triggerPrice ?? snapshot.levels.trigger)}</dd>
+        </div>
+        <div>
+          <dt>Invalidation</dt>
+          <dd>{formatPrice(item.invalidationPrice ?? snapshot.levels.invalidation)}</dd>
+        </div>
+        <div>
+          <dt>Frozen score</dt>
+          <dd>
+            {Number.isFinite(snapshot.score) ? snapshot.score.toFixed(1) : '—'}
+            {Number.isFinite(delta) && delta !== 0 && (
+              <span className={delta > 0 ? 'text-positive' : 'text-negative'}>
+                {' '}{delta > 0 ? '+' : ''}{delta.toFixed(1)}
+              </span>
+            )}
+          </dd>
+        </div>
+        <div>
+          <dt>Data quality</dt>
+          <dd className={snapshot.dataQuality === 'high' ? '' : 'text-warning'}>
+            {snapshot.dataQuality}
+          </dd>
+        </div>
+      </dl>
+
+      {snapshot.risks[0] && (
+        <p className="case-card__risk text-warning">Against: {snapshot.risks[0]}</p>
+      )}
+
+      <div className="case-card__provenance">
+        <SnapshotAge monitoring={monitoring} />
+        {item.addedAt && <span className="text-tertiary">Opened {formatRelativeDays(item.addedAt)}</span>}
+      </div>
+
+      <div className="case-card__actions">
+        <button type="button" aria-label={`Re-open ${item.ticker} evidence`} onClick={onReopen}>
+          Re-open evidence
+        </button>
+        <button type="button" aria-label={`Open ${item.ticker} actor map`} onClick={onActors}>
+          Actor map
+        </button>
+      </div>
+    </article>
+  );
+}
 
 export default function Cases() {
   const { openInvestigation, openBrokerMap } = useAnalysisContext();
-  const [state, setState] = useState({ loading: true, error: null, items: [] });
-  useEffect(() => {
+  const [state, setState] = useState({ loading: true, error: null, data: null });
+
+  const load = useCallback(() => {
     let cancelled = false;
-    getCases().then((response) => {
-      if (cancelled) return;
-      if (response?.success === false) setState({ loading: false, error: response.error, items: [] });
-      else setState({ loading: false, error: null, items: response?.data?.items || [] });
-    });
+    setState({ loading: true, error: null, data: null });
+    getCases()
+      .then((raw) => {
+        if (cancelled) return;
+        const result = guardCases(raw);
+        setState({ loading: false, error: result.ok ? null : result.error, data: result.data });
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setState({ loading: false, error: error.message || 'Case request failed', data: null });
+      });
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(load, [load]);
+
+  const items = state.data?.items || [];
 
   return (
     <section className="cases-page" aria-labelledby="cases-title">
@@ -21,24 +127,49 @@ export default function Cases() {
         <div><span>MODULE 04 · MEMORY</span><h2 id="cases-title">Cases</h2></div>
         <p>Saved investigations retain the evidence and invalidation that existed when the case was opened.</p>
       </header>
+
       {state.loading && <p className="text-tertiary">Loading cases…</p>}
-      {state.error && <p className="text-negative">{state.error}</p>}
-      {!state.loading && !state.error && state.items.length === 0 && (
-        <div className="cases-empty"><strong>No open cases.</strong><span>Radar finds candidates; Workbench turns one into a decision case.</span></div>
+
+      {state.error && !state.loading && (
+        <ErrorState title="Cases unavailable" error={state.error} onRetry={load} />
       )}
-      <div className="cases-grid">
-        {state.items.map((item) => (
-          <article className="case-card" key={item.id}>
-            <span className="case-card__status">{item.status || 'watching'}</span>
-            <h3>{item.ticker}</h3>
-            <p>{item.thesis || item.snapshot_reasons?.[0] || 'Thesis not recorded yet.'}</p>
-            <div className="case-card__actions">
-              <button type="button" onClick={() => openInvestigation(item.ticker)}>Re-open evidence</button>
-              <button type="button" onClick={() => openBrokerMap(item.ticker, 7)}>Actor map</button>
-            </div>
-          </article>
-        ))}
-      </div>
+
+      {!state.loading && !state.error && items.length > 0 && (
+        <div className="cases-summary">
+          <span>{items.length} open</span>
+          <span className={state.data.changedCount > 0 ? 'text-warning' : ''}>
+            {state.data.changedCount} changed since freeze
+            <InfoTip title="Material change">
+              The backend flags a material change when score moves 10 or more, the
+              lane changes, data quality changes, or the case drops out of the
+              eligible set. It is not a signal to act.
+            </InfoTip>
+          </span>
+          <span className={state.data.staleCount > 0 ? 'text-warning' : ''}>
+            {state.data.staleCount} on stale evidence
+          </span>
+        </div>
+      )}
+
+      {!state.loading && !state.error && items.length === 0 && (
+        <EmptyState
+          title="No open cases"
+          message="Radar finds candidates; Workbench turns one into a decision case."
+        />
+      )}
+
+      {items.length > 0 && (
+        <div className="cases-grid" role="list" aria-label="Open cases">
+          {items.map((item) => (
+            <CaseCard
+              key={item.id}
+              item={item}
+              onReopen={() => openInvestigation(item.ticker)}
+              onActors={() => openBrokerMap(item.ticker, 7)}
+            />
+          ))}
+        </div>
+      )}
     </section>
   );
 }

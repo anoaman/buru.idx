@@ -3,6 +3,8 @@ import {
   guardAnalyze,
   guardBrokerArchiveHealth,
   guardBrokerStockIntelligence,
+  guardCases,
+  guardOpportunities,
   guardStockBrokerIntelligence,
   normalizeServing,
 } from './contracts.js';
@@ -138,5 +140,158 @@ describe('public Stock Analysis contracts', () => {
     expect(guardBrokerArchiveHealth(null).ok).toBe(false);
     expect(guardStockBrokerIntelligence({ success: true, data: {} }).ok).toBe(false);
     expect(guardBrokerStockIntelligence({ success: true, data: {} }).ok).toBe(false);
+    expect(guardOpportunities({ success: false, error: 'scan store unavailable' }).ok).toBe(false);
+    expect(guardOpportunities({ success: true }).ok).toBe(false);
+    expect(guardCases({ success: false, error: 'offline' }).ok).toBe(false);
+  });
+
+  it('normalizes a scan run into a view model and drops the deprecated alias', () => {
+    const result = guardOpportunities({
+      success: true,
+      data: {
+        run: {
+          id: 41,
+          scanned_at: '2026-08-10T02:15:00.000Z',
+          data_as_of: '2026-08-07',
+          total_seen: 812,
+          total_eligible: 96,
+          total_shortlisted: 2,
+        },
+        opportunities: [
+          {
+            ticker: 'bbri',
+            lane: 'first-liner',
+            eligible: true,
+            rank: 1,
+            score: 74.2,
+            dataQuality: 'high',
+            confidence: 'high',
+            levels: { trigger: 4550, invalidation: 4180, netRewardRisk: 2.4 },
+            features: { isFca: true },
+            reasons: ['compression resolved', ''],
+            risks: ['thin traded value'],
+            freshness: { priceDate: '2026-08-07', priceAgeDays: 1 },
+          },
+          { lane: 'orphan-row-without-ticker' },
+        ],
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.data.run.dataAsOf).toBe('2026-08-07');
+    expect(result.data.run.totalShortlisted).toBe(2);
+    expect(result.data.candidates).toHaveLength(1);
+
+    const [candidate] = result.data.candidates;
+    expect(candidate.ticker).toBe('BBRI');
+    expect(candidate.dataQuality).toBe('high');
+    expect(candidate).not.toHaveProperty('confidence');
+    expect(candidate.isFca).toBe(true);
+    expect(candidate.ineligible).toBe(false);
+    expect(candidate.reasons).toEqual(['compression resolved']);
+    expect(result.data.lanes).toEqual(['first-liner']);
+    expect(result.data.dataQualityTally).toEqual({ high: 1, medium: 0, low: 0, unknown: 0 });
+  });
+
+  it('keeps a scoreless, levelless candidate renderable and marks unknown quality', () => {
+    const result = guardOpportunities({
+      success: true,
+      data: {
+        run: null,
+        opportunities: [{ ticker: 'ADRO', score: null, rank: null, confidence: 'bogus' }],
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.data.run).toBeNull();
+    expect(result.data.candidates[0]).toMatchObject({
+      score: null,
+      rank: null,
+      dataQuality: 'unknown',
+      ineligible: false,
+      reasons: [],
+      risks: [],
+    });
+    expect(result.data.candidates[0].levels.trigger).toBeNull();
+  });
+
+  it('only flags a candidate as gated when the scan says so explicitly', () => {
+    const gated = guardOpportunities({
+      success: true,
+      data: { run: null, opportunities: [{ ticker: 'ABCD', eligible: false }] },
+    });
+    expect(gated.data.candidates[0].ineligible).toBe(true);
+
+    const unstated = guardOpportunities({
+      success: true,
+      data: { run: null, opportunities: [{ ticker: 'ABCD' }] },
+    });
+    expect(unstated.data.candidates[0].ineligible).toBe(false);
+  });
+
+  it('preserves frozen case evidence and backend monitoring state', () => {
+    const result = guardCases({
+      success: true,
+      data: {
+        items: [
+          {
+            id: 7,
+            ticker: 'bbri',
+            status: 'watching',
+            thesis: '  Compression above support  ',
+            triggerPrice: 4550,
+            invalidationPrice: 4180,
+            snapshot: {
+              score: 71.5,
+              confidence: 'high',
+              reasons: ['compression resolved'],
+              risks: ['broker cache is stale'],
+              levels: { trigger: 4550, invalidation: 4180 },
+            },
+            monitoring: {
+              state: 'meaningful_change',
+              material: true,
+              snapshotStale: true,
+              snapshotAgeDays: 6.4,
+              current: { runId: 42, score: 58.5, scoreDelta: -13, confidence: 'medium' },
+            },
+            addedAt: '2026-08-06T04:00:00.000Z',
+          },
+          { ticker: 'NOID' },
+        ],
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.data.items).toHaveLength(1);
+
+    const [item] = result.data.items;
+    expect(item.ticker).toBe('BBRI');
+    expect(item.thesis).toBe('Compression above support');
+    expect(item.snapshot.dataQuality).toBe('high');
+    expect(item.snapshot).not.toHaveProperty('confidence');
+    expect(item.monitoring.snapshotStale).toBe(true);
+    expect(item.monitoring.current.scoreDelta).toBe(-13);
+    expect(item.monitoring.current.dataQuality).toBe('medium');
+    expect(result.data.changedCount).toBe(1);
+    expect(result.data.staleCount).toBe(1);
+  });
+
+  it('keeps unknown snapshot age distinct from a fresh snapshot', () => {
+    const result = guardCases({
+      success: true,
+      data: {
+        items: [{ id: 1, ticker: 'ABCD', monitoring: { state: 'nonsense' } }],
+      },
+    });
+
+    expect(result.data.items[0].monitoring).toMatchObject({
+      state: 'unavailable',
+      material: false,
+      snapshotStale: null,
+      snapshotAgeDays: null,
+      current: null,
+    });
+    expect(result.data.staleCount).toBe(0);
   });
 });

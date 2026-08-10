@@ -9,6 +9,7 @@ import {
   formatShares,
   formatLots,
   formatRatio,
+  formatRelativeDays,
   gradeColor,
 } from './market.js';
 
@@ -35,5 +36,20 @@ describe('required market formatters', () => {
     expect(formatIDR(null)).toBe('—');
     expect(formatPrice(null)).toBe('—');
     expect(formatPct(null)).toBe('—');
+  });
+
+  it('describes record age in whole calendar days', () => {
+    const now = Date.parse('2026-08-10T09:00:00+07:00');
+    expect(formatRelativeDays('2026-08-10', now)).toBe('today');
+    expect(formatRelativeDays('2026-08-09', now)).toBe('1 day ago');
+    expect(formatRelativeDays('2026-08-03', now)).toBe('7 days ago');
+    expect(formatRelativeDays('2026-08-09T23:00:00Z', now)).toBe('today');
+  });
+
+  it('surfaces rather than hides missing or future-dated records', () => {
+    const now = Date.parse('2026-08-10T09:00:00+07:00');
+    expect(formatRelativeDays(null, now)).toBe('—');
+    expect(formatRelativeDays('not-a-date', now)).toBe('—');
+    expect(formatRelativeDays('2026-08-14', now)).toBe('dated ahead');
   });
 });

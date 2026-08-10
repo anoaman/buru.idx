@@ -23,8 +23,13 @@ case tracking from the retiring cockpit without duplicating backend engines.
   ticker/window command bar.
 - `src/components/AnalysisContext.jsx` owns cross-route ticker, window and as-of
   context. Feature pages remain responsible for their own network state.
-- `src/features/radar/` and `src/features/cases/` are Phase 1 route foundations;
-  they contain no duplicated scanner or workflow logic.
+- `src/features/radar/` and `src/features/cases/` read the scan and case
+  contracts through `contracts.js` like every other feature. They rank nothing,
+  score nothing, and decide no material change; those all arrive already
+  computed. Radar's lane filter only hides rows the backend already ranked.
+- `confidence` is a deprecated pre-1.2 alias for source freshness and coverage,
+  not outcome probability. The view models expose it as `dataQuality` and drop
+  the alias, so no component can render it under the wrong label.
 
 The frontend performs no analysis, ranking, broker inventory, or coverage
 calculation. Those remain backend responsibilities.

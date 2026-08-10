@@ -2413,8 +2413,16 @@
 .module-heading span { color: var(--color-accent); font-size: 10px; font-weight: 700; letter-spacing: .12em; }
 .module-heading h2 { margin: 3px 0 0; font-size: clamp(30px, 4vw, 48px); letter-spacing: -.045em; }
 .module-heading p { max-width: 480px; margin: 0; color: var(--text-secondary); text-align: right; }
-.radar-run { display: flex; gap: var(--space-3); padding: 9px 0; margin-bottom: var(--space-2); border-block: 1px solid var(--border-default); color: var(--text-tertiary); font-size: 11px; }
+.radar-run { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); padding: 9px 0; margin-bottom: var(--space-2); border-block: 1px solid var(--border-default); color: var(--text-tertiary); font-size: 11px; }
 .radar-run strong { color: var(--text-primary); }
+.radar-run__age { color: var(--text-secondary); }
+/* These three out-rank the `.radar-*__* span` descendant rules below, which
+   would otherwise grey out every degraded-state colour set by a text-* utility. */
+.radar-run__age--missing { color: var(--color-warning); }
+.radar-lanes { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: var(--space-3); }
+.radar-lanes button { border: 1px solid var(--border-default); background: transparent; color: var(--text-tertiary); padding: 5px 10px; border-radius: var(--radius-sm); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; cursor: pointer; }
+.radar-lanes button:hover { color: var(--text-secondary); border-color: var(--border-strong); }
+.radar-lanes button.is-active { border-color: var(--color-accent); color: var(--color-accent); }
 .radar-list { display: grid; }
 .radar-row { display: grid; grid-template-columns: 38px 90px 110px minmax(220px, 1fr) 160px auto; align-items: center; gap: var(--space-3); padding: 15px 8px; border-bottom: 1px solid var(--border-default); }
 .radar-row:hover { background: rgba(255,255,255,.018); }
@@ -2424,16 +2432,27 @@
 .radar-row__identity span, .radar-row__score span, .radar-row__why span, .radar-row__levels span { color: var(--text-tertiary); font-size: 10px; }
 .radar-row__score strong { font-size: 18px; color: var(--color-accent); }
 .radar-row__why strong { font-size: 12px; }
+.radar-row__why .radar-row__risk { color: var(--color-warning); line-height: 1.45; }
+.radar-row__score .is-degraded { color: var(--color-warning); }
 .radar-row__actions, .case-card__actions { display: flex; gap: 6px; }
 .radar-row__actions button, .case-card__actions button { border: 1px solid var(--border-default); background: transparent; color: var(--text-secondary); padding: 7px 9px; border-radius: var(--radius-sm); cursor: pointer; }
 .radar-row__actions button:first-child { border-color: var(--color-accent); color: var(--color-accent); }
-.cases-empty { display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 80px 20px; border: 1px dashed var(--border-default); color: var(--text-tertiary); }
-.cases-empty strong { color: var(--text-primary); font-size: 20px; }
+.cases-summary { display: flex; flex-wrap: wrap; gap: var(--space-3); padding: 9px 0; margin-bottom: var(--space-3); border-block: 1px solid var(--border-default); color: var(--text-tertiary); font-size: 11px; }
 .cases-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3); }
-.case-card { padding: var(--space-4); border: 1px solid var(--border-default); border-radius: var(--radius-md); }
+.case-card { display: flex; flex-direction: column; padding: var(--space-4); border: 1px solid var(--border-default); border-radius: var(--radius-md); }
+.case-card__top { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); }
 .case-card__status { color: var(--color-accent); font-size: 10px; text-transform: uppercase; letter-spacing: .1em; }
+.case-card__monitoring { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
 .case-card h3 { margin: 8px 0; font-size: 24px; }
-.case-card p { min-height: 44px; color: var(--text-secondary); }
+/* Scoped to the thesis line on purpose: a `.case-card p` descendant selector
+   outranks the text-* utilities and would silently grey out the risk line. */
+.case-card__thesis { min-height: 44px; margin: 0 0 var(--space-3); color: var(--text-secondary); }
+.case-card__levels { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2) var(--space-3); margin: 0 0 var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--border-subtle); }
+.case-card__levels dt { color: var(--text-tertiary); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
+.case-card__levels dd { margin: 2px 0 0; font-family: var(--font-tabular); font-size: 13px; }
+.case-card__risk { min-height: 0; margin: 0 0 var(--space-2); font-size: 11px; line-height: 1.45; }
+.case-card__provenance { display: flex; flex-direction: column; gap: 2px; margin-bottom: var(--space-3); font-size: 10px; }
+.case-card__actions { margin-top: auto; }
 
 @media (max-width: 900px) {
   .radar-row { grid-template-columns: 32px 80px 90px 1fr; }
