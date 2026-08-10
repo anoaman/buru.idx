@@ -2,8 +2,9 @@
 
 ## Purpose
 
-Public, static Vite/React presentation for two existing IDX decision-support
-features: Workbench and Broker Intelligence.
+Private Vite/React workstation for IDX investigation and broker intelligence.
+This is the primary analysis product. It will absorb discovery and lightweight
+case tracking from the retiring cockpit without duplicating backend engines.
 
 ## Boundaries
 
@@ -15,8 +16,8 @@ features: Workbench and Broker Intelligence.
 - `src/lib/api/contracts.js` normalizes only the contracts consumed by these two
   features.
 - `src/lib/format/market.js` owns only the market formatters they consume.
-- `src/components/PublicShell.jsx` owns the public navigation and delayed-data
-  disclosure.
+- `src/components/PublicShell.jsx` owns the current navigation and delayed-data
+  disclosure. Phase 1 replaces it with the private Analysis shell.
 
 The frontend performs no analysis, ranking, broker inventory, or coverage
 calculation. Those remain backend responsibilities.
@@ -30,6 +31,26 @@ The root and unknown routes redirect to `/workbench`.
 
 ## Deployment boundary
 
-The build is static. This project contains no hosting adapter, API proxy,
-credentials, or deployment configuration. Production must supply a reachable,
-CORS-enabled `VITE_API_BASE`.
+`server.js` serves the build and proxies an allowlisted subset of the loopback
+analysis API. The service must bind only to loopback or the host's Tailscale
+address. Private-only is a product boundary, not a temporary deployment detail.
+The raw API remains loopback-only and no upstream credential may enter the
+browser bundle.
+
+The existing read-only allowlist, delayed-mode enforcement, error sanitization,
+and rate limiting remain as defense in depth. Radar and Cases may add private
+read/write routes only after their exact contracts are reviewed; they must not
+turn the proxy into a wildcard forwarder.
+
+## Analysis V2 baseline (Phase 0)
+
+- Existing routes remain `/workbench` and `/broker-intelligence` until the new
+  shell lands.
+- Broker Intelligence defaults to one calendar day. The 7/14/30/60-day windows
+  are explicit comparisons and must display the full resolved range.
+- Cockpit data remains canonical in `trading-db/idx.db`; no migration, copy, or
+  deletion occurs during shell work.
+- Opportunity evaluations, frozen watchlist snapshots, trade plans, and trade
+  outcomes are preserved until replacement routes are verified against the
+  same records.
+- FCA remains independently deployed and outside the Analysis V2 UI rewrite.

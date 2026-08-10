@@ -276,12 +276,12 @@ describe('BrokerIntelligence', () => {
     getBrokerStockIntelligence.mockResolvedValue(BROKER_OK);
   });
 
-  it('defaults to stock lens BBCA at 30 days', async () => {
+  it('defaults to stock lens BBCA for one calendar day', async () => {
     renderAt('/broker-intelligence');
     await screen.findByText('Bank Central Asia');
-    expect(getStockBrokerIntelligence).toHaveBeenCalledWith({ ticker: 'BBCA', days: 30 });
+    expect(getStockBrokerIntelligence).toHaveBeenCalledWith({ ticker: 'BBCA', days: 1 });
     expect(screen.getByRole('button', { name: /Stock Lens/i })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('button', { name: /^30D$/i })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: /^1D$/i })).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('loads health and lens independently', async () => {

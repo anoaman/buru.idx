@@ -1,9 +1,8 @@
 # Stock Analysis
 
-Independent public Vite/React frontend for the IDX Stock Analysis surface. It
-extracts the existing Workbench and Broker Intelligence experiences from the
-private Trading Analysis Platform without coupling the public build to that
-application.
+Private Vite/React workstation for IDX investigation and broker intelligence.
+It is the primary analysis product and will absorb the useful discovery and
+case-tracking capabilities from the retiring Trading Analysis Platform cockpit.
 
 ## Routes
 
@@ -13,12 +12,17 @@ application.
   flow and estimated inventory curves.
 - `/` redirects to `/workbench`.
 
-## Delayed-data intent
+## Private delayed-data intent
 
-This public surface is decision-support software built around delayed, cached,
+This private surface is decision-support software built around delayed, cached,
 or asynchronously refreshed market data. It is not a live quote terminal,
 brokerage connection, order-entry system, or recommendation engine. Coverage
 and methodology disclosures from the backend remain visible in the interface.
+
+The application is private-only. Bind it to loopback or the host's Tailscale
+address and never expose the raw analysis API. The read-only route allowlist and
+rate limiter remain in place as defense in depth while Analysis V2 introduces
+private Radar and Cases workflows.
 
 ## Backend boundary
 
@@ -27,10 +31,11 @@ prefixed with `VITE_API_BASE`. The value must point at an API origin that expose
 the existing `/api/analyze` and `/api/broker-intelligence/*` contracts and allows
 the frontend origin through CORS.
 
-No production proxy is implemented in this project. Hosting and backend routing
-remain separate decisions.
+`server.js` serves the production build and proxies a strict read-only subset of
+the loopback API. It is not an internet edge and must remain on the private
+network until application authentication exists.
 
-Private Stockbit/token maintenance errors are sanitized in the public client.
+Private Stockbit/token maintenance errors are sanitized in the browser client.
 The preferred production backend is still a delayed/cache-serving API, not a
 live token-dependent endpoint exposed raw.
 

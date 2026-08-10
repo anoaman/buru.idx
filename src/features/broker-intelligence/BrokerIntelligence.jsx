@@ -20,7 +20,7 @@ import InventoryCurve from './InventoryCurve.jsx';
 
 const ALLOWED_DAYS = [1, 7, 14, 30, 60];
 const DEFAULT_TICKER = 'BBCA';
-const DEFAULT_DAYS = 30;
+const DEFAULT_DAYS = 1;
 
 function normalizeLens(raw) {
   return raw === 'broker' ? 'broker' : 'stock';

@@ -37,7 +37,7 @@ export default function BrokerEvidence({ broker }) {
       {symbol && (
         <Link
           className="wb-broker__intel-link"
-          to={`/broker-intelligence?lens=stock&ticker=${encodeURIComponent(symbol)}&days=30`}
+          to={`/broker-intelligence?lens=stock&ticker=${encodeURIComponent(symbol)}&days=1`}
         >
           Open Broker Intelligence →
         </Link>

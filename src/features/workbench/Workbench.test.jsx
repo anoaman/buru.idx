@@ -324,7 +324,7 @@ describe('Workbench', () => {
     const link = await screen.findByRole('link', { name: /Open Broker Intelligence/i });
     expect(link).toHaveAttribute(
       'href',
-      '/broker-intelligence?lens=stock&ticker=BBRI&days=30',
+      '/broker-intelligence?lens=stock&ticker=BBRI&days=1',
     );
   });
 
