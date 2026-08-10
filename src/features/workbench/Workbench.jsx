@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { analyzeTicker } from '../../lib/api/client.js';
 import { guardAnalyze } from '../../lib/api/contracts.js';
@@ -97,32 +97,51 @@ export default function Workbench() {
   const [searchParams, setSearchParams] = useSearchParams();
   const tickerParam = searchParams.get('ticker') || '';
   const [query, setQuery] = useState(tickerParam);
-  const [state, setState] = useState({ loading: false, data: null, error: null });
+  // `analyzing` is the ticker this state actually describes. The search box is
+  // free text and can move on while a request is still open, so nothing on
+  // screen may be labelled from `query`.
+  const [state, setState] = useState({ loading: false, analyzing: '', data: null, error: null });
+  // Monotonic request id. A response is only allowed to write state while it is
+  // still the newest request, so a slow analysis cannot replace a newer ticker.
+  const requestRef = useRef(0);
 
-  const fetchAnalysis = (ticker) => {
-    if (!ticker || !/^[A-Z]{4}$/i.test(ticker)) {
-      setState({ loading: false, data: null, error: 'Enter a four-letter ticker (e.g. BBRI)' });
+  const fetchAnalysis = useCallback((raw) => {
+    const ticker = String(raw || '').trim().toUpperCase();
+    const requestId = ++requestRef.current;
+    if (!/^[A-Z]{4}$/.test(ticker)) {
+      setState({ loading: false, analyzing: ticker, data: null, error: 'Enter a four-letter ticker (e.g. BBRI)' });
       return;
     }
-    setState({ loading: true, data: null, error: null });
-    analyzeTicker(ticker.toUpperCase()).then((raw) => {
-      const result = guardAnalyze(raw);
+    setState({ loading: true, analyzing: ticker, data: null, error: null });
+    analyzeTicker(ticker).then((response) => {
+      if (requestId !== requestRef.current) return;
+      const result = guardAnalyze(response);
       if (!result.ok) {
-        setState({ loading: false, data: null, error: result.error });
+        setState({ loading: false, analyzing: ticker, data: null, error: result.error });
         return;
       }
-      setState({ loading: false, data: result.data, error: null });
+      setState({ loading: false, analyzing: ticker, data: result.data, error: null });
     }).catch((err) => {
-      setState({ loading: false, data: null, error: err.message });
+      if (requestId !== requestRef.current) return;
+      setState({ loading: false, analyzing: ticker, data: null, error: err.message });
     });
-  };
+  }, []);
 
   useEffect(() => {
-    if (tickerParam) {
-      setQuery(tickerParam);
-      fetchAnalysis(tickerParam);
+    if (!tickerParam) {
+      // Leaving the ticker behind must also drop its result; otherwise the
+      // previous analysis keeps rendering under an empty investigation.
+      requestRef.current += 1;
+      setQuery('');
+      setState((current) => (current.loading || current.data || current.error
+        ? { loading: false, analyzing: '', data: null, error: null }
+        : current));
+      return undefined;
     }
-  }, [tickerParam]);
+    setQuery(tickerParam);
+    fetchAnalysis(tickerParam);
+    return () => { requestRef.current += 1; };
+  }, [tickerParam, fetchAnalysis]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -135,23 +154,31 @@ export default function Workbench() {
   return (
     <div className="workbench">
       <form className="wb-search" onSubmit={handleSubmit}>
+        <label className="sr-only" htmlFor="wb-ticker-input">IDX ticker</label>
         <input
+          id="wb-ticker-input"
           className="wb-search__input"
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Enter ticker (e.g. BBRI)"
           maxLength={4}
+          autoComplete="off"
+          spellCheck={false}
         />
         <button className="wb-search__btn" type="submit">Analyze</button>
       </form>
 
       {state.loading && (
-        <div className="wb-loading text-tertiary">Analyzing {query.toUpperCase()}…</div>
+        <div className="wb-loading text-tertiary" aria-live="polite">Analyzing {state.analyzing}…</div>
       )}
 
       {state.error && !state.loading && (
-        <ErrorState title="Analysis failed" error={state.error} onRetry={() => fetchAnalysis(query)} />
+        <ErrorState
+          title={state.analyzing ? `Analysis failed for ${state.analyzing}` : 'Analysis failed'}
+          error={state.error}
+          onRetry={() => fetchAnalysis(state.analyzing || tickerParam)}
+        />
       )}
 
       {state.data && !state.loading && (

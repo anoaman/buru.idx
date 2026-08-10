@@ -9,9 +9,13 @@ case tracking from the retiring cockpit without duplicating backend engines.
 ## Boundaries
 
 - `src/features/workbench/` owns ticker analysis presentation and chart views.
-  Its investigation order is market overview, setup timeline, annotated market
-  chart, invalidation simulator, then the collapsed evidence ledger. The chart
-  uses TradingView Lightweight Charts so first-party levels remain auditable.
+  Its investigation order is market overview, annotated market chart,
+  invalidation simulator, the collapsed evidence ledger, then the setup
+  timeline. The chart uses TradingView Lightweight Charts so first-party levels
+  remain auditable. Nothing on the page may be labelled from the search box:
+  the loading line, the failure title and Retry all name the ticker the open
+  request was actually made for, and a response that is no longer the newest
+  request is discarded rather than rendered.
 - `src/features/broker-intelligence/` owns stock/broker lenses and inventory
   curve presentation.
 - `src/lib/api/client.js` is the only first-party network boundary and prefixes

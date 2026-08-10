@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { simulateRisk } from '../../lib/api/client.js';
 import { guardRiskSimulation } from '../../lib/api/contracts.js';
 import { formatIDR, formatNumber, formatPct, formatPrice } from '../../lib/format/market.js';
@@ -13,8 +13,13 @@ export default function RiskSimulator({ ticker, geometry }) {
     maxRiskPct: 1,
   });
   const [state, setState] = useState({ loading: false, data: null, error: null });
+  // A sizing result belongs to the setup it was requested for. Bumping this on
+  // every setup change and on unmount keeps an in-flight simulation from
+  // landing under a ticker or geometry it was never calculated against.
+  const requestRef = useRef(0);
 
   useEffect(() => {
+    requestRef.current += 1;
     setForm((current) => ({
       ...current,
       entry: ticker?.close || '',
@@ -22,6 +27,7 @@ export default function RiskSimulator({ ticker, geometry }) {
       target: best?.target || '',
     }));
     setState({ loading: false, data: null, error: null });
+    return () => { requestRef.current += 1; };
   }, [ticker?.symbol, ticker?.close, best?.stop, best?.target]);
 
   if (!ticker || !best) return null;
@@ -29,8 +35,10 @@ export default function RiskSimulator({ ticker, geometry }) {
   const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
   const submit = async (event) => {
     event.preventDefault();
+    const requestId = ++requestRef.current;
     setState({ loading: true, data: null, error: null });
     const result = guardRiskSimulation(await simulateRisk(form));
+    if (requestId !== requestRef.current) return;
     setState(result.ok
       ? { loading: false, data: result.data, error: null }
       : { loading: false, data: null, error: result.error });

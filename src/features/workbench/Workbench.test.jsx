@@ -1,7 +1,17 @@
 import { beforeEach, describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { MemoryRouter } from 'react-router';
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
+import { MemoryRouter, useSearchParams } from 'react-router';
 import Workbench from './Workbench.jsx';
+import RiskSimulator from './RiskSimulator.jsx';
+
+// Workbench has no control that removes the ticker, but the shell and deep
+// links can leave the route without one.
+function ClearTicker() {
+  const [, setSearchParams] = useSearchParams();
+  return (
+    <button type="button" onClick={() => setSearchParams({})}>clear ticker</button>
+  );
+}
 
 // Mock the API client
 vi.mock('../../lib/api/client.js', () => ({
@@ -10,7 +20,7 @@ vi.mock('../../lib/api/client.js', () => ({
   getStockBrokerIntelligence: vi.fn(),
 }));
 
-import { analyzeTicker, getStockBrokerIntelligence } from '../../lib/api/client.js';
+import { analyzeTicker, getStockBrokerIntelligence, simulateRisk } from '../../lib/api/client.js';
 
 describe('Workbench', () => {
   const mockData = {
@@ -363,5 +373,134 @@ describe('Workbench', () => {
     );
     expect(await screen.findByText(/Analysis failed/i)).toBeInTheDocument();
     expect(screen.getByText(/upstream unavailable/i)).toBeInTheDocument();
+  });
+
+  it('gives the ticker search box an accessible name', () => {
+    render(
+      <MemoryRouter>
+        <Workbench />
+      </MemoryRouter>
+    );
+    expect(screen.getByLabelText(/IDX ticker/i)).toBeInTheDocument();
+  });
+
+  it('discards an older analysis that resolves after a newer ticker search', async () => {
+    let resolveFirst;
+    let resolveSecond;
+    analyzeTicker
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveFirst = resolve; }))
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveSecond = resolve; }));
+
+    render(
+      <MemoryRouter initialEntries={['/?ticker=BBRI']}>
+        <Workbench />
+      </MemoryRouter>
+    );
+
+    const input = screen.getByPlaceholderText(/Enter ticker/i);
+    fireEvent.change(input, { target: { value: 'TLKM' } });
+    fireEvent.click(screen.getByRole('button', { name: /Analyze/i }));
+
+    const tlkm = {
+      ...mockData,
+      ticker: { ...mockData.ticker, symbol: 'TLKM', name: 'Telkom Indonesia' },
+    };
+    await act(async () => { resolveSecond({ success: true, data: tlkm }); });
+    expect(await screen.findByText('Telkom Indonesia')).toBeInTheDocument();
+
+    await act(async () => { resolveFirst({ success: true, data: mockData }); });
+    expect(screen.queryByText(/Bank Rakyat Indonesia/i)).not.toBeInTheDocument();
+    expect(screen.getByText('Telkom Indonesia')).toBeInTheDocument();
+  });
+
+  it('names the in-flight ticker while the search box moves on', async () => {
+    analyzeTicker.mockReturnValue(new Promise(() => {}));
+    render(
+      <MemoryRouter initialEntries={['/?ticker=BBRI']}>
+        <Workbench />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText(/Analyzing BBRI/i)).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText(/Enter ticker/i), { target: { value: 'TLKM' } });
+    expect(screen.getByText(/Analyzing BBRI/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Analyzing TLKM/i)).not.toBeInTheDocument();
+  });
+
+  it('retries the ticker that failed, not the current search text', async () => {
+    analyzeTicker.mockRejectedValue(new Error('upstream unavailable'));
+    render(
+      <MemoryRouter initialEntries={['/?ticker=BBRI']}>
+        <Workbench />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText(/Analysis failed for BBRI/i)).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText(/Enter ticker/i), { target: { value: 'TLKM' } });
+
+    analyzeTicker.mockClear();
+    analyzeTicker.mockResolvedValue({ success: true, data: mockData });
+    fireEvent.click(screen.getByRole('button', { name: /Retry/i }));
+
+    await waitFor(() => expect(analyzeTicker).toHaveBeenCalledWith('BBRI'));
+    expect(analyzeTicker).not.toHaveBeenCalledWith('TLKM');
+  });
+
+  it('drops the analysis when the ticker leaves the URL', async () => {
+    analyzeTicker.mockResolvedValue({ success: true, data: mockData });
+    render(
+      <MemoryRouter initialEntries={['/?ticker=BBRI']}>
+        <ClearTicker />
+        <Workbench />
+      </MemoryRouter>
+    );
+    expect(await screen.findByText(/Bank Rakyat Indonesia/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /clear ticker/i }));
+    expect(await screen.findByText(/Enter a ticker to analyze/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Bank Rakyat Indonesia/i)).not.toBeInTheDocument();
+  });
+
+  it('reports the observed trading-session count for the broker range', async () => {
+    analyzeTicker.mockResolvedValue({ success: true, data: mockData });
+    render(
+      <MemoryRouter initialEntries={['/?ticker=BBRI']}>
+        <Workbench />
+      </MemoryRouter>
+    );
+
+    await screen.findByText(/Broker Evidence/i);
+    await waitFor(() => {
+      const meta = document.querySelector('.wb-broker__meta');
+      expect(meta?.textContent).toMatch(/· 1 trading session\b/);
+    });
+    expect(document.querySelector('.wb-broker__meta').textContent).not.toMatch(/undefined/);
+  });
+
+  it('ignores a position size that resolves after the setup changed', async () => {
+    let resolveSimulation;
+    simulateRisk.mockImplementation(() => new Promise((resolve) => { resolveSimulation = resolve; }));
+
+    const { rerender } = render(
+      <RiskSimulator ticker={mockData.ticker} geometry={mockData.riskGeometry} />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /CALCULATE SIZE/i }));
+
+    rerender(
+      <RiskSimulator ticker={{ ...mockData.ticker, close: 4600 }} geometry={mockData.riskGeometry} />
+    );
+
+    await act(async () => {
+      resolveSimulation({
+        success: true,
+        data: {
+          entry: 4500, stop: 4300, target: 4700, capital: 100000000, maxRiskPct: 1,
+          lots: 111, shares: 11100, deployedCapital: 49950000, estimatedRisk: 999000,
+          estimatedRiskPct: 1, netRR: 0.85, bindingConstraint: 'risk',
+        },
+      });
+    });
+
+    expect(screen.queryByText(/111 lots/)).not.toBeInTheDocument();
   });
 });

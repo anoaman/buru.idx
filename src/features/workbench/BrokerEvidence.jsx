@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { getStockBrokerIntelligence } from '../../lib/api/client.js';
 import { guardStockBrokerIntelligence } from '../../lib/api/contracts.js';
-import { formatIDR } from '../../lib/format/market.js';
+import { formatIDR, formatNumber } from '../../lib/format/market.js';
 
 const PRESETS = [
   ['latest', 'Latest'], ['previous', 'Previous'], ['7d', '7D'], ['14d', '14D'],
@@ -48,6 +48,10 @@ export default function BrokerEvidence({ broker }) {
   const sellers = state.data?.distribution || broker?.sellers || [];
   const window = state.data?.window;
   const rangeLabel = window ? (window.from === window.to ? window.to : `${window.from} → ${window.to}`) : 'latest complete session';
+  // The guarded contract exposes the observed session count as `tradingSessions`;
+  // there has never been a `tradingSessionCount` field on the view model.
+  const sessions = window ? window.tradingSessions : null;
+  const customIncomplete = preset === 'custom' && (!custom.from || !custom.to);
   const methodNote = useMemo(() => window?.complete === false ? 'Selected range has incomplete archive coverage.' : null, [window]);
   if (!symbol && (!broker || !broker.available)) return <div className="wb-broker"><h3 className="wb-section__title text-tertiary">Broker Evidence</h3><div className="text-tertiary">{broker?.note || 'No broker data available.'}</div></div>;
 
@@ -55,7 +59,7 @@ export default function BrokerEvidence({ broker }) {
     <div className="wb-broker__head"><div><h3 className="wb-section__title text-tertiary">Broker Evidence</h3><p className="wb-broker__disclaimer text-tertiary">Observed top-25 flow. Estimates are evidence, not confirmed holdings.</p></div></div>
     <div className="wb-broker__presets" aria-label="Broker evidence range">{PRESETS.map(([value, label]) => <button className={preset === value ? 'is-active' : ''} key={value} onClick={() => setPreset(value)} type="button">{label}</button>)}</div>
     {preset === 'custom' && <div className="wb-broker__custom"><label>From<input type="date" value={custom.from} onChange={(event) => setCustom((current) => ({ ...current, from: event.target.value }))} /></label><label>To<input type="date" value={custom.to} onChange={(event) => setCustom((current) => ({ ...current, to: event.target.value }))} /></label></div>}
-    <div className="wb-broker__meta text-secondary"><span>Range: {rangeLabel}</span>{window && <span> · {window.tradingSessionCount} trading session{window.tradingSessionCount === 1 ? '' : 's'}</span>}{state.loading && <span> · Loading…</span>}{state.error && <span className="text-warning"> · Range unavailable; showing analysis snapshot</span>}{methodNote && <span className="text-warning"> · {methodNote}</span>}</div>
+    <div className="wb-broker__meta text-secondary"><span>Range: {rangeLabel}</span>{window && <span> · {formatNumber(sessions)} trading session{sessions === 1 ? '' : 's'}</span>}{customIncomplete && <span className="text-warning"> · Select both custom dates to load a range</span>}{state.loading && <span> · Loading…</span>}{state.error && <span className="text-warning"> · Range unavailable; showing analysis snapshot</span>}{methodNote && <span className="text-warning"> · {methodNote}</span>}</div>
     {(buyers.length > 0 || sellers.length > 0) && <div className="wb-broker__workspace"><div className="wb-broker__rankings"><BrokerRows title="Top buyers" rows={buyers} /><BrokerRows title="Top sellers" rows={sellers} /></div><FlowBars buyers={buyers} sellers={sellers} /></div>}
     {symbol && <Link className="wb-broker__intel-link" to={`/broker-intelligence?lens=stock&ticker=${encodeURIComponent(symbol)}&days=1${window?.to ? `&date=${encodeURIComponent(window.to)}` : ''}`}>Open full Broker Map →</Link>}
   </div>;
