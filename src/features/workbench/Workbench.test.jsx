@@ -503,4 +503,14 @@ describe('Workbench', () => {
 
     expect(screen.queryByText(/111 lots/)).not.toBeInTheDocument();
   });
+
+  it('recovers when the risk simulation request rejects', async () => {
+    simulateRisk.mockRejectedValue(new Error('risk service unavailable'));
+    render(<RiskSimulator ticker={mockData.ticker} geometry={mockData.riskGeometry} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /CALCULATE SIZE/i }));
+
+    expect(await screen.findByText(/risk service unavailable/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /CALCULATE SIZE/i })).toBeEnabled();
+  });
 });

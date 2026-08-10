@@ -37,11 +37,16 @@ export default function RiskSimulator({ ticker, geometry }) {
     event.preventDefault();
     const requestId = ++requestRef.current;
     setState({ loading: true, data: null, error: null });
-    const result = guardRiskSimulation(await simulateRisk(form));
-    if (requestId !== requestRef.current) return;
-    setState(result.ok
-      ? { loading: false, data: result.data, error: null }
-      : { loading: false, data: null, error: result.error });
+    try {
+      const result = guardRiskSimulation(await simulateRisk(form));
+      if (requestId !== requestRef.current) return;
+      setState(result.ok
+        ? { loading: false, data: result.data, error: null }
+        : { loading: false, data: null, error: result.error });
+    } catch (error) {
+      if (requestId !== requestRef.current) return;
+      setState({ loading: false, data: null, error: error?.message || 'Risk simulation failed' });
+    }
   };
 
   return (
