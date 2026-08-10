@@ -13,7 +13,7 @@ import {
  * @param {object} props.priceHistory - The priceHistory block from analyze.
  * @param {object} props.ticker - The ticker block (for volume vs baseline).
  */
-export default function TechnicalEvidence({ priceHistory, ticker }) {
+export default function TechnicalEvidence({ priceHistory, ticker, supportResistance, riskGeometry }) {
   if (!priceHistory || priceHistory.note) {
     return (
       <div className="wb-tech-evidence">
@@ -26,6 +26,7 @@ export default function TechnicalEvidence({ priceHistory, ticker }) {
   const ma = priceHistory.movingAverages || {};
   const maPosture = ma.stack || 'unavailable';
   const volBaseline = ticker?.volumeVsBaseline;
+  const best = riskGeometry?.bestSetup;
 
   const returns = [
     { label: '5-day', value: priceHistory.ret5d },
@@ -117,6 +118,24 @@ export default function TechnicalEvidence({ priceHistory, ticker }) {
                 {volBaseline?.avgVolume != null ? formatVolume(volBaseline.avgVolume) : '—'}
               </span>
             </div>
+          </div>
+        </div>
+
+        <div className="wb-tech-evidence__section">
+          <span className="wb-tech-evidence__label text-tertiary">Static levels</span>
+          <div className="wb-tech-evidence__rows">
+            <div className="wb-tech-evidence__row"><span className="text-secondary">Support</span><span className="tabular text-positive">{formatPrice(riskGeometry?.nearestSupport)}</span></div>
+            <div className="wb-tech-evidence__row"><span className="text-secondary">Resistance</span><span className="tabular text-negative">{formatPrice(riskGeometry?.nearestResistance)}</span></div>
+            <div className="wb-tech-evidence__row"><span className="text-secondary">60d range</span><span className="tabular text-secondary">{formatPrice(supportResistance?.low60d)}–{formatPrice(supportResistance?.high60d)}</span></div>
+          </div>
+        </div>
+
+        <div className="wb-tech-evidence__section">
+          <span className="wb-tech-evidence__label text-tertiary">Risk / reward</span>
+          <div className="wb-tech-evidence__rows">
+            <div className="wb-tech-evidence__row"><span className="text-secondary">Invalidation</span><span className="tabular text-negative">{formatPrice(best?.stop)}</span></div>
+            <div className="wb-tech-evidence__row"><span className="text-secondary">Target</span><span className="tabular text-positive">{formatPrice(best?.target)}</span></div>
+            <div className="wb-tech-evidence__row"><span className="text-secondary">Net R:R</span><span className="tabular text-secondary">{(best?.netRR ?? best?.rr)?.toFixed(2) || '—'}</span></div>
           </div>
         </div>
       </div>

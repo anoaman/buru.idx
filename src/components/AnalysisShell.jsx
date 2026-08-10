@@ -11,7 +11,7 @@ const NAV = [
 
 function CommandBar() {
   const location = useLocation();
-  const { ticker, days, asOf, allowedWindows, openInvestigation, updateWindow } = useAnalysisContext();
+  const { ticker, days, allowedWindows, openInvestigation, updateWindow } = useAnalysisContext();
   const [query, setQuery] = useState(ticker);
 
   useEffect(() => setQuery(ticker), [ticker]);
@@ -38,7 +38,6 @@ function CommandBar() {
       </form>
       <div className="analysis-command__context" aria-label="Investigation context">
         <span className="analysis-command__identity">{ticker}</span>
-        <span className="analysis-command__date">{asOf || 'LATEST COMPLETE'}</span>
       </div>
       <div className="analysis-command__windows" aria-label="Broker window">
         {allowedWindows.map((value) => (

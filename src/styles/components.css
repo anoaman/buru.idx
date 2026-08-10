@@ -343,6 +343,9 @@
   font-size: 11px;
 }
 
+.inv-question__method { display: block; max-width: 760px; margin-top: var(--space-3); color: var(--text-tertiary); font-size: 11px; line-height: 1.45; }
+.inv-contradictions article > small { display: block; margin: 3px 0; color: var(--color-warning); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; }
+
 .inv-brief,
 .inv-simulator,
 .inv-ledger {
@@ -601,6 +604,23 @@
   gap: var(--space-5);
   padding: var(--space-5);
 }
+
+.wb-method { display: grid; gap: var(--space-3); }
+.wb-method__details { border: 1px solid var(--border-subtle); background: var(--bg-base); }
+.wb-method__details > summary { padding: var(--space-3); cursor: pointer; color: var(--text-secondary); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+.wb-method__details[open] > summary { border-bottom: 1px solid var(--border-subtle); }
+.wb-method__lenses, .wb-method__factors { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--border-subtle); }
+.wb-method__lenses > div, .wb-method__factors > div { display: grid; gap: 4px; padding: var(--space-3); background: var(--bg-elevated); }
+.wb-method__lenses span, .wb-method__factors span { color: var(--text-secondary); font-size: 11px; }
+.wb-method__lenses small, .wb-method__factors small { color: var(--text-tertiary); font-size: 10px; line-height: 1.4; }
+.wb-method__details h4 { margin: 0; padding: var(--space-3); border-top: 1px solid var(--border-subtle); font-size: 11px; text-transform: uppercase; }
+
+.wb-level-strip { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1px; background: var(--border-default); border: 1px solid var(--border-default); }
+.wb-level-strip > div:not(.wb-level-strip__mas) { display: flex; flex-direction: column; gap: 3px; padding: var(--space-3); background: var(--bg-elevated); }
+.wb-level-strip > div > span { color: var(--text-tertiary); font-size: 9px; text-transform: uppercase; }
+.wb-level-strip strong { font-family: var(--font-tabular); font-size: 12px; }
+.wb-level-strip__mas { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--space-4); padding: var(--space-2) var(--space-3); background: var(--bg-base); }
+.wb-level-strip__mas span { font-family: var(--font-tabular); }
 
 /* ============================================
    Empty / Error States
@@ -1034,6 +1054,20 @@
   font-size: 12px;
 }
 
+.wb-broker__head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-4); }
+.wb-broker__date { display: grid; gap: 5px; color: var(--text-tertiary); font-size: 9px; text-transform: uppercase; }
+.wb-broker__date input { min-height: 34px; padding: 0 var(--space-2); border: 1px solid var(--border-default); background: var(--bg-base); color: var(--text-primary); color-scheme: dark; }
+.wb-broker__workspace { display: grid; grid-template-columns: minmax(280px, .8fr) minmax(360px, 1.2fr); gap: var(--space-5); margin-top: var(--space-3); }
+.wb-broker__rankings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
+.wb-broker-flow { display: grid; gap: 5px; padding: var(--space-3); border: 1px solid var(--border-subtle); background: var(--bg-base); }
+.wb-broker-flow__axis { display: flex; justify-content: space-between; color: var(--text-tertiary); font-size: 9px; text-transform: uppercase; }
+.wb-broker-flow__row { display: grid; grid-template-columns: 28px minmax(120px, 1fr) 118px; align-items: center; gap: var(--space-2); min-height: 20px; font-size: 10px; }
+.wb-broker-flow__track { position: relative; height: 9px; background: linear-gradient(90deg, transparent 49.7%, var(--border-default) 50%, transparent 50.3%); }
+.wb-broker-flow__track i { position: absolute; top: 1px; height: 7px; }
+.wb-broker-flow__row--buy .wb-broker-flow__track i { left: 50%; background: var(--color-positive); }
+.wb-broker-flow__row--sell .wb-broker-flow__track i { right: 50%; background: var(--color-negative); }
+.wb-broker-flow__value { text-align: right; font-family: var(--font-tabular); color: var(--text-secondary); }
+
 .wb-broker__disclaimer {
   margin: 0 0 var(--space-2);
   font-size: 11px;
@@ -1323,7 +1357,7 @@
 
 .wb-tech-evidence__grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--space-4);
 }
 
@@ -2113,6 +2147,9 @@
     grid-template-columns: 1fr;
   }
 
+  .wb-level-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .wb-method__lenses, .wb-method__factors { grid-template-columns: 1fr; }
+
   .inv-contradictions {
     border-top: 1px solid var(--border-default);
     border-left: 0;
@@ -2191,6 +2228,10 @@
     flex-wrap: wrap;
     gap: var(--space-1) var(--space-2);
   }
+
+  .wb-broker__head { flex-direction: column; }
+  .wb-broker__workspace, .wb-broker__rankings { grid-template-columns: 1fr; }
+  .wb-broker-flow__row { grid-template-columns: 28px minmax(90px, 1fr) 96px; }
 
   .wb-broker__value {
     flex: 1 1 100%;

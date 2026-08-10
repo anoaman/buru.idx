@@ -31,6 +31,10 @@ export default function TradingViewChart({ ticker }) {
       hide_legend: '0',
       save_image: '0',
       hideideas: '1',
+      studies: JSON.stringify([
+        'Volume@tv-basicstudies',
+        'RSI@tv-basicstudies',
+      ]),
     });
     return `https://s.tradingview.com/widgetembed/?${params.toString()}`;
   }, [symbol]);

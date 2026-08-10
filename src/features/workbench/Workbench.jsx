@@ -7,7 +7,7 @@ import {
 } from '../../lib/format/market.js';
 import EmptyState from '../../components/EmptyState.jsx';
 import ErrorState from '../../components/ErrorState.jsx';
-import PriceChart from './PriceChart.jsx';
+import InfoTip from '../../components/InfoTip.jsx';
 import TradingViewChart from './TradingViewChart.jsx';
 import TechnicalEvidence from './TechnicalEvidence.jsx';
 import DynamicLevels from './DynamicLevels.jsx';
@@ -42,39 +42,60 @@ function TickerHeader({ ticker }) {
   );
 }
 
-function EvidenceSummary({ grade, stance, dataQuality }) {
+function EvidenceSummary({ grade, stance, scorecard, dataQuality }) {
   const warnings = dataQuality?.warnings || [];
+  const factors = scorecard?.factors || [];
   return (
-    <div className="wb-evidence-summary">
-      <div><span>Grade</span><strong>{grade?.grade || '—'}</strong></div>
-      <div><span>Regime</span><strong>{grade?.regime || 'Unknown'}</strong></div>
-      <div><span>Phase</span><strong>{grade?.structurePhase || 'Unknown'}</strong></div>
-      <div><span>Lean</span><strong>{stance?.stance ? stance.stance.replace('_', ' ').toLowerCase() : 'neutral'}</strong></div>
-      <div><span>Data</span><strong className={warnings.length ? 'text-warning' : 'text-positive'}>{warnings.length ? 'Degraded' : 'Complete'}</strong></div>
-      {warnings.map((warning) => <p key={warning} className="text-warning">⚠ {warning}</p>)}
+    <section className="wb-method">
+      <div className="wb-evidence-summary">
+        <div><span>Grade <InfoTip title="Grade">Weighted broker-flow, momentum, structure and risk score. A ≥82%, B ≥68%, C ≥54%, D ≥40%.</InfoTip></span><strong>{grade?.grade || '—'}</strong></div>
+        <div><span>Regime <InfoTip title="Regime">Trending when MA separation, returns and distance from MA20 produce strength ≥7; otherwise rangebound.</InfoTip></span><strong>{grade?.regime || 'Unknown'}</strong></div>
+        <div><span>Phase <InfoTip title="Phase">Uses 60-session range position, return, volume trend and MA alignment.</InfoTip></span><strong>{grade?.structurePhase || 'Unknown'}</strong></div>
+        <div><span>Lean <InfoTip title="Lean">Constructive needs bullish edge ≥2, grade A/B and net R:R ≥1.2. Defensive needs bearish edge ≥2 or bearish evidence with grade D/F.</InfoTip></span><strong>{stance?.stance ? stance.stance.replace('_', ' ').toLowerCase() : 'neutral'}</strong></div>
+        <div><span>Data <InfoTip title="Data quality">Complete means daily history passed availability and range-dislocation checks.</InfoTip></span><strong className={warnings.length ? 'text-warning' : 'text-positive'}>{warnings.length ? 'Degraded' : 'Complete'}</strong></div>
+        {warnings.map((warning) => <p key={warning} className="text-warning">⚠ {warning}</p>)}
       </div>
+      <details className="wb-method__details">
+        <summary>Full methodology</summary>
+        <div className="wb-method__lenses">
+          {Object.values(grade?.lenses || {}).map((lens) => (
+            <div key={lens.name}>
+              <strong>{lens.name}</strong>
+              <span>{Math.round((lens.score || 0) * 100)} score · {Math.round((lens.weight || 0) * 100)}% weight</span>
+              <small>{(lens.topReasons || []).join(' · ')}</small>
+            </div>
+          ))}
+        </div>
+        <h4>Scorecard <InfoTip title="Scorecard">Eight deterministic factors counted as positive, negative or neutral. It is not a win probability.</InfoTip></h4>
+        <div className="wb-method__factors">
+          {factors.map((factor) => (
+            <div key={factor.factor}>
+              <span>{factor.factor}</span>
+              <strong className={factor.signal > 0 ? 'text-positive' : factor.signal < 0 ? 'text-negative' : 'text-secondary'}>
+                {factor.signal > 0 ? 'Positive' : factor.signal < 0 ? 'Negative' : 'Neutral'}
+              </strong>
+              <small>{factor.reason}</small>
+            </div>
+          ))}
+        </div>
+      </details>
+    </section>
   );
 }
 
-function ChartViewToggle({ view, onChange }) {
+function ProprietaryLevelStrip({ geometry, dynamicLevels }) {
+  const best = geometry?.bestSetup;
+  const levels = dynamicLevels?.levels || [];
   return (
-    <div className="wb-chart-toggle" role="group" aria-label="Chart view">
-      <button
-        type="button"
-        className={`wb-chart-toggle__btn${view === 'nalar' ? ' is-active' : ''}`}
-        aria-pressed={view === 'nalar'}
-        onClick={() => onChange('nalar')}
-      >
-        NALAR Analysis
-      </button>
-      <button
-        type="button"
-        className={`wb-chart-toggle__btn${view === 'tradingview' ? ' is-active' : ''}`}
-        aria-pressed={view === 'tradingview'}
-        onClick={() => onChange('tradingview')}
-      >
-        TradingView
-      </button>
+    <div className="wb-level-strip" aria-label="NALAR proprietary levels">
+      <div><span>Support</span><strong>{formatPrice(geometry?.nearestSupport)}</strong></div>
+      <div><span>Resistance</span><strong>{formatPrice(geometry?.nearestResistance)}</strong></div>
+      <div><span>Invalidation</span><strong>{formatPrice(best?.stop)}</strong></div>
+      <div><span>Target</span><strong>{formatPrice(best?.target)}</strong></div>
+      <div><span>Net R:R</span><strong>{(best?.netRR ?? best?.rr)?.toFixed(2) || '—'}</strong></div>
+      <div className="wb-level-strip__mas">
+        {levels.map((level) => <span key={level.label}>{level.label} <strong>{formatPrice(level.price)}</strong></span>)}
+      </div>
     </div>
   );
 }
@@ -84,7 +105,6 @@ export default function Workbench() {
   const tickerParam = searchParams.get('ticker') || '';
   const [query, setQuery] = useState(tickerParam);
   const [state, setState] = useState({ loading: false, data: null, error: null });
-  const [chartView, setChartView] = useState('nalar');
 
   const fetchAnalysis = (ticker) => {
     if (!ticker || !/^[A-Z]{4}$/i.test(ticker)) {
@@ -149,12 +169,8 @@ export default function Workbench() {
           <InvestigationBrief investigation={state.data.investigation} />
 
           <div className="wb-chart-panel">
-            <ChartViewToggle view={chartView} onChange={setChartView} />
-            {chartView === 'nalar' ? (
-              <PriceChart chart={state.data.chart} />
-            ) : (
-              <TradingViewChart ticker={activeTicker} />
-            )}
+            <TradingViewChart ticker={activeTicker} />
+            <ProprietaryLevelStrip geometry={state.data.riskGeometry} dynamicLevels={state.data.dynamicLevels} />
           </div>
 
           <RiskSimulator ticker={state.data.ticker} geometry={state.data.riskGeometry} />
@@ -166,13 +182,15 @@ export default function Workbench() {
               <small>Full deterministic inputs, geometry, scorecard, and provenance</small>
             </summary>
             <div className="inv-ledger__body">
-              <EvidenceSummary grade={state.data.grade} stance={state.data.stance} dataQuality={state.data.dataQuality} />
+              <EvidenceSummary grade={state.data.grade} stance={state.data.stance} scorecard={state.data.scorecard} dataQuality={state.data.dataQuality} />
 
               <DynamicLevels dynamicLevels={state.data.dynamicLevels} />
 
               <TechnicalEvidence
                 priceHistory={state.data.priceHistory}
                 ticker={state.data.ticker}
+                supportResistance={state.data.supportResistance}
+                riskGeometry={state.data.riskGeometry}
               />
 
               <BrokerEvidence broker={state.data.broker} />

@@ -2,7 +2,7 @@ import { formatPrice, formatPct } from '../../lib/format/market.js';
 import InfoTip from '../../components/InfoTip.jsx';
 
 /**
- * DynamicLevels — MA20/50/200 read as support and resistance.
+ * DynamicLevels — MA5/10/20/50/200 read as support and resistance.
  *
  * Deliberately its own panel rather than extra rows in the risk and level map.
  * A pivot is a price the market has already defended and it stays where it is;
@@ -70,7 +70,7 @@ export default function DynamicLevels({ dynamicLevels }) {
       <h3 className="wb-section__title text-tertiary">
         Dynamic levels (moving averages){' '}
         <InfoTip title="Dynamic levels">
-          MA20, MA50 and MA200 of the daily close, shown as support when they sit below price
+          MA5, MA10, MA20, MA50 and MA200 of the daily close, shown as support when they sit below price
           and resistance when they sit above it. Distance is the gap to the last close.
           Slope is the average change per session over the last 5 sessions; under 0.05% per
           session it reads flat. &quot;Closing&quot; means the average is travelling toward

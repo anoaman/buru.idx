@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import Workbench from './Workbench.jsx';
@@ -7,9 +7,10 @@ import Workbench from './Workbench.jsx';
 vi.mock('../../lib/api/client.js', () => ({
   analyzeTicker: vi.fn(),
   simulateRisk: vi.fn(),
+  getStockBrokerIntelligence: vi.fn(),
 }));
 
-import { analyzeTicker } from '../../lib/api/client.js';
+import { analyzeTicker, getStockBrokerIntelligence } from '../../lib/api/client.js';
 
 describe('Workbench', () => {
   const mockData = {
@@ -118,6 +119,20 @@ describe('Workbench', () => {
     },
   };
 
+  beforeEach(() => {
+    getStockBrokerIntelligence.mockResolvedValue({
+      success: true,
+      data: {
+        ticker: 'BBRI',
+        name: 'Bank Rakyat Indonesia',
+        window: { days: 1, from: '2026-07-17', to: '2026-07-17', tradingSessions: 1, populatedSessions: 1, gapSessions: 0, missingSessions: 0, complete: true },
+        observedFlow: {}, preferredBroker: {},
+        accumulation: mockData.broker.buyers,
+        distribution: mockData.broker.sellers,
+      },
+    });
+  });
+
   it('renders empty state when no ticker', () => {
     render(
       <MemoryRouter>
@@ -152,8 +167,7 @@ describe('Workbench', () => {
     // Grade
     expect(screen.getByText('B+')).toBeInTheDocument();
 
-    // Chart section title
-    expect(screen.getByText(/Price Chart/i)).toBeInTheDocument();
+    expect(screen.getByTitle('TradingView chart for IDX:BBRI')).toBeInTheDocument();
 
     // Technical Evidence
     expect(screen.getByText(/Technical Evidence/i)).toBeInTheDocument();
@@ -162,18 +176,18 @@ describe('Workbench', () => {
 
     // Risk geometry is consolidated into the simulator.
     expect(screen.getByText(/Invalidation simulator/i)).toBeInTheDocument();
-    expect(screen.getByText('Support')).toBeInTheDocument();
+    expect(screen.getAllByText('Support').length).toBeGreaterThan(0);
 
     // Broker Evidence
     expect(screen.getByText(/Broker Evidence/i)).toBeInTheDocument();
 
     // Redundant debate, scorecard, and quality panels are replaced by one compact summary.
-    expect(screen.getByText('Regime')).toBeInTheDocument();
-    expect(screen.getByText('Data')).toBeInTheDocument();
+    expect(screen.getAllByText('Regime').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Data').length).toBeGreaterThan(0);
     expect(screen.queryByText(/What supports or challenges the setup/i)).not.toBeInTheDocument();
   });
 
-  it('defaults to NALAR Analysis with accessible toggle state', async () => {
+  it('uses TradingView as the only primary chart with NALAR levels below', async () => {
     analyzeTicker.mockResolvedValue({ success: true, data: mockData });
     render(
       <MemoryRouter initialEntries={['/?ticker=BBRI']}>
@@ -181,36 +195,9 @@ describe('Workbench', () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText(/Price Chart/i)).toBeInTheDocument();
-    const nalarBtn = screen.getByRole('button', { name: /NALAR Analysis/i });
-    const tvBtn = screen.getByRole('button', { name: /^TradingView$/i });
-    expect(nalarBtn).toHaveAttribute('aria-pressed', 'true');
-    expect(tvBtn).toHaveAttribute('aria-pressed', 'false');
-    expect(screen.queryByTitle(/TradingView chart/i)).not.toBeInTheDocument();
-  });
-
-  it('toggles to TradingView and back; widget loads only after selection', async () => {
-    analyzeTicker.mockResolvedValue({ success: true, data: mockData });
-    render(
-      <MemoryRouter initialEntries={['/?ticker=BBRI']}>
-        <Workbench />
-      </MemoryRouter>
-    );
-
-    expect(await screen.findByText(/Price Chart/i)).toBeInTheDocument();
-    expect(screen.queryByTitle(/TradingView chart/i)).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: /^TradingView$/i }));
-    const iframe = screen.getByTitle('TradingView chart for IDX:BBRI');
-    expect(iframe).toBeInTheDocument();
-    expect(iframe.getAttribute('src')).toContain('symbol=IDX%3ABBRI');
-    expect(screen.getByRole('button', { name: /^TradingView$/i })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('button', { name: /NALAR Analysis/i })).toHaveAttribute('aria-pressed', 'false');
-    expect(screen.queryByText(/Price Chart/i)).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: /NALAR Analysis/i }));
-    expect(await screen.findByText(/Price Chart/i)).toBeInTheDocument();
-    expect(screen.queryByTitle(/TradingView chart/i)).not.toBeInTheDocument();
+    expect(await screen.findByTitle('TradingView chart for IDX:BBRI')).toBeInTheDocument();
+    expect(screen.getByLabelText(/NALAR proprietary levels/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /NALAR Analysis/i })).not.toBeInTheDocument();
   });
 
   it('updates TradingView symbol when ticker changes', async () => {
@@ -221,9 +208,7 @@ describe('Workbench', () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText(/Price Chart/i)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /^TradingView$/i }));
-    expect(screen.getByTitle('TradingView chart for IDX:BBRI')).toBeInTheDocument();
+    expect(await screen.findByTitle('TradingView chart for IDX:BBRI')).toBeInTheDocument();
 
     const tlkmData = {
       ...mockData,
@@ -236,13 +221,12 @@ describe('Workbench', () => {
     fireEvent.click(screen.getByRole('button', { name: /Analyze/i }));
 
     expect(await screen.findByText('TLKM')).toBeInTheDocument();
-    // Selection persists across ticker change; widget remounts with new symbol.
     expect(screen.getByTitle('TradingView chart for IDX:TLKM')).toBeInTheDocument();
     expect(screen.getByTitle('TradingView chart for IDX:TLKM').getAttribute('src'))
       .toContain('symbol=IDX%3ATLKM');
   });
 
-  it('shows volume explanation and hides stockbit chartbit label', async () => {
+  it('loads TradingView with default volume and RSI studies', async () => {
     analyzeTicker.mockResolvedValue({ success: true, data: mockData });
     render(
       <MemoryRouter initialEntries={['/?ticker=BBRI']}>
@@ -250,10 +234,9 @@ describe('Workbench', () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText(/Volume \(shares\) · 1 lot = 100 shares/i)).toBeInTheDocument();
-    expect(screen.getByText(/Data through/i)).toBeInTheDocument();
-    expect(screen.queryByText(/stockbit chartbit/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/stockbit-chartbit/i)).not.toBeInTheDocument();
+    const iframe = await screen.findByTitle('TradingView chart for IDX:BBRI');
+    expect(decodeURIComponent(iframe.getAttribute('src'))).toContain('Volume@tv-basicstudies');
+    expect(decodeURIComponent(iframe.getAttribute('src'))).toContain('RSI@tv-basicstudies');
   });
 
   it('shows Local and Foreign broker rows with full Rupiah values', async () => {
@@ -270,11 +253,11 @@ describe('Workbench', () => {
     expect(screen.queryByText('Pemerintah')).not.toBeInTheDocument();
     expect(screen.queryByText('Lokal')).not.toBeInTheDocument();
     expect(screen.queryByText('Asing')).not.toBeInTheDocument();
-    expect(screen.getByText('Rp229.975.060.500')).toBeInTheDocument();
-    expect(screen.getByText('-Rp229.975.060.500')).toBeInTheDocument();
+    expect(screen.getAllByText('Rp229.975.060.500').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('-Rp229.975.060.500').length).toBeGreaterThan(0);
   });
 
-  it('renders chart empty state when no chart data', async () => {
+  it('keeps TradingView available when proprietary chart history is absent', async () => {
     const noChart = { ...mockData, chart: null };
     analyzeTicker.mockResolvedValue({ success: true, data: noChart });
     render(
@@ -282,7 +265,7 @@ describe('Workbench', () => {
         <Workbench />
       </MemoryRouter>
     );
-    expect(await screen.findByText(/No chart data available/i)).toBeInTheDocument();
+    expect(await screen.findByTitle('TradingView chart for IDX:BBRI')).toBeInTheDocument();
   });
 
   it('renders technical evidence unavailable state', async () => {
@@ -296,7 +279,7 @@ describe('Workbench', () => {
     expect(await screen.findByText(/daily history unavailable/i)).toBeInTheDocument();
   });
 
-  it('renders broker unavailable state', async () => {
+  it('loads archived broker evidence when the analysis snapshot is unavailable', async () => {
     const noBroker = { ...mockData, broker: { available: false, note: 'No broker data' } };
     analyzeTicker.mockResolvedValue({ success: true, data: noBroker });
     render(
@@ -304,8 +287,8 @@ describe('Workbench', () => {
         <Workbench />
       </MemoryRouter>
     );
-    expect(await screen.findByText(/No broker data/i)).toBeInTheDocument();
-    expect(screen.queryByText(/Open Broker Intelligence/i)).not.toBeInTheDocument();
+    expect(await screen.findByText(/Broker Evidence/i)).toBeInTheDocument();
+    expect((await screen.findAllByText('NI')).length).toBeGreaterThan(0);
   });
 
   it('links Broker Evidence to Broker Intelligence with encoded ticker', async () => {
@@ -316,10 +299,10 @@ describe('Workbench', () => {
       </MemoryRouter>
     );
 
-    const link = await screen.findByRole('link', { name: /Open Broker Intelligence/i });
+    const link = await screen.findByRole('link', { name: /Open full Broker Map/i });
     expect(link).toHaveAttribute(
       'href',
-      '/broker-intelligence?lens=stock&ticker=BBRI&days=1',
+      '/broker-intelligence?lens=stock&ticker=BBRI&days=1&date=2026-07-17',
     );
   });
 
@@ -338,7 +321,7 @@ describe('Workbench', () => {
       </MemoryRouter>
     );
     expect(await screen.findByText(/Broker Evidence/i)).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /Open Broker Intelligence/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Open full Broker Map/i })).not.toBeInTheDocument();
   });
 
   it('handles search form submission', async () => {
@@ -354,7 +337,7 @@ describe('Workbench', () => {
     fireEvent.click(screen.getByRole('button', { name: /Analyze/i }));
 
     // Analysis result renders (mock data is BBRI, but form submission works)
-    expect(await screen.findByText(/Price Chart/i)).toBeInTheDocument();
+    expect(await screen.findByTitle('TradingView chart for IDX:BBRI')).toBeInTheDocument();
   });
 
   it('shows error for invalid ticker format', () => {

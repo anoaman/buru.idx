@@ -5,6 +5,7 @@ function Question({ question }) {
       <span className="inv-kicker">CURRENT MARKET QUESTION · {question.code}</span>
       <h2>{question.title}</h2>
       <p>{question.detail}</p>
+      {question.method && <small className="inv-question__method">{question.method}</small>}
     </section>
   );
 }
@@ -40,9 +41,10 @@ export default function InvestigationBrief({ investigation }) {
             <h3 id="contradiction-title">Contradiction map</h3>
           </div>
           <div className="inv-contradictions__list">
-            {contradictions.map((item) => (
+            {contradictions.map((item, index) => (
               <article key={item.code}>
                 <span>{item.code}</span>
+                {index > 0 && <small>Also observed</small>}
                 <strong>{item.title}</strong>
                 <ul>
                   {(item.evidence || []).map((evidence) => <li key={evidence}>{evidence}</li>)}
