@@ -17,6 +17,7 @@ import { formatIDR, formatNumber, formatPrice } from '../../lib/format/market.js
 import EmptyState from '../../components/EmptyState.jsx';
 import ErrorState from '../../components/ErrorState.jsx';
 import InventoryCurve from './InventoryCurve.jsx';
+import ActorMap from './ActorMap.jsx';
 
 const ALLOWED_DAYS = [1, 7, 14, 30, 60];
 const DEFAULT_TICKER = 'BBCA';
@@ -760,6 +761,7 @@ export default function BrokerIntelligence() {
                   </span>
                 </div>
               )}
+              <ActorMap data={stockData.actorMap} />
             </section>
           ) : (
             <section className="bi-summary" aria-label="Broker window summary">

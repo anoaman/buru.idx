@@ -337,6 +337,12 @@ export function guardStockBrokerIntelligence(raw) {
       rotationHandoff: data.rotationHandoff && typeof data.rotationHandoff === 'object'
         ? data.rotationHandoff
         : null,
+      actorMap: data.actorMap && typeof data.actorMap === 'object'
+        ? {
+            ...data.actorMap,
+            replay: Array.isArray(data.actorMap.replay) ? data.actorMap.replay : [],
+          }
+        : null,
       accumulation: normalizeBrokerRows(data.accumulation, normalizeStockBrokerRow),
       distribution: normalizeBrokerRows(data.distribution, normalizeStockBrokerRow),
       brokers: normalizeBrokerRows(data.brokers, normalizeStockBrokerRow),
