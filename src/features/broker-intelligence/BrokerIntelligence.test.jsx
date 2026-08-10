@@ -446,7 +446,7 @@ describe('BrokerIntelligence', () => {
     });
     renderAt('/broker-intelligence?lens=stock&ticker=BBCA&days=30');
     await screen.findByText('Bank Central Asia');
-    expect(await screen.findByText(/Partial/i)).toBeInTheDocument();
+    expect((await screen.findAllByText(/Partial/i)).length).toBeGreaterThan(0);
     expect(screen.getByText(/820\/900/)).toBeInTheDocument();
   });
 

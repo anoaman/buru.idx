@@ -110,9 +110,15 @@ function ArchiveHealthStrip({ health, loading, error, onRetry }) {
       : 'Partial';
 
   return (
-    <div
+    <details
       className={`bi-health ${calendar?.status === 'degraded' ? 'bi-health--degraded' : ''} ${latest && !latest.complete ? 'bi-health--partial' : ''}`}
     >
+      <summary>
+        <span>Archive</span>
+        <strong className={latest?.complete ? 'text-positive' : 'text-warning'}>{latest?.date || 'Unavailable'} · {latestStatus}</strong>
+        <small>{coveragePct(data.coverage)} coverage</small>
+      </summary>
+      <div className="bi-health__details">
       <div className="bi-health__item">
         <span className="bi-health__label">Full-universe complete</span>
         <span
@@ -183,7 +189,8 @@ function ArchiveHealthStrip({ health, loading, error, onRetry }) {
           )}
         </div>
       )}
-    </div>
+      </div>
+    </details>
   );
 }
 
@@ -193,7 +200,6 @@ function RankingRow({
   primary,
   secondary,
   netValue,
-  netLots,
   sideLabel,
   avgCost,
 }) {
@@ -211,9 +217,6 @@ function RankingRow({
       <div className="bi-rank__metrics">
         <span className={`bi-rank__net tabular ${netValue > 0 ? 'text-positive' : netValue < 0 ? 'text-negative' : 'text-secondary'}`}>
           {signedValue(netValue)}
-        </span>
-        <span className={`bi-rank__lots tabular ${netLots > 0 ? 'text-positive' : netLots < 0 ? 'text-negative' : 'text-secondary'}`}>
-          {signedLots(netLots)}
         </span>
         <span className="bi-rank__side text-secondary">{sideLabel}</span>
         <span className="bi-rank__cost text-tertiary">Avg {avgCost}</span>
@@ -237,24 +240,10 @@ function SelectedDetail({ lens, row }) {
         <div className="bi-detail__title">{row.code} · {row.sourceType || '—'}</div>
         <div className="bi-detail__grid">
           <div>
-            <span className="text-tertiary">Net value</span>
-            <span className={`tabular ${row.netValue > 0 ? 'text-positive' : row.netValue < 0 ? 'text-negative' : ''}`}>
-              {signedValue(row.netValue)}
-            </span>
-          </div>
-          <div>
             <span className="text-tertiary">Net lots</span>
             <span className={`tabular ${row.netLots > 0 ? 'text-positive' : row.netLots < 0 ? 'text-negative' : ''}`}>
               {signedLots(row.netLots)}
             </span>
-          </div>
-          <div>
-            <span className="text-tertiary">Consistency</span>
-            <span>{consistencyLabel(row.consistency)}</span>
-          </div>
-          <div>
-            <span className="text-tertiary">Est. avg cost</span>
-            <span className="tabular">{avgCostLabel(row.estimatedAverageCost)}</span>
           </div>
           <div>
             <span className="text-tertiary">Est. inventory</span>
@@ -282,12 +271,6 @@ function SelectedDetail({ lens, row }) {
       <div className="bi-detail__title">{row.ticker} · {row.name}</div>
       <div className="bi-detail__grid">
         <div>
-          <span className="text-tertiary">Net value</span>
-          <span className={`tabular ${row.netValue > 0 ? 'text-positive' : row.netValue < 0 ? 'text-negative' : ''}`}>
-            {signedValue(row.netValue)}
-          </span>
-        </div>
-        <div>
           <span className="text-tertiary">Net lots</span>
           <span className={`tabular ${row.netLots > 0 ? 'text-positive' : row.netLots < 0 ? 'text-negative' : ''}`}>
             {signedLots(row.netLots)}
@@ -296,14 +279,6 @@ function SelectedDetail({ lens, row }) {
         <div>
           <span className="text-tertiary">Observed sessions</span>
           <span className="tabular">{formatNumber(row.observedSessions)}</span>
-        </div>
-        <div>
-          <span className="text-tertiary">Consistency</span>
-          <span>{consistencyLabel(row.consistency)}</span>
-        </div>
-        <div>
-          <span className="text-tertiary">Est. avg cost</span>
-          <span className="tabular">{avgCostLabel(row.estimatedAverageCost)}</span>
         </div>
         <div>
           <span className="text-tertiary">Est. inventory</span>
@@ -334,14 +309,14 @@ function Disclosures({ items }) {
       ];
 
   return (
-    <section className="bi-disclosures" aria-label="Methodology and disclosures">
-      <h3 className="bi-disclosures__title">Methodology & limitations</h3>
+    <details className="bi-disclosures" aria-label="Methodology and disclosures">
+      <summary className="bi-disclosures__title">Methodology & limitations</summary>
       <ul className="bi-disclosures__list">
         {list.map((item) => (
           <li key={item.code}>{item.label}</li>
         ))}
       </ul>
-    </section>
+    </details>
   );
 }
 
@@ -737,20 +712,6 @@ export default function BrokerIntelligence() {
                     {signedValue(stockData.observedFlow.netValue)}
                   </span>
                 </div>
-                <div>
-                  <span className="text-tertiary">Observed net lots</span>
-                  <span className={`tabular ${stockData.observedFlow.netLots > 0 ? 'text-positive' : stockData.observedFlow.netLots < 0 ? 'text-negative' : ''}`}>
-                    {signedLots(stockData.observedFlow.netLots)}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-tertiary">Gross buy value</span>
-                  <span className="tabular">{formatIDR(stockData.observedFlow.buyValue)}</span>
-                </div>
-                <div>
-                  <span className="text-tertiary">Gross sell value</span>
-                  <span className="tabular">{formatIDR(stockData.observedFlow.sellValue)}</span>
-                </div>
               </div>
               {stockData.rotationHandoff && (
                 <div className="bi-rotation" role="status">
@@ -790,12 +751,6 @@ export default function BrokerIntelligence() {
                   <span className="text-tertiary">Observed net value</span>
                   <span className={`tabular ${brokerData.summary.netValue > 0 ? 'text-positive' : brokerData.summary.netValue < 0 ? 'text-negative' : ''}`}>
                     {signedValue(brokerData.summary.netValue)}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-tertiary">Observed net lots</span>
-                  <span className={`tabular ${brokerData.summary.netLots > 0 ? 'text-positive' : brokerData.summary.netLots < 0 ? 'text-negative' : ''}`}>
-                    {signedLots(brokerData.summary.netLots)}
                   </span>
                 </div>
                 {brokerData.fingerprint && (
@@ -838,7 +793,6 @@ export default function BrokerIntelligence() {
                           primary={key}
                           secondary={lens === 'stock' ? (row.sourceType || '—') : row.name}
                           netValue={row.netValue}
-                          netLots={row.netLots}
                           sideLabel={consistencyLabel(row.consistency)}
                           avgCost={avgCostLabel(row.estimatedAverageCost)}
                         />
@@ -865,7 +819,6 @@ export default function BrokerIntelligence() {
                           primary={key}
                           secondary={lens === 'stock' ? (row.sourceType || '—') : row.name}
                           netValue={row.netValue}
-                          netLots={row.netLots}
                           sideLabel={consistencyLabel(row.consistency)}
                           avgCost={avgCostLabel(row.estimatedAverageCost)}
                         />

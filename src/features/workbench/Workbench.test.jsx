@@ -160,28 +160,17 @@ describe('Workbench', () => {
     // Exact match: the evidence-grade tooltip also names RSI14 when describing the method.
     expect(screen.getByText('RSI14')).toBeInTheDocument();
 
-    // Trade Geometry
-    expect(screen.getByText(/Risk and level map/i)).toBeInTheDocument();
-    expect(screen.getByText(/Nearest Support/i)).toBeInTheDocument();
+    // Risk geometry is consolidated into the simulator.
+    expect(screen.getByText(/Invalidation simulator/i)).toBeInTheDocument();
+    expect(screen.getByText('Support')).toBeInTheDocument();
 
     // Broker Evidence
     expect(screen.getByText(/Broker Evidence/i)).toBeInTheDocument();
 
-    // Evidence Debate
-    expect(screen.getByText(/What supports or challenges the setup/i)).toBeInTheDocument();
-    expect(screen.getByText('Supporting evidence')).toBeInTheDocument();
-    expect(screen.getByText(/Risks and contradictions/i)).toBeInTheDocument();
-
-    expect(screen.getByRole('button', { name: /Explain Evidence alignment/i })).toBeInTheDocument();
-    expect(screen.getAllByText(/not win probability/i)).toHaveLength(2);
-    expect(screen.getByRole('button', { name: /Explain Market structure/i })).toBeInTheDocument();
-    expect(screen.getByText(/not outcome probabilities/i)).toBeInTheDocument();
-
-    // Scorecard
-    expect(screen.getByRole('button', { name: /Explain Scorecard/i })).toBeInTheDocument();
-
-    // Data Quality
-    expect(screen.getByRole('heading', { name: 'Data Quality' })).toBeInTheDocument();
+    // Redundant debate, scorecard, and quality panels are replaced by one compact summary.
+    expect(screen.getByText('Regime')).toBeInTheDocument();
+    expect(screen.getByText('Data')).toBeInTheDocument();
+    expect(screen.queryByText(/What supports or challenges the setup/i)).not.toBeInTheDocument();
   });
 
   it('defaults to NALAR Analysis with accessible toggle state', async () => {

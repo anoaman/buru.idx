@@ -45,6 +45,13 @@ export default function RiskSimulator({ ticker, geometry }) {
           <p>Server-calculated position size using IDX ticks, fees, capital, and maximum risk.</p>
         </div>
       </div>
+      <div className="inv-simulator__levels" aria-label="Current risk geometry">
+        <div><span>Support</span><strong>{formatPrice(geometry.nearestSupport)}</strong></div>
+        <div><span>Resistance</span><strong>{formatPrice(geometry.nearestResistance)}</strong></div>
+        <div><span>Downside</span><strong>{formatPct(geometry.downsidePct)}</strong></div>
+        <div><span>Upside</span><strong>{formatPct(geometry.upsidePct)}</strong></div>
+        <div><span>Current net R:R</span><strong>{(best.netRR ?? best.rr)?.toFixed(2) || '—'}</strong></div>
+      </div>
       <form onSubmit={submit}>
         {[
           ['entry', 'Entry'], ['stop', 'Invalidation'], ['target', 'Target'],
