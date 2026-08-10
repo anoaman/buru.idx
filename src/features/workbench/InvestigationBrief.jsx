@@ -6,7 +6,7 @@ const PERIODS = Object.freeze([
 ]);
 
 export default function InvestigationBrief({ investigation }) {
-  const [period, setPeriod] = useState(22);
+  const [period, setPeriod] = useState(5);
   const timeline = useMemo(() => (investigation?.timeline || [])
     .filter((event) => !Number.isFinite(event.sessionsAgo) || event.sessionsAgo < period), [investigation, period]);
 

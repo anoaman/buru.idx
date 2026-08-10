@@ -33,6 +33,8 @@ describe('public API allowlist', () => {
       '/api/broker-intelligence/health',
       '/api/broker-intelligence/stock?ticker=BBCA&days=30',
       '/api/broker-intelligence/stock?ticker=BBCA&days=7&date=2026-08-07',
+      '/api/broker-intelligence/stock?ticker=BBCA&days=1&preset=3m',
+      '/api/broker-intelligence/stock?ticker=BBCA&days=1&from=2026-01-01&to=2026-08-07',
       '/api/broker-intelligence/broker?code=ZP&days=30&limit=25',
       '/api/broker-intelligence/broker?code=ZP&days=7&limit=25&date=2026-08-07',
     ];

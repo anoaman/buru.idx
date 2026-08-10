@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createChart, CandlestickSeries, HistogramSeries, LineSeries } from 'lightweight-charts';
 import { formatDate, formatPrice } from '../../lib/format/market.js';
 
@@ -11,12 +11,20 @@ const MA_COLORS = { ma5: '#60a5fa', ma10: '#a78bfa', ma20: '#fbbf24', ma50: '#f9
 
 export default function MarketChart({ chart, geometry, ticker }) {
   const containerRef = useRef(null);
+  const sectionRef = useRef(null);
+  const [fullscreen, setFullscreen] = useState(false);
+
+  useEffect(() => {
+    const sync = () => setFullscreen(document.fullscreenElement === sectionRef.current);
+    document.addEventListener('fullscreenchange', sync);
+    return () => document.removeEventListener('fullscreenchange', sync);
+  }, []);
 
   useEffect(() => {
     if (!containerRef.current || !chart?.candles?.length) return undefined;
     const instance = createChart(containerRef.current, {
       width: containerRef.current.clientWidth,
-      height: 480,
+      height: containerRef.current.clientHeight || 480,
       layout: { background: { color: 'transparent' }, textColor: COLORS.text, fontSize: 11 },
       grid: { vertLines: { color: COLORS.grid }, horzLines: { color: COLORS.grid } },
       rightPriceScale: { borderColor: COLORS.border },
@@ -42,6 +50,9 @@ export default function MarketChart({ chart, geometry, ticker }) {
 
     (chart.levels?.supports || []).slice(0, 3).forEach((level) => candles.createPriceLine({ price: level.price, color: COLORS.support, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: `S ${formatPrice(level.price)}` }));
     (chart.levels?.resistances || []).slice(0, 3).forEach((level) => candles.createPriceLine({ price: level.price, color: COLORS.resistance, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: `R ${formatPrice(level.price)}` }));
+    if (!(chart.levels?.resistances || []).length && ticker?.high > ticker?.close) {
+      candles.createPriceLine({ price: ticker.high, color: '#fbbf24', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: `SESSION HIGH · UNCONFIRMED ${formatPrice(ticker.high)}` });
+    }
     const best = geometry?.bestSetup;
     const tradeLines = [
       [ticker?.close, COLORS.entry, 'ENTRY'], [best?.stop, COLORS.stop, 'INVALIDATION'], [best?.target, COLORS.target, `TARGET · R:R ${(best?.netRR ?? best?.rr)?.toFixed(2) || '—'}`],
@@ -50,7 +61,7 @@ export default function MarketChart({ chart, geometry, ticker }) {
 
     instance.timeScale().fitContent();
     const observer = new ResizeObserver(([entry]) => {
-      if (entry?.contentRect.width) instance.applyOptions({ width: entry.contentRect.width });
+      if (entry?.contentRect.width) instance.applyOptions({ width: entry.contentRect.width, height: entry.contentRect.height || 480 });
     });
     observer.observe(containerRef.current);
     return () => { observer.disconnect(); instance.remove(); };
@@ -58,10 +69,13 @@ export default function MarketChart({ chart, geometry, ticker }) {
 
   if (!chart?.candles?.length) return <div className="wb-market-chart wb-market-chart--empty">Chart history unavailable.</div>;
   return (
-    <section className="wb-market-chart">
+    <section className="wb-market-chart" ref={sectionRef}>
       <header>
         <div><strong>NALAR Market Chart</strong><span>TradingView Lightweight Charts · data through {formatDate(chart.source?.lastDate)}</span></div>
-        <a href={`https://www.tradingview.com/chart/?symbol=IDX%3A${encodeURIComponent(ticker?.symbol || '')}`} target="_blank" rel="noopener noreferrer">Open full TradingView ↗</a>
+        <div className="wb-market-chart__actions">
+          <button type="button" onClick={() => (fullscreen ? document.exitFullscreen() : sectionRef.current?.requestFullscreen())}>{fullscreen ? 'Exit full screen' : 'Full screen'}</button>
+          <a href={`https://www.tradingview.com/chart/?symbol=IDX%3A${encodeURIComponent(ticker?.symbol || '')}`} target="_blank" rel="noopener noreferrer">Open full TradingView ↗</a>
+        </div>
       </header>
       <div className="wb-market-chart__canvas" ref={containerRef} />
       <footer>

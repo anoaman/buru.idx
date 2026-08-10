@@ -198,6 +198,8 @@ describe('Workbench', () => {
     expect(await screen.findByText('NALAR Market Chart')).toBeInTheDocument();
     expect(screen.getAllByText('MA5').length).toBeGreaterThan(0);
     expect(screen.getAllByText('MA200').length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'Full screen' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '1W' })).toHaveClass('is-active');
     expect(screen.queryByRole('button', { name: /NALAR Analysis/i })).not.toBeInTheDocument();
   });
 

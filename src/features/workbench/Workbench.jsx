@@ -157,8 +157,6 @@ export default function Workbench() {
       {state.data && !state.loading && (
         <div className="wb-result">
           <TickerHeader ticker={state.data.ticker} priceHistory={state.data.priceHistory} />
-          <InvestigationBrief investigation={state.data.investigation} />
-
           <div className="wb-chart-panel">
             <MarketChart chart={state.data.chart} geometry={state.data.riskGeometry} ticker={state.data.ticker} />
           </div>
@@ -186,6 +184,8 @@ export default function Workbench() {
               <BrokerEvidence broker={state.data.broker} />
             </div>
           </details>
+
+          <InvestigationBrief investigation={state.data.investigation} />
         </div>
       )}
 
