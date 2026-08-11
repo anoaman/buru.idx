@@ -9,14 +9,24 @@ import { useAnalysisContext } from '../../components/AnalysisContext.jsx';
 
 const ALL_LANES = 'all';
 const RECIPES = [
-  ['quiet_accumulation', 'Quiet accumulation'],
-  ['dominant_broker', 'Dominant broker'],
-  ['support_compression', 'Support compression'],
+  { id: 'quiet_accumulation', label: 'Quiet accumulation', description: 'Combines persistent broker concentration with repeated support and a narrow recent trading range.' },
+  { id: 'dominant_broker', label: 'Dominant broker', description: 'Prioritizes stocks where one broker accumulated materially more than the second-largest positive buyer.' },
+  { id: 'support_compression', label: 'Support compression', description: 'Looks for repeated one-month support while recent candles remain inside a controlled sideways range.' },
 ];
 const DEFAULT_SCOUT_FILTERS = Object.freeze({
   recipe: 'quiet_accumulation', brokerSessions: 7, consolidationSessions: 10,
   supportSessions: 20, maxPrice: 1000, minAverageValue: 500_000_000, limit: 10,
+  useBroker: true, useSupport: true, useSideways: true, useMaxPrice: true, useLiquidity: true,
 });
+const RECIPE_CONDITIONS = Object.freeze({
+  quiet_accumulation: { useBroker: true, useSupport: true, useSideways: true },
+  dominant_broker: { useBroker: true, useSupport: false, useSideways: false },
+  support_compression: { useBroker: false, useSupport: true, useSideways: true },
+});
+
+function numericText(value) {
+  return Number.isFinite(value) ? value.toLocaleString('en-US') : '';
+}
 
 function ScanProvenance({ run, tally, candidateCount }) {
   if (!run) return null;
@@ -122,8 +132,17 @@ function Scout({ onInvestigate, onActors }) {
   const [filters, setFilters] = useState(DEFAULT_SCOUT_FILTERS);
   const [state, setState] = useState({ loading: false, error: null, data: null });
   const update = (key) => (event) => {
-    const value = event.target.type === 'number' ? Number(event.target.value) : event.target.value;
+    const value = event.target.type === 'checkbox'
+      ? event.target.checked
+      : event.target.type === 'text'
+        ? Number(event.target.value.replace(/[^0-9]/g, ''))
+        : Number(event.target.value);
     setFilters((current) => ({ ...current, [key]: value }));
+  };
+  const recipe = RECIPES.find((item) => item.id === filters.recipe) || RECIPES[0];
+  const selectRecipe = (event) => {
+    const recipeId = event.target.value;
+    setFilters((current) => ({ ...current, recipe: recipeId, ...RECIPE_CONDITIONS[recipeId] }));
   };
   const run = (event) => {
     event?.preventDefault();
@@ -136,13 +155,19 @@ function Scout({ onInvestigate, onActors }) {
   return (
     <div className="scout-view">
       <form className="scout-controls" onSubmit={run}>
-        <label>Recipe<select value={filters.recipe} onChange={update('recipe')}>{RECIPES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-        <label>Broker sessions<input type="number" min="3" max="20" value={filters.brokerSessions} onChange={update('brokerSessions')} /></label>
-        <label>Sideways candles<input type="number" min="5" max="20" value={filters.consolidationSessions} onChange={update('consolidationSessions')} /></label>
-        <label>Maximum price<input type="number" min="50" max="10000" step="10" value={filters.maxPrice} onChange={update('maxPrice')} /></label>
-        <label>Minimum avg value<input type="number" min="0" step="100000000" value={filters.minAverageValue} onChange={update('minAverageValue')} /></label>
+        <label className="scout-controls__recipe">Recipe<select value={filters.recipe} onChange={selectRecipe}>{RECIPES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+        <label className="scout-toggle"><input type="checkbox" checked={filters.useBroker} onChange={update('useBroker')} /><span>Broker concentration</span></label>
+        <label className={!filters.useBroker ? 'scout-field is-disabled' : 'scout-field'}>Broker sessions<input type="number" min="3" max="20" disabled={!filters.useBroker} value={filters.brokerSessions} onChange={update('brokerSessions')} /></label>
+        <label className="scout-toggle"><input type="checkbox" checked={filters.useSupport} onChange={update('useSupport')} /><span>Near repeated support</span></label>
+        <label className="scout-toggle"><input type="checkbox" checked={filters.useSideways} onChange={update('useSideways')} /><span>Sideways compression</span></label>
+        <label className={!filters.useSideways ? 'scout-field is-disabled' : 'scout-field'}>Sideways candles<input type="number" min="5" max="20" disabled={!filters.useSideways} value={filters.consolidationSessions} onChange={update('consolidationSessions')} /></label>
+        <label className="scout-toggle"><input type="checkbox" checked={filters.useMaxPrice} onChange={update('useMaxPrice')} /><span>Apply maximum price</span></label>
+        <label className={!filters.useMaxPrice ? 'scout-field is-disabled' : 'scout-field'}>Maximum price<input type="text" inputMode="numeric" disabled={!filters.useMaxPrice} value={numericText(filters.maxPrice)} onChange={update('maxPrice')} /></label>
+        <label className="scout-toggle"><input type="checkbox" checked={filters.useLiquidity} onChange={update('useLiquidity')} /><span>Apply liquidity floor</span></label>
+        <label className={!filters.useLiquidity ? 'scout-field is-disabled' : 'scout-field'}>Minimum avg value<input type="text" inputMode="numeric" disabled={!filters.useLiquidity} value={numericText(filters.minAverageValue)} onChange={update('minAverageValue')} /></label>
         <button type="submit" disabled={state.loading}>{state.loading ? 'Screening…' : 'Run Scout'}</button>
       </form>
+      <div className="scout-recipe-explanation"><strong>{recipe.label}</strong><p>{recipe.description}</p><span>Every checked condition is required. Uncheck any condition you do not want Scout to apply.</span></div>
       <p className="scout-method">No AI and no live fetch. Scout applies fixed, auditable rules to cached EOD prices and observed broker flow.</p>
       {state.error && <ErrorState title="Scout unavailable" error={state.error} onRetry={run} />}
       {!state.data && !state.loading && !state.error && <EmptyState title="Choose a recipe" message="Run Scout to screen the cached IDX universe. Nothing is ranked in the browser." />}

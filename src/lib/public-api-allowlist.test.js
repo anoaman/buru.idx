@@ -41,7 +41,7 @@ describe('public API allowlist', () => {
       '/api/broker-intelligence/stock?ticker=BBCA&days=1&from=2026-01-01&to=2026-08-07',
       '/api/broker-intelligence/broker?code=ZP&days=30&limit=25',
       '/api/broker-intelligence/broker?code=ZP&days=7&limit=25&date=2026-08-07',
-      '/api/radar/scout?recipe=dominant_broker&brokerSessions=7&consolidationSessions=10&supportSessions=20&maxPrice=1000&minAverageValue=500000000&limit=10',
+      '/api/radar/scout?recipe=dominant_broker&brokerSessions=7&consolidationSessions=10&supportSessions=20&maxPrice=1000&minAverageValue=500000000&limit=10&useBroker=true&useSupport=false&useSideways=false&useMaxPrice=true&useLiquidity=true',
     ];
     for (const requested of clientRequests) {
       const result = resolvePublicApiRequest('GET', requested);

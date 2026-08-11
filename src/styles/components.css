@@ -2440,12 +2440,20 @@
 .radar-row__actions, .case-card__actions { display: flex; gap: 6px; }
 .radar-row__actions button, .case-card__actions button { border: 1px solid var(--border-default); background: transparent; color: var(--text-secondary); padding: 7px 9px; border-radius: var(--radius-sm); cursor: pointer; }
 .radar-row__actions button:first-child { border-color: var(--color-accent); color: var(--color-accent); }
-.scout-controls { display: grid; grid-template-columns: 1.4fr repeat(4, minmax(120px, .7fr)) auto; gap: 8px; align-items: end; padding: 12px; border: 1px solid var(--border-default); background: var(--bg-elevated); }
+.scout-controls { display: grid; grid-template-columns: repeat(5, minmax(140px, 1fr)); gap: 10px; align-items: end; padding: 12px; border: 1px solid var(--border-default); background: var(--bg-elevated); }
 .scout-controls label { display: grid; gap: 5px; color: var(--text-tertiary); font-size: 9px; text-transform: uppercase; letter-spacing: .06em; }
-.scout-controls input, .scout-controls select { min-width: 0; border: 1px solid var(--border-default); background: var(--bg-base); color: var(--text-primary); padding: 8px; border-radius: var(--radius-sm); }
+.scout-controls input:not([type="checkbox"]), .scout-controls select { min-width: 0; border: 1px solid var(--border-default); background: var(--bg-base); color: var(--text-primary); padding: 8px; border-radius: var(--radius-sm); }
+.scout-controls__recipe { grid-column: span 2; }
+.scout-controls .scout-toggle { display: flex; align-items: center; gap: 7px; min-height: 34px; color: var(--text-secondary); cursor: pointer; }
+.scout-toggle input { accent-color: var(--color-accent); }
+.scout-field.is-disabled { opacity: .42; }
 .scout-controls button { border: 1px solid var(--color-accent); background: transparent; color: var(--color-accent); padding: 9px 14px; border-radius: var(--radius-sm); cursor: pointer; }
 .scout-controls button:disabled { opacity: .55; cursor: wait; }
 .scout-method { color: var(--text-tertiary); font-size: 10px; margin: 8px 0 var(--space-3); }
+.scout-recipe-explanation { margin: 10px 0 0; padding-left: 10px; border-left: 2px solid var(--color-accent); }
+.scout-recipe-explanation strong { font-size: 12px; }
+.scout-recipe-explanation p { margin: 3px 0; color: var(--text-secondary); font-size: 11px; }
+.scout-recipe-explanation span { color: var(--text-tertiary); font-size: 9px; }
 .scout-list { display: grid; gap: 10px; }
 .scout-card { border: 1px solid var(--border-default); padding: 13px; background: rgba(255,255,255,.012); }
 .scout-card__identity { display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 8px; padding-bottom: 10px; border-bottom: 1px solid var(--border-default); }
@@ -2481,6 +2489,7 @@
 
 @media (max-width: 900px) {
   .scout-controls { grid-template-columns: repeat(2, 1fr); }
+  .scout-controls__recipe { grid-column: span 2; }
   .scout-controls button { grid-column: 1 / -1; }
   .scout-card__metrics { grid-template-columns: repeat(3, 1fr); }
   .radar-row { grid-template-columns: 32px 80px 90px 1fr; }
@@ -2489,6 +2498,7 @@
 }
 @media (max-width: 640px) {
   .scout-controls, .scout-card__evidence { grid-template-columns: 1fr; }
+  .scout-controls__recipe { grid-column: auto; }
   .scout-controls button { grid-column: auto; }
   .scout-card__identity div { display: grid; gap: 2px; }
   .scout-card__metrics { grid-template-columns: repeat(2, 1fr); }

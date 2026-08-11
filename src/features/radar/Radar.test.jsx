@@ -210,12 +210,17 @@ describe('Radar', () => {
 
     renderRadar();
     fireEvent.click(screen.getByRole('tab', { name: 'Scout' }));
+    expect(screen.getByText(/Combines persistent broker concentration/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Maximum price')).toHaveValue('1,000');
+    expect(screen.getByLabelText('Minimum avg value')).toHaveValue('500,000,000');
+    fireEvent.click(screen.getByLabelText('Broker concentration'));
+    expect(screen.getByLabelText('Broker sessions')).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Run Scout' }));
 
     expect(await screen.findByText('AHAP')).toBeInTheDocument();
     expect(screen.getByText('CC accumulated Rp1200M, 4.0× YP, across 6/7 sessions.')).toBeInTheDocument();
     expect(screen.getByText('CC distributed in 1 observed session.')).toBeInTheDocument();
     expect(screen.getByText('1 matched / 900 evaluated')).toBeInTheDocument();
-    expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({ recipe: 'quiet_accumulation', brokerSessions: 7 }));
+    expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({ recipe: 'quiet_accumulation', brokerSessions: 7, useBroker: false }));
   });
 });
