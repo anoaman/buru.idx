@@ -11,8 +11,8 @@ html, body, #root {
   background: var(--bg-base);
   color: var(--text-primary);
   font-family: var(--font-ui);
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: var(--type-body);
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -121,7 +121,7 @@ button {
   gap: var(--space-1);
   padding: 2px 8px;
   border-radius: var(--radius-sm);
-  font-size: 11px;
+  font-size: var(--type-meta);
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -158,6 +158,6 @@ button {
 /* Responsive breakpoints */
 @media (max-width: 768px) {
   html, body, #root {
-    font-size: 12px;
+    font-size: var(--type-caption);
   }
 }

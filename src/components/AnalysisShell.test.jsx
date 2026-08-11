@@ -57,11 +57,25 @@ describe('AnalysisShell', () => {
     expect(screen.getByRole('link', { name: /Watchlist/i })).toBeInTheDocument();
   });
 
-  it('defaults to Paper Ledger and persists the optional Graphite theme', () => {
+  it('defaults to Graphite Ledger when no preference is saved', () => {
     renderShell();
-    expect(document.documentElement).toHaveAttribute('data-theme', 'light');
-    fireEvent.click(screen.getByRole('button', { name: 'Switch to Graphite Ledger' }));
     expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
     expect(localStorage.getItem('nalar-theme')).toBe('dark');
+  });
+
+  it('keeps a saved Paper Ledger preference', () => {
+    localStorage.setItem('nalar-theme', 'light');
+    renderShell();
+    expect(document.documentElement).toHaveAttribute('data-theme', 'light');
+    expect(screen.getByRole('button', { name: 'Switch to Graphite Ledger' })).toBeInTheDocument();
+  });
+
+  it('keeps a saved Graphite Ledger preference and can switch to Paper', () => {
+    localStorage.setItem('nalar-theme', 'dark');
+    renderShell();
+    expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
+    fireEvent.click(screen.getByRole('button', { name: 'Switch to Paper Ledger' }));
+    expect(document.documentElement).toHaveAttribute('data-theme', 'light');
+    expect(localStorage.getItem('nalar-theme')).toBe('light');
   });
 });

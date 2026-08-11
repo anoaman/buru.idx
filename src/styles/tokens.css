@@ -1,15 +1,39 @@
 :root {
   color-scheme: light;
 
-  /* Paper Ledger — light default workstation surfaces */
+  /* Paper Ledger — light workstation surfaces */
   --bg-base: #f3f1eb;
   --bg-elevated: #fffefa;
   --bg-surface: #f8f7f2;
   --bg-hover: #eeece5;
   --bg-active: #e6e3d9;
-  --bg-chart: #0c0f12;
   --bg-sunken: #eceae3;
   --bg-sticky: #f8f7f2;
+
+  /* Chart canvas follows the active theme (light chart in Paper) */
+  --bg-chart: #f7f5ef;
+  --chart-bg: var(--bg-chart);
+  --chart-text: #4f575d;
+  --chart-grid: rgba(31, 38, 43, 0.08);
+  --chart-border: rgba(31, 38, 43, 0.16);
+  --chart-crosshair: rgba(31, 38, 43, 0.45);
+  --chart-up: #18784a;
+  --chart-down: #b43f38;
+  --chart-volume-up: rgba(24, 120, 74, 0.28);
+  --chart-volume-down: rgba(180, 63, 56, 0.28);
+  --chart-support: #5d6a73;
+  --chart-resistance: #5d6a73;
+  --chart-target: #18784a;
+  --chart-stop: #a96808;
+  --chart-chrome-bg: #fffefa;
+  --chart-chrome-border: rgba(31, 38, 43, 0.14);
+  --chart-chrome-text: #4f575d;
+  --chart-chrome-muted: #656d73;
+  --chart-ma-5: #2563eb;
+  --chart-ma-10: #7c3aed;
+  --chart-ma-20: #b45309;
+  --chart-ma-50: #c2410c;
+  --chart-ma-200: #b91c1c;
 
   --border-subtle: rgba(31, 38, 43, 0.08);
   --border-default: rgba(31, 38, 43, 0.14);
@@ -17,8 +41,8 @@
 
   --text-primary: #1f262b;
   --text-secondary: #4f575d;
-  --text-tertiary: #656d73;
-  --text-disabled: #a7aaa7;
+  --text-tertiary: #5c656c;
+  --text-disabled: #7a8288;
 
   --color-positive: #18784a;
   --color-positive-dim: rgba(24, 120, 74, 0.10);
@@ -44,6 +68,15 @@
   --font-mono: ui-monospace, 'SF Mono-Regular', Menlo, monospace;
   --font-tabular: var(--font-ui);
 
+  /* Type scale — workstation density without illegible microcopy */
+  --type-meta: 11px;       /* secondary metadata only */
+  --type-caption: 12px;    /* labels, captions */
+  --type-body: 13px;       /* default UI */
+  --type-control: 13px;    /* inputs, buttons, filter labels */
+  --type-cell: 13px;       /* table cells */
+  --type-emphasis: 14px;   /* emphasized values */
+  --type-floor: var(--type-meta);
+
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -65,7 +98,6 @@
   --density-loose: 44px;
   --panel-shadow: none;
 
-  --type-floor: 10.5px;
   --motion-fast: 120ms;
   --motion-base: 180ms;
   --motion-slow: 280ms;
@@ -77,7 +109,7 @@
   --warning: var(--color-warning);
 }
 
-/* Graphite Ledger — redesigned dark theme (opt-in via data-theme / nalar-theme) */
+/* Graphite Ledger — dark-first redesigned theme */
 :root[data-theme='dark'] {
   color-scheme: dark;
   --bg-base: #0c0e10;
@@ -85,16 +117,38 @@
   --bg-surface: #191d21;
   --bg-hover: #1f2429;
   --bg-active: #272d33;
-  --bg-chart: #08090b;
   --bg-sunken: #08090b;
   --bg-sticky: #191e23;
+  --bg-chart: #08090b;
+  --chart-bg: var(--bg-chart);
+  --chart-text: #98a0a8;
+  --chart-grid: rgba(255, 255, 255, 0.04);
+  --chart-border: rgba(255, 255, 255, 0.10);
+  --chart-crosshair: rgba(228, 231, 234, 0.55);
+  --chart-up: #3fae6f;
+  --chart-down: #d9564d;
+  --chart-volume-up: rgba(52, 211, 153, 0.30);
+  --chart-volume-down: rgba(248, 113, 113, 0.30);
+  --chart-support: #77828a;
+  --chart-resistance: #77828a;
+  --chart-target: #3fae6f;
+  --chart-stop: #d99a34;
+  --chart-chrome-bg: #14181c;
+  --chart-chrome-border: rgba(255, 255, 255, 0.09);
+  --chart-chrome-text: #e4e7ea;
+  --chart-chrome-muted: #98a0a8;
+  --chart-ma-5: #60a5fa;
+  --chart-ma-10: #a78bfa;
+  --chart-ma-20: #fbbf24;
+  --chart-ma-50: #f97316;
+  --chart-ma-200: #ef4444;
   --border-subtle: #191e23;
   --border-default: #232830;
   --border-strong: #2f3641;
   --text-primary: #e4e7ea;
   --text-secondary: #c3c9ce;
   --text-tertiary: #98a0a8;
-  --text-disabled: #565d64;
+  --text-disabled: #6b737b;
   --color-positive: #3fae6f;
   --color-positive-dim: rgba(63, 174, 111, 0.10);
   --color-negative: #d9564d;

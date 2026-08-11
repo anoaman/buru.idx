@@ -165,6 +165,8 @@ describe('Workbench', () => {
     );
     expect(screen.getByText(/Enter a ticker to analyze/i)).toBeInTheDocument();
     expect(screen.getByText(/command bar/i)).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/TICKER/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^OPEN$/i })).not.toBeInTheDocument();
   });
 
   it('renders loading state', () => {

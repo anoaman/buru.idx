@@ -37,9 +37,11 @@ case tracking from the retiring cockpit without duplicating backend engines.
 - `src/components/AnalysisShell.jsx` owns private navigation and the global
   ticker command bar. Broker date windows are owned by Broker Flow, not the
   shell. Theme preference uses `localStorage` key `nalar-theme` and
-  `document.documentElement.dataset.theme`. First visit defaults to Paper
-  Ledger (`light`); Graphite Ledger is the redesigned `dark` theme. Chart
-  canvas stays dark in both themes.
+  `document.documentElement.dataset.theme`. First visit defaults to Graphite
+  Ledger (`dark`); Paper Ledger is the redesigned `light` theme. Chart canvas
+  follows the active theme (light chart in Paper, dark chart in Graphite).
+  Stock Analysis uses the global command-bar ticker field only — there is no
+  page-level duplicate search.
 - `src/components/AnalysisContext.jsx` owns cross-route ticker, window and as-of
   context. Feature pages remain responsible for their own network state.
 - `src/features/radar/` and `src/features/cases/` read the scan and case

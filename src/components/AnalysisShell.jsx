@@ -51,7 +51,10 @@ function CommandBar() {
 
 export default function AnalysisShell({ children }) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [theme, setTheme] = useState(() => localStorage.getItem('nalar-theme') || 'light');
+  const [theme, setTheme] = useState(() => {
+    const saved = localStorage.getItem('nalar-theme');
+    return saved === 'light' || saved === 'dark' ? saved : 'dark';
+  });
   const location = useLocation();
   const current = NAV.find((item) => location.pathname.startsWith(item.path)) || NAV[1];
   const { investigationUrl, brokerFlowUrl } = useAnalysisContext();
