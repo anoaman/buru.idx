@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>NALAR — Screener / Custom Screener</title>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+Antique:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --n-bg: #0c0e10;
+    --n-bg-sunken: #08090b;
+    --n-panel: #14181c;
+    --n-panel-raised: #191d21;
+    --n-panel-head: #191e23;
+    --n-panel-quiet: #0f1216;
+    --n-line: #232830;
+    --n-line-soft: #191e23;
+    --n-line-strong: #2f3641;
+    --n-text: #e4e7ea;
+    --n-text-2: #c3c9ce;
+    --n-text-3: #98a0a8;
+    --n-text-4: #6a727a;
+    --n-text-5: #565d64;
+    --n-up: #3fae6f;
+    --n-down: #d9564d;
+    --n-warn: #d99a34;
+    --n-accent: #a8c93a;
+    --n-accent-hover: #b6d84a;
+    --n-accent-on: #0c0e10;
+    --n-accent-bg: rgba(168, 201, 58, 0.10);
+    --n-accent-bg-sel: rgba(168, 201, 58, 0.06);
+    --n-accent-border: rgba(168, 201, 58, 0.40);
+    --n-bar: #7f8a96;
+    --n-bar-track: #232830;
+    --rail: 190px;
+    --font-antique: 'Zen Kaku Gothic Antique', sans-serif;
+    --font-new: 'Zen Kaku Gothic New', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    min-height: 100%;
+    background: var(--n-bg);
+    color: var(--n-text);
+    font-family: var(--font-new);
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.4;
+    -webkit-font-smoothing: antialiased;
+  }
+  body { min-width: 1024px; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  .shell {
+    display: flex;
+    min-height: 100vh;
+    width: 100%;
+    max-width: 1920px;
+    margin: 0 auto;
+  }
+
+  .rail {
+    width: var(--rail);
+    flex: 0 0 var(--rail);
+    background: var(--n-bg-sunken);
+    border-right: 1px solid var(--n-line);
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    z-index: 20;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 14px 18px;
+  }
+  .brand-mark {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    border: 1px solid #3f4a1d;
+    background: #1a2010;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-antique);
+    font-weight: 700;
+    font-size: 11px;
+    color: var(--n-accent);
+    flex-shrink: 0;
+  }
+  .brand-text { display: flex; flex-direction: column; gap: 1px; }
+  .brand-name {
+    font-family: var(--font-antique);
+    font-weight: 700;
+    font-size: 12.5px;
+    letter-spacing: 0.06em;
+    color: var(--n-text);
+    line-height: 1.2;
+  }
+  .brand-sub {
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    color: var(--n-text-4);
+    text-transform: uppercase;
+    line-height: 1.2;
+  }
+
+  .nav { flex: 1; padding: 4px 8px 12px; display: flex; flex-direction: column; gap: 2px; }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    border-radius: 6px;
+    color: var(--n-text-3);
+    font-size: 13px;
+    font-weight: 400;
+    text-decoration: none;
+    border-left: 2px solid transparent;
+  }
+  .nav-item:hover { background: var(--n-panel); color: var(--n-text-2); }
+  .nav-item.active {
+    background: var(--n-accent-bg);
+    border-left-color: var(--n-accent);
+    color: var(--n-text);
+    font-weight: 500;
+  }
+  .nav-group { display: flex; flex-direction: column; gap: 1px; }
+  .nav-sub {
+    display: block;
+    padding: 6px 10px 6px 22px;
+    border-radius: 6px;
+    color: var(--n-text-3);
+    font-size: 12px;
+    text-decoration: none;
+  }
+  .nav-sub:hover { background: var(--n-panel); color: var(--n-text-2); }
+  .nav-sub.active {
+    background: var(--n-panel);
+    color: var(--n-text-2);
+  }
+  .nav-pill {
+    font-size: 10.5px;
+    font-variant-numeric: tabular-nums;
+    color: var(--n-text-4);
+    background: var(--n-panel);
+    border: 1px solid var(--n-line);
+    border-radius: 3px;
+    padding: 1px 6px;
+    line-height: 1.3;
+  }
+
+  .rail-footer {
+    border-top: 1px solid var(--n-line);
+    padding: 12px 14px 16px;
+  }
+  .rail-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11.5px;
+    color: var(--n-text-3);
+    margin-bottom: 4px;
+  }
+  .rail-status .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--n-text-5);
+    flex-shrink: 0;
+  }
+  .rail-clock {
+    font-size: 10.5px;
+    color: var(--n-text-5);
+    font-variant-numeric: tabular-nums;
+    padding-left: 14px;
+  }
+
+  .main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .topbar {
+    height: 46px;
+    flex: 0 0 46px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 18px;
+    background: var(--n-bg);
+    border-bottom: 1px solid var(--n-line);
+  }
+  .crumb {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+    color: var(--n-text-4);
+  }
+  .crumb .sep { color: var(--n-text-5); }
+  .crumb .cur { font-size: 12px; color: var(--n-text-2); }
+
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .ticker-field {
+    width: 224px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 8px 0 10px;
+    background: var(--n-bg-sunken);
+    border: 1px solid var(--n-line-strong);
+    border-radius: 6px;
+  }
+  .ticker-field .val {
+    font-family: var(--font-antique);
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.03em;
+    color: var(--n-text);
+  }
+  .kbd {
+    font-size: 10.5px;
+    color: var(--n-text-5);
+    background: var(--n-panel);
+    border: 1px solid var(--n-line);
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-variant-numeric: tabular-nums;
+  }
+  .btn {
+    height: 30px;
+    padding: 0 12px;
+    border-radius: 6px;
+    font-family: var(--font-new);
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: default;
+    border: 1px solid transparent;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+  }
+  .btn-secondary {
+    background: var(--n-panel-raised);
+    border-color: var(--n-line-strong);
+    color: var(--n-text-2);
+  }
+  .btn-ghost {
+    background: transparent;
+    border-color: transparent;
+    color: var(--n-text-3);
+  }
+  .btn-primary {
+    background: var(--n-accent);
+    border-color: var(--n-accent);
+    color: var(--n-accent-on);
+  }
+  .btn-mini {
+    height: 26px;
+    padding: 0 10px;
+    font-size: 11.5px;
+  }
+  .btn-disabled {
+    background: var(--n-panel);
+    border-color: var(--n-line);
+    color: var(--n-text-5);
+    cursor: not-allowed;
+  }
+  .avatar {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--n-panel-raised);
+    border: 1px solid var(--n-line);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10.5px;
+    font-weight: 500;
+    color: var(--n-text-3);
+    letter-spacing: 0.02em;
+  }
+
+  .content {
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .page-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .page-title {
+    font-family: var(--font-antique);
+    font-weight: 700;
+    font-size: 22px;
+    color: var(--n-text);
+    line-height: 1.15;
+    margin-bottom: 6px;
+  }
+  .page-desc {
+    font-size: 12.5px;
+    color: var(--n-text-3);
+    max-width: 660px;
+    line-height: 1.45;
+  }
+
+  .tabs {
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid var(--n-line);
+    gap: 0;
+  }
+  .tab {
+    height: 36px;
+    padding: 0 14px;
+    display: inline-flex;
+    align-items: center;
+    font-size: 13px;
+    color: var(--n-text-3);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .tab.active {
+    color: var(--n-text);
+    font-weight: 500;
+    border-bottom-color: var(--n-accent);
+  }
+
+  .body-2col {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+  }
+
+  /* —— Builder —— */
+  .builder {
+    width: 352px;
+    flex: 0 0 352px;
+    background: var(--n-panel);
+    border: 1px solid var(--n-line);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .builder-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--n-line);
+  }
+  .builder-title {
+    font-family: var(--font-antique);
+    font-weight: 500;
+    font-size: 15px;
+    color: var(--n-text);
+  }
+  .builder-meta {
+    font-size: 11.5px;
+    color: var(--n-text-4);
+  }
+
+  .cond {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--n-line-soft);
+  }
+  .cond:last-of-type { border-bottom: none; }
+  .cond.off { opacity: 0.55; }
+  .cond-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .cond-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--n-text);
+    margin-bottom: 2px;
+  }
+  .cond-desc {
+    font-size: 11.5px;
+    color: var(--n-text-4);
+    line-height: 1.35;
+    max-width: 260px;
+  }
+  .toggle {
+    width: 32px;
+    height: 18px;
+    border-radius: 9px;
+    position: relative;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .toggle.on { background: var(--n-accent); }
+  .toggle.off { background: var(--n-line); }
+  .toggle .knob {
+    position: absolute;
+    top: 2px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+  }
+  .toggle.on .knob {
+    right: 2px;
+    background: var(--n-accent-on);
+  }
+  .toggle.off .knob {
+    left: 2px;
+    background: var(--n-text-5);
+  }
+  .cond-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  .chip {
+    height: 26px;
+    padding: 0 8px;
+    border-radius: 6px;
+    border: 1px solid var(--n-line-strong);
+    background: var(--n-bg-sunken);
+    color: var(--n-text-2);
+    font-size: 12px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .chip.select::after {
+    content: "▾";
+    font-size: 10.5px;
+    color: var(--n-text-4);
+  }
+  .chip.input {
+    min-width: 52px;
+    justify-content: flex-end;
+  }
+  .chip.input.wide { min-width: 110px; }
+  .chip.off-dash {
+    border-style: dashed;
+    color: var(--n-text-4);
+    background: transparent;
+  }
+  .unit {
+    font-size: 11.5px;
+    color: var(--n-text-4);
+  }
+
+  .builder-foot {
+    border-top: 1px solid var(--n-line);
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .match-line {
+    font-size: 12.5px;
+    color: var(--n-text-2);
+  }
+  .match-line strong {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--n-text);
+  }
+  .note-mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 10.5px;
+    color: var(--n-text-5);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .builder-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .builder-actions .grow { flex: 1; min-width: 4px; }
+
+  /* —— Results —— */
+  .results {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .results-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .results-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .results-title {
+    font-family: var(--font-antique);
+    font-weight: 500;
+    font-size: 15px;
+    color: var(--n-text);
+  }
+  .results-meta {
+    font-size: 11.5px;
+    color: var(--n-text-4);
+  }
+  .tier-chips {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tier {
+    height: 24px;
+    padding: 0 8px;
+    border-radius: 3px;
+    border: 1px solid var(--n-line-strong);
+    background: transparent;
+    color: var(--n-text-3);
+    font-size: 11.5px;
+    font-variant-numeric: tabular-nums;
+    display: inline-flex;
+    align-items: center;
+  }
+  .tier.active {
+    background: var(--n-accent-bg-sel);
+    border-color: var(--n-accent-border);
+    color: var(--n-text);
+  }
+  .results-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .sort-label {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--n-text-3);
+  }
+
+  .table-wrap {
+    background: var(--n-panel);
+    border: 1px solid var(--n-line);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  table.screen {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+  table.screen thead th {
+    height: 34px;
+    background: var(--n-panel-head);
+    border-bottom: 1px solid var(--n-line-strong);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--n-text-3);
+    text-align: left;
+    padding: 0 8px;
+    white-space: nowrap;
+  }
+  table.screen thead th.right { text-align: right; }
+  table.screen thead th.sort-active { color: var(--n-text); }
+  table.screen tbody td {
+    height: 44px;
+    border-bottom: 1px solid var(--n-line-soft);
+    padding: 0 8px;
+    vertical-align: middle;
+    font-size: 12.5px;
+    color: var(--n-text);
+    font-variant-numeric: tabular-nums;
+  }
+  table.screen tbody td.right { text-align: right; }
+  table.screen tbody td:first-child {
+    border-left: 2px solid transparent;
+    padding-left: 6px;
+  }
+  table.screen tbody tr.selected {
+    background: var(--n-accent-bg-sel);
+  }
+  table.screen tbody tr.selected td:first-child {
+    border-left-color: var(--n-accent);
+  }
+
+  .col-num { width: 34px; color: var(--n-text-4); text-align: right; }
+  .col-ticker { width: 108px; }
+  .col-last { width: 64px; }
+  .col-chg { width: 68px; }
+  .col-signal { width: 118px; }
+  .col-why { width: auto; }
+  .col-broker { width: 96px; }
+  .col-net { width: 88px; }
+  .col-levels { width: 96px; }
+  .col-rr { width: 52px; }
+  .col-actions { width: 158px; }
+
+  .ticker-cell { display: flex; flex-direction: column; gap: 1px; line-height: 1.2; }
+  .ticker-code {
+    font-family: var(--font-antique);
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.03em;
+    color: var(--n-text);
+  }
+  .ticker-tier {
+    font-size: 11px;
+    color: var(--n-text-4);
+  }
+  .chg-up { color: var(--n-up); font-weight: 500; }
+  .chg-down { color: var(--n-down); font-weight: 500; }
+  .chg-flat { color: var(--n-text-3); font-weight: 500; }
+  .net-up { color: var(--n-up); font-weight: 500; }
+  .muted { color: var(--n-text-4); }
+  .dim { color: var(--n-text-5); }
+  .why { font-size: 12.5px; color: var(--n-text-2); line-height: 1.3; }
+  .broker-code { font-weight: 500; }
+  .broker-days { color: var(--n-text-4); }
+  .lvl-main { font-size: 13px; font-weight: 500; display: block; }
+  .lvl-fail { font-size: 11px; color: var(--n-text-3); display: block; }
+
+  .signal {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-start;
+  }
+  .signal-val {
+    font-size: 13px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+  .signal-bar {
+    width: 100%;
+    max-width: 96px;
+    height: 5px;
+    background: var(--n-bar-track);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .signal-bar > span {
+    display: block;
+    height: 100%;
+    background: var(--n-bar);
+    border-radius: 2px;
+  }
+
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .actions .btn { height: 26px; padding: 0 8px; font-size: 11.5px; }
+
+  .group-row td {
+    height: 36px !important;
+    background: var(--n-panel-quiet);
+    border-top: 1px solid var(--n-line);
+    border-bottom: 1px solid var(--n-line);
+    padding: 8px !important;
+  }
+  .group-label {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--n-warn);
+    margin-right: 10px;
+  }
+  .group-hint {
+    font-size: 11.5px;
+    color: var(--n-text-4);
+  }
+
+  tr.almost td {
+    height: 40px;
+    background: var(--n-panel-quiet);
+    color: var(--n-text-3);
+  }
+  tr.almost .ticker-code { color: var(--n-text-3); }
+  .miss-warn { color: var(--n-warn); }
+
+  .table-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 4px 2px;
+  }
+  .table-foot-text {
+    font-size: 12px;
+    color: var(--n-text-4);
+    line-height: 1.4;
+    max-width: 720px;
+  }
+  .pager {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+/* Marks controls that do not exist in the current build (design proposal) */
+.gap-flag{outline:1px dashed var(--n-warn) !important;outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="rail">
+    <div class="brand">
+      <div class="brand-mark">N</div>
+      <div class="brand-text">
+        <div class="brand-name">NALAR</div>
+        <div class="brand-sub">IDX ANALYSIS</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <div class="nav-group">
+        <a class="nav-item active" href="#">Screener</a>
+        <a class="nav-sub" href="#">Market Shortlist</a>
+        <a class="nav-sub active" href="#">Custom Screener</a>
+      </div>
+      <a class="nav-item" href="#">Stock Analysis</a>
+      <a class="nav-item" href="#">Broker Flow</a>
+      <a class="nav-item" href="#">Watchlist <span class="nav-pill">5</span></a>
+    </nav>
+    <div class="rail-footer">
+      <div class="rail-status"><span class="dot"></span>IDX closed</div>
+      <div class="rail-clock">August 11, 2026 · 16:15 WIB</div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="crumb">
+        <span>Screener</span>
+        <span class="sep">/</span>
+        <span class="cur">Custom Screener</span>
+      </div>
+      <div class="topbar-right">
+        <div class="ticker-field">
+          <span class="val">DSSA</span>
+          <span class="kbd">⌘K</span>
+        </div>
+        <button class="btn btn-secondary" type="button">Open</button>
+        <button class="btn btn-secondary" type="button">Light</button>
+        <div class="avatar">KF</div>
+      </div>
+    </header>
+
+    <div class="content">
+      <div class="page-head">
+        <div>
+          <h1 class="page-title">Screener</h1>
+          <p class="page-desc">Scan the IDX universe with deterministic recipes. Every enabled condition must pass; near-misses are kept separate.</p>
+        </div>
+        <button class="btn btn-secondary gap-flag" type="button" title="Proposed — no CSV export exists in the current build">Export CSV *</button>
+      </div>
+
+      <div class="tabs">
+        <span class="tab">Market Shortlist</span>
+        <span class="tab active">Custom Screener</span>
+      </div>
+
+      <div class="body-2col">
+        <aside class="builder">
+          <div class="builder-head">
+            <span class="builder-title">Conditions</span>
+            <span class="builder-meta">5 on · 1 off</span>
+          </div>
+
+          <div class="cond">
+            <div class="cond-top">
+              <div>
+                <div class="cond-name">Broker concentration</div>
+                <div class="cond-desc">One buyer leads the positive flow.</div>
+              </div>
+              <div class="toggle on" aria-label="On"><span class="knob"></span></div>
+            </div>
+            <div class="cond-controls">
+              <span class="chip select">Range</span>
+              <span class="chip select">7D</span>
+            </div>
+          </div>
+
+          <div class="cond">
+            <div class="cond-top">
+              <div>
+                <div class="cond-name">Repeated support</div>
+                <div class="cond-desc">Price remains near a tested support zone.</div>
+              </div>
+              <div class="toggle on" aria-label="On"><span class="knob"></span></div>
+            </div>
+            <div class="cond-controls">
+              <span class="chip select">≥</span>
+              <span class="chip input">20</span>
+              <span class="unit">trading days</span>
+            </div>
+          </div>
+
+          <div class="cond">
+            <div class="cond-top">
+              <div>
+                <div class="cond-name">Sideways compression</div>
+                <div class="cond-desc">Recent candles stay inside a narrow range.</div>
+              </div>
+              <div class="toggle on" aria-label="On"><span class="knob"></span></div>
+            </div>
+            <div class="cond-controls">
+              <span class="chip input">10</span>
+              <span class="unit">trading days</span>
+            </div>
+          </div>
+
+          <div class="cond">
+            <div class="cond-top">
+              <div>
+                <div class="cond-name">Maximum price</div>
+                <div class="cond-desc">Keep the universe inside your price band.</div>
+              </div>
+              <div class="toggle on" aria-label="On"><span class="knob"></span></div>
+            </div>
+            <div class="cond-controls">
+              <span class="chip select">≤</span>
+              <span class="unit">Rp</span>
+              <span class="chip input">1,000</span>
+            </div>
+          </div>
+
+          <div class="cond">
+            <div class="cond-top">
+              <div>
+                <div class="cond-name">Liquidity floor</div>
+                <div class="cond-desc">Minimum average traded value per trading day.</div>
+              </div>
+              <div class="toggle on" aria-label="On"><span class="knob"></span></div>
+            </div>
+            <div class="cond-controls">
+              <span class="chip select">≥</span>
+              <span class="unit">Rp</span>
+              <span class="chip input wide">500,000,000</span>
+            </div>
+          </div>
+
+          <div class="cond off">
+            <div class="cond-top">
+              <div>
+                <div class="cond-name">Lead broker minimum</div>
+                <div class="cond-desc">Minimum net accumulation by the top buyer.</div>
+              </div>
+              <div class="toggle off" aria-label="Off"><span class="knob"></span></div>
+            </div>
+            <div class="cond-controls">
+              <span class="chip off-dash">off</span>
+            </div>
+          </div>
+
+          <div class="builder-foot">
+            <div class="match-line"><strong>8 of 812</strong> tickers match these conditions</div>
+            <div class="note-mono">No AI · cached EOD data · deterministic ranking</div>
+            <div class="builder-actions">
+              <span class="chip select">Return</span>
+              <span class="chip select">25 stocks</span>
+              <span class="grow"></span>
+              <button class="btn btn-secondary" type="button">Save</button>
+              <button class="btn btn-primary" type="button">Run screener</button>
+            </div>
+          </div>
+        </aside>
+
+        <section class="results">
+          <div class="results-head">
+            <div class="results-left">
+              <span class="results-title">8 matched</span>
+              <span class="results-meta">of 812 screened · 2 almost matched</span>
+              <div class="tier-chips">
+                <span class="tier active">All 8</span>
+                <span class="tier">First-liner 1</span>
+                <span class="tier">Second-liner 5</span>
+                <span class="tier">Third-liner 2</span>
+              </div>
+            </div>
+            <div class="results-right">
+              <span class="sort-label">Sort</span>
+              <span class="chip select">Signal strength ↓</span>
+              <span class="chip select">25 stocks</span>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table class="screen">
+              <colgroup>
+                <col class="col-num" />
+                <col class="col-ticker" />
+                <col class="col-last" />
+                <col class="col-chg" />
+                <col class="col-signal" />
+                <col class="col-why" />
+                <col class="col-broker" />
+                <col class="col-net" />
+                <col class="col-levels" />
+                <col class="col-rr" />
+                <col class="col-actions" />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th class="right">#</th>
+                  <th>Ticker</th>
+                  <th class="right">Last</th>
+                  <th class="right">Chg</th>
+                  <th class="sort-active">Signal ↓</th>
+                  <th>Why it appeared</th>
+                  <th>Lead broker</th>
+                  <th class="right">Lead net buy</th>
+                  <th class="right">Breakout / fails</th>
+                  <th class="right">R / R</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="right muted num">01</td>
+                  <td>
+                    <div class="ticker-cell">
+                      <span class="ticker-code">BRIS</span>
+                      <span class="ticker-tier">Second-liner</span>
+                    </div>
+                  </td>
+                  <td class="right num">2,840</td>
+                  <td class="right chg-up num">+1.43%</td>
+                  <td>
+                    <div class="signal">
+                      <span class="signal-val num">87.2</span>
+                      <div class="signal-bar"><span style="width:87.2%"></span></div>
+                    </div>
+                  </td>
+                  <td><span class="why">1.8% above support 2,780</span></td>
+                  <td><span class="broker-code">MG</span> <span class="broker-days">· 6 days</span></td>
+                  <td class="right net-up num">+Rp41.2B</td>
+                  <td class="right">
+                    <span class="lvl-main num">2,950</span>
+                    <span class="lvl-fail num">fails 2,780</span>
+                  </td>
+                  <td class="right num">1.83</td>
+                  <td>
+                    <div class="actions">
+                      <button class="btn btn-secondary btn-mini" type="button">Open Analysis</button>
+                      <button class="btn btn-ghost btn-mini" type="button">Flow</button>
+                    </div>
+                  </td>
+                </tr>
+
+                <tr class="selected">
+                  <td class="right muted num">02</td>
+                  <td>
+                    <div class="ticker-cell">
+                      <span class="ticker-code">DSSA</span>
+                      <span class="ticker-tier">Second-liner</span>
+                    </div>
+                  </td>
+                  <td class="right num">945</td>
+                  <td class="right chg-down num">−4.06%</td>
+                  <td>
+                    <div class="signal">
+                      <span class="signal-val num">84.6</span>
+                      <div class="signal-bar"><span style="width:84.6%"></span></div>
+                    </div>
+                  </td>
+                  <td><span class="why">2.0% above support 903</span></td>
+                  <td><span class="broker-code">MG</span> <span class="broker-days">· 6 days</span></td>
+                  <td class="right net-up num">+Rp22.7B</td>
+                  <td class="right">
+                    <span class="lvl-main num">995</span>
+                    <span class="lvl-fail num">fails 903</span>
+                  </td>
+                  <td class="right num">1.19</td>
+                  <td>
+                    <div class="actions">
+                      <button class="btn btn-primary btn-mini" type="button">Open Analysis</button>
+                      <button class="btn btn-ghost btn-mini" type="button">Flow</button>
+                    </div>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td class="right muted num">03</td>
+                  <td>
+                    <div class="ticker-cell">
+                      <span class="ticker-code">PTRO</span>
+                      <span class="ticker-tier">Second-liner</span>
+                    </div>
+                  </td>
+                  <td class="right num">2,610</td>
+                  <td class="right chg-up num">+0.77%</td>
+                  <td>
+                    <div class="signal">
+                      <span class="signal-val num">82.9</span>
+                      <div class="signal-bar"><span style="width:82.9%"></span></div>
+                    </div>
+                  </td>
+                  <td><span class="why">1.2% above support 2,550</span></td>
+                  <td><span class="broker-code">SQ</span> <span class="broker-days">· 5 days</span></td>
+                  <td class="right net-up num">+Rp18.4B</td>
+                  <td class="right">
+                    <span class="lvl-main num">2,750</span>
+                    <span class="lvl-fail num">fails 2,550</span>
+                  </td>
+                  <td class="right num">2.33</td>
+                  <td>
+                    <div class="actions">
+                      <button class="btn btn-secondary btn-mini" type="button">Open Analysis</button>
+                      <button class="btn btn-ghost btn-mini" type="button">Flow</button>
+                    </div>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td class="right muted num">04</td>
+                  <td>
+                    <div class="ticker-cell">
+                      <span class="ticker-code">AKRA</span>
+                      <span class="ticker-tier">First-liner</span>
+                    </div>
+                  </td>
+                  <td class="right num">1,305</td>
+                  <td class="right chg-up num">+0.38%</td>
+                  <td>
+                    <div class="signal">
+                      <span class="signal-val num">81.5</span>
+                      <div class="signal-bar"><span style="width:81.5%"></span></div>
+                    </div>
+                  </td>
+                  <td><span class="why">0.9% above support 1,285</span></td>
+                  <td><span class="broker-code">XL</span> <span class="broker-days">· 4 days</span></td>
+                  <td class="right net-up num">+Rp12.9B</td>
+                  <td class="right">
+                    <span class="lvl-main num">1,375</span>
+                    <span class="lvl-fail num">fails 1,285</span>
+                  </td>
+                  <td class="right num">3.50</td>
+                  <td>
+                    <div class="actions">
+                      <button class="btn btn-secondary btn-mini" type="button">Open Analysis</button>
+                      <button class="btn btn-ghost btn-mini" type="button">Flow</button>
+                    </div>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td class="right muted num">05</td>
+                  <td>
+                    <div class="ticker-cell">
+                      <span class="ticker-code">MEDC</span>
+                      <span class="ticker-tier">Second-liner</span>
+                    </div>
+                  </td>
+                  <td class="right num">1,150</td>
+                  <td class="right chg-down num">−0.86%</td>
+                  <td>
+                    <div class="signal">
+                      <span class="signal-val num">80.8</span>
+                      <div class="signal-bar"><span style="width:80.8%"></span></div>
+                    </div>
+                  </td>
+                  <td><span class="why">1.6% above support 1,120</span></td>
+                  <td><span class="broker-code">CP</span> <span class="broker-days">· 4 days</span></td>
+                  <td class="right net-up num">+Rp9.8B</td>
+                  <td class="right">
+                    <span class="lvl-main num">1,235</span>
+                    <span class="lvl-fail num">fails 1,120</span>
+                  </td>
+                  <td class="right num">2.83</td>
+                  <td>
+                    <div class="actions">
+                      <button class="btn btn-secondary btn-mini" type="button">Open Analysis</button>
+                      <button class="btn btn-ghost btn-mini" type="button">Flow</button>
+                    </div>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td class="right muted num">06</td>
+                  <td>
+                    <div class="ticker-cell">
+                      <span class="ticker-code">BREN</span>
+                      <span class="ticker-tier">Second-liner</span>
+                    </div>
+                  </td>
+                  <td class="right num">9,450</td>
+                  <td class="right chg-up num">+2.16%</td>
+                  <td>
+                    <div class="signal">
+                      <span class="signal-val num">80.1</span>
+                      <div class="signal-bar"><span style="width:80.1%"></span></div>
+                    </div>
+                  </td>
+                  <td><span class="why">compressed 3.1% over 10 days</span></td>
+                  <td><span class="broker-code">SS</span> <span class="broker-days">· 6 days</span></td>
+                  <td class="right net-up num">+Rp55.6B</td>
+                  <td class="right">
+                    <span class="lvl-main num">9,900</span>
+                    <span class="lvl-fail num">fails 9,100</span>
+                  </td>
+                  <td class="right num">1.29</td>
+                  <td>
+                    <div class="actions">
+                      <button class="btn btn-secondary btn-mini" type="button">Open Analysis</button>
+                      <button class="btn btn-ghost btn-mini" type="button">Flow</button>
+                    </div>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td class="right muted num">07</td>
+                  <td>
+                    <div class="ticker-cell">
+                      <span class="ticker-code">RATU</span>
+                      <span class="ticker-tier">Third-liner</span>
+                    </div>
+                  </td>
+                  <td class="right num">510</td>
+                  <td class="right chg-flat num">0.00%</td>
+                  <td>
+                    <div class="signal">
+                      <span class="signal-val num">78.4</span>
+                      <div class="signal-bar"><span style="width:78.4%"></span></div>
+                    </div>
+                  </td>
+                  <td><span class="why">2.4% above support 495</span></td>
+                  <td><span class="broker-code">AI</span> <span class="broker-days">· 3 days</span></td>
+                  <td class="right net-up num">+Rp3.1B</td>
+                  <td class="right">
+                    <span class="lvl-main num">545</span>
+                    <span class="lvl-fail num">fails 495</span>
+                  </td>
+                  <td class="right num">2.33</td>
+                  <td>
+                    <div class="actions">
+                      <button class="btn btn-secondary btn-mini" type="button">Open Analysis</button>
+                      <button class="btn btn-ghost btn-mini" type="button">Flow</button>
+                    </div>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td class="right muted num">08</td>
+                  <td>
+                    <div class="ticker-cell">
+                      <span class="ticker-code">TCPI</span>
+                      <span class="ticker-tier">Third-liner</span>
+                    </div>
+                  </td>
+                  <td class="right num">890</td>
+                  <td class="right chg-down num">−1.11%</td>
+                  <td>
+                    <div class="signal">
+                      <span class="signal-val num">76.9</span>
+                      <div class="signal-bar"><span style="width:76.9%"></span></div>
+                    </div>
+                  </td>
+                  <td><span class="why">1.1% above support 875</span></td>
+                  <td><span class="broker-code">LG</span> <span class="broker-days">· 3 days</span></td>
+                  <td class="right net-up num">+Rp2.4B</td>
+                  <td class="right">
+                    <span class="lvl-main num">940</span>
+                    <span class="lvl-fail num">fails 875</span>
+                  </td>
+                  <td class="right dim num">—</td>
+                  <td>
+                    <div class="actions">
+                      <button class="btn btn-secondary btn-mini" type="button">Open Analysis</button>
+                      <button class="btn btn-ghost btn-mini" type="button">Flow</button>
+                    </div>
+                  </td>
+                </tr>
+
+                <tr class="group-row">
+                  <td colspan="11">
+                    <span class="group-label">Almost matched · 2</span>
+                    <span class="group-hint">One condition short. Kept separate so a near-miss is never mistaken for a match.</span>
+                  </td>
+                </tr>
+
+                <tr class="almost">
+                  <td class="right muted num"></td>
+                  <td>
+                    <div class="ticker-cell">
+                      <span class="ticker-code">ELSA</span>
+                      <span class="ticker-tier num">79.4</span>
+                    </div>
+                  </td>
+                  <td colspan="7">
+                    <span class="miss-warn">Missed liquidity floor ≥ Rp500M/day</span>
+                    <span class="muted"> — Rp412M · everything else passed</span>
+                  </td>
+                  <td>
+                    <div class="actions">
+                      <button class="btn btn-ghost btn-mini" type="button">Open Analysis</button>
+                      <button class="btn btn-ghost btn-mini" type="button">Flow</button>
+                    </div>
+                  </td>
+                </tr>
+
+                <tr class="almost">
+                  <td class="right muted num"></td>
+                  <td>
+                    <div class="ticker-cell">
+                      <span class="ticker-code">SILO</span>
+                      <span class="ticker-tier num">76.2</span>
+                    </div>
+                  </td>
+                  <td colspan="7">
+                    <span class="miss-warn">Missed sideways compression</span>
+                    <span class="muted"> — range 6.8% over 10 days · everything else passed</span>
+                  </td>
+                  <td>
+                    <div class="actions">
+                      <button class="btn btn-ghost btn-mini" type="button">Open Analysis</button>
+                      <button class="btn btn-ghost btn-mini" type="button">Flow</button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="table-foot">
+            <p class="table-foot-text">Rows 1–8 of 8 · reward / risk needs a target, so it reads “—” until one is set in Stock Analysis.</p>
+            <div class="pager">
+              <button class="btn btn-disabled" type="button" title="No previous page">Previous</button>
+              <button class="btn btn-disabled" type="button" title="No next page">Next</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

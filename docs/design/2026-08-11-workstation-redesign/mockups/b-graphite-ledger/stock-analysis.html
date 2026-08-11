@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>NALAR — Stock Analysis / DSSA</title>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+Antique:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --n-bg: #0c0e10;
+    --n-bg-sunken: #08090b;
+    --n-panel: #14181c;
+    --n-panel-raised: #191d21;
+    --n-panel-head: #191e23;
+    --n-panel-quiet: #0f1216;
+    --n-line: #232830;
+    --n-line-soft: #191e23;
+    --n-line-strong: #2f3641;
+    --n-text: #e4e7ea;
+    --n-text-2: #c3c9ce;
+    --n-text-3: #98a0a8;
+    --n-text-4: #6a727a;
+    --n-text-5: #565d64;
+    --n-up: #3fae6f;
+    --n-down: #d9564d;
+    --n-warn: #d99a34;
+    --n-accent: #a8c93a;
+    --n-accent-hover: #b6d84a;
+    --n-accent-on: #0c0e10;
+    --n-accent-bg: rgba(168, 201, 58, 0.10);
+    --n-accent-bg-sel: rgba(168, 201, 58, 0.06);
+    --n-accent-border: rgba(168, 201, 58, 0.40);
+    --n-bar: #7f8a96;
+    --n-bar-track: #232830;
+    --rail: 190px;
+    --font-antique: 'Zen Kaku Gothic Antique', sans-serif;
+    --font-new: 'Zen Kaku Gothic New', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    min-height: 100%;
+    background: var(--n-bg);
+    color: var(--n-text);
+    font-family: var(--font-new);
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.4;
+    -webkit-font-smoothing: antialiased;
+  }
+  body { min-width: 1024px; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  .shell {
+    display: flex;
+    min-height: 100vh;
+    width: 100%;
+    max-width: 1920px;
+    margin: 0 auto;
+  }
+
+  /* —— Left rail —— */
+  .rail {
+    width: var(--rail);
+    flex: 0 0 var(--rail);
+    background: var(--n-bg-sunken);
+    border-right: 1px solid var(--n-line);
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    z-index: 20;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 14px 18px;
+  }
+  .brand-mark {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    border: 1px solid #3f4a1d;
+    background: #1a2010;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-antique);
+    font-weight: 700;
+    font-size: 11px;
+    color: var(--n-accent);
+    flex-shrink: 0;
+  }
+  .brand-text { display: flex; flex-direction: column; gap: 1px; }
+  .brand-name {
+    font-family: var(--font-antique);
+    font-weight: 700;
+    font-size: 12.5px;
+    letter-spacing: 0.06em;
+    color: var(--n-text);
+    line-height: 1.2;
+  }
+  .brand-sub {
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    color: var(--n-text-4);
+    text-transform: uppercase;
+    line-height: 1.2;
+  }
+
+  .nav { flex: 1; padding: 4px 8px 12px; display: flex; flex-direction: column; gap: 2px; }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    border-radius: 6px;
+    color: var(--n-text-3);
+    font-size: 13px;
+    font-weight: 400;
+    text-decoration: none;
+    border-left: 2px solid transparent;
+  }
+  .nav-item:hover { background: var(--n-panel); color: var(--n-text-2); }
+  .nav-item.active {
+    background: var(--n-accent-bg);
+    border-left-color: var(--n-accent);
+    color: var(--n-text);
+    font-weight: 500;
+  }
+  .nav-group { display: flex; flex-direction: column; gap: 1px; }
+  .nav-sub {
+    display: block;
+    padding: 6px 10px 6px 22px;
+    border-radius: 6px;
+    color: var(--n-text-3);
+    font-size: 12px;
+    text-decoration: none;
+  }
+  .nav-sub:hover { background: var(--n-panel); color: var(--n-text-2); }
+  .nav-sub.active {
+    background: var(--n-panel);
+    color: var(--n-text-2);
+  }
+  .nav-pill {
+    font-size: 10.5px;
+    font-variant-numeric: tabular-nums;
+    color: var(--n-text-4);
+    background: var(--n-panel);
+    border: 1px solid var(--n-line);
+    border-radius: 3px;
+    padding: 1px 6px;
+    line-height: 1.3;
+  }
+
+  .rail-footer {
+    border-top: 1px solid var(--n-line);
+    padding: 12px 14px 16px;
+  }
+  .rail-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11.5px;
+    color: var(--n-text-3);
+    margin-bottom: 4px;
+  }
+  .rail-status .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--n-text-5);
+    flex-shrink: 0;
+  }
+  .rail-clock {
+    font-size: 10.5px;
+    color: var(--n-text-5);
+    font-variant-numeric: tabular-nums;
+    padding-left: 14px;
+  }
+
+  /* —— Main —— */
+  .main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .topbar {
+    height: 46px;
+    flex: 0 0 46px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 18px;
+    background: var(--n-bg);
+    border-bottom: 1px solid var(--n-line);
+  }
+  .crumb {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+    color: var(--n-text-4);
+  }
+  .crumb .sep { color: var(--n-text-5); }
+  .crumb .cur { font-size: 12px; color: var(--n-text-2); }
+
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .ticker-field {
+    width: 224px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 8px 0 10px;
+    background: var(--n-bg-sunken);
+    border: 1px solid var(--n-line-strong);
+    border-radius: 6px;
+  }
+  .ticker-field .val {
+    font-family: var(--font-antique);
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.03em;
+    color: var(--n-text);
+  }
+  .kbd {
+    font-size: 10.5px;
+    color: var(--n-text-5);
+    background: var(--n-panel);
+    border: 1px solid var(--n-line);
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-variant-numeric: tabular-nums;
+  }
+  .btn {
+    height: 30px;
+    padding: 0 12px;
+    border-radius: 6px;
+    font-family: var(--font-new);
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: default;
+    border: 1px solid transparent;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+  }
+  .btn-secondary {
+    background: var(--n-panel-raised);
+    border-color: var(--n-line-strong);
+    color: var(--n-text-2);
+  }
+  .btn-ghost {
+    background: transparent;
+    border-color: transparent;
+    color: var(--n-text-3);
+  }
+  .btn-primary {
+    background: var(--n-accent);
+    border-color: var(--n-accent);
+    color: var(--n-accent-on);
+  }
+  .btn-mini {
+    height: 26px;
+    padding: 0 10px;
+    font-size: 11.5px;
+  }
+  .avatar {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--n-panel-raised);
+    border: 1px solid var(--n-line);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10.5px;
+    font-weight: 500;
+    color: var(--n-text-3);
+    letter-spacing: 0.02em;
+  }
+
+  .content {
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  /* —— Context header —— */
+  .ctx {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .ctx-left { min-width: 0; }
+  .ctx-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+  .ctx-ticker {
+    font-family: var(--font-antique);
+    font-weight: 700;
+    font-size: 22px;
+    letter-spacing: 0.03em;
+    color: var(--n-text);
+    line-height: 1.1;
+  }
+  .ctx-name {
+    font-size: 13px;
+    color: var(--n-text-3);
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    height: 20px;
+    padding: 0 7px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .badge-neutral {
+    background: var(--n-panel-raised);
+    border: 1px solid var(--n-line-strong);
+    color: var(--n-text-3);
+  }
+  .badge-warn {
+    background: rgba(217, 154, 52, 0.10);
+    border: 1px solid rgba(217, 154, 52, 0.26);
+    color: var(--n-warn);
+  }
+  .ctx-price-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .ctx-price {
+    font-family: var(--font-antique);
+    font-weight: 700;
+    font-size: 26px;
+    font-variant-numeric: tabular-nums;
+    color: var(--n-text);
+    line-height: 1;
+  }
+  .ctx-chg {
+    font-size: 14px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    color: var(--n-down);
+  }
+  .ctx-asof {
+    font-size: 11.5px;
+    color: var(--n-text-4);
+  }
+  .ctx-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    padding-top: 4px;
+  }
+
+  /* —— Metric strip —— */
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    background: var(--n-panel);
+    border: 1px solid var(--n-line);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .metric {
+    padding: 12px 14px;
+    border-right: 1px solid var(--n-line-soft);
+    min-width: 0;
+  }
+  .metric:last-child { border-right: none; }
+  .metric-label {
+    font-size: 10.5px;
+    color: var(--n-text-4);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 4px;
+  }
+  .metric-val {
+    font-size: 13px;
+    color: var(--n-text);
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+  }
+  .metric-sub {
+    font-size: 11px;
+    color: var(--n-text-4);
+    font-variant-numeric: tabular-nums;
+    margin-top: 2px;
+  }
+
+  /* —— Chart panel —— */
+  .chart-panel {
+    background: var(--n-panel);
+    border: 1px solid var(--n-line);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .chart-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 14px;
+    background: var(--n-panel);
+    border-bottom: 1px solid var(--n-line);
+    flex-wrap: wrap;
+  }
+  .chart-head-left {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .chart-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--n-text);
+  }
+  .chart-meta {
+    font-size: 11.5px;
+    color: var(--n-text-4);
+  }
+  .chart-head-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .seg-label {
+    font-size: 11px;
+    color: var(--n-text-4);
+    margin-right: 2px;
+  }
+  .seg {
+    display: inline-flex;
+    border: 1px solid var(--n-line-strong);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .seg-btn {
+    height: 26px;
+    padding: 0 9px;
+    font-size: 11.5px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    color: var(--n-text-3);
+    background: transparent;
+    border: none;
+    border-right: 1px solid var(--n-line-strong);
+    font-family: var(--font-new);
+  }
+  .seg-btn:last-child { border-right: none; }
+  .seg-btn.on {
+    background: var(--n-line-strong);
+    color: var(--n-text);
+  }
+  .chart-link {
+    font-size: 11.5px;
+    color: var(--n-text-3);
+    text-decoration: none;
+  }
+  .chart-canvas {
+    background: #0a0c0e;
+    height: 460px;
+    position: relative;
+  }
+  .chart-canvas svg {
+    display: block;
+    width: 100%;
+    height: 460px;
+  }
+
+  /* —— Detail drawer —— */
+  .drawer {
+    background: var(--n-panel);
+    border: 1px solid var(--n-line);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .drawer-tabs {
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid var(--n-line);
+    padding: 0 8px;
+    height: 40px;
+  }
+  .drawer-tab {
+    height: 40px;
+    padding: 0 12px;
+    display: inline-flex;
+    align-items: center;
+    font-size: 13px;
+    color: var(--n-text-3);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .drawer-tab.active {
+    color: var(--n-text);
+    font-weight: 500;
+    border-bottom-color: var(--n-accent);
+  }
+  .drawer-tabs-right {
+    margin-left: auto;
+  }
+  .levels {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+  }
+  .level {
+    padding: 12px 14px;
+    border-right: 1px solid var(--n-line-soft);
+    min-width: 0;
+  }
+  .level:last-child { border-right: none; }
+  .level-warn {
+    background: rgba(217, 154, 52, 0.05);
+  }
+  .level-label {
+    font-size: 10.5px;
+    color: var(--n-text-4);
+    margin-bottom: 6px;
+  }
+  .level-warn .level-label { color: var(--n-warn); }
+  .level-val {
+    font-family: var(--font-antique);
+    font-weight: 500;
+    font-size: 16px;
+    font-variant-numeric: tabular-nums;
+    color: var(--n-text);
+    margin-bottom: 4px;
+    line-height: 1.2;
+  }
+  .level-sub {
+    font-size: 11px;
+    color: var(--n-text-4);
+    line-height: 1.35;
+  }
+  .level-sub.up { color: var(--n-up); }
+
+  .summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 12px 14px;
+    background: var(--n-panel-quiet);
+    border-top: 1px solid var(--n-line);
+  }
+  .summary-text {
+    font-size: 12.5px;
+    color: var(--n-text-2);
+    line-height: 1.45;
+    max-width: 920px;
+  }
+
+  .page-foot {
+    font-size: 11px;
+    color: var(--n-text-4);
+    line-height: 1.45;
+    padding: 2px 2px 8px;
+  }
+/* Marks controls that do not exist in the current build (design proposal) */
+.gap-flag{outline:1px dashed var(--n-warn) !important;outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="rail">
+    <div class="brand">
+      <div class="brand-mark">N</div>
+      <div class="brand-text">
+        <div class="brand-name">NALAR</div>
+        <div class="brand-sub">IDX ANALYSIS</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <div class="nav-group">
+        <a class="nav-item" href="#">Screener</a>
+        <a class="nav-sub" href="#">Market Shortlist</a>
+        <a class="nav-sub" href="#">Custom Screener</a>
+      </div>
+      <a class="nav-item active" href="#">Stock Analysis</a>
+      <a class="nav-item" href="#">Broker Flow</a>
+      <a class="nav-item" href="#">Watchlist <span class="nav-pill">5</span></a>
+    </nav>
+    <div class="rail-footer">
+      <div class="rail-status"><span class="dot"></span>IDX closed</div>
+      <div class="rail-clock">August 11, 2026 · 16:15 WIB</div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="crumb">
+        <span>Stock Analysis</span>
+        <span class="sep">/</span>
+        <span class="cur">DSSA</span>
+      </div>
+      <div class="topbar-right">
+        <div class="ticker-field">
+          <span class="val">DSSA</span>
+          <span class="kbd">⌘K</span>
+        </div>
+        <button class="btn btn-secondary" type="button">Open</button>
+        <button class="btn btn-secondary" type="button">Light</button>
+        <div class="avatar">KF</div>
+      </div>
+    </header>
+
+    <div class="content">
+      <div class="ctx">
+        <div class="ctx-left">
+          <div class="ctx-title-row">
+            <span class="ctx-ticker">DSSA</span>
+            <span class="ctx-name" title="Dian Swastatika Sentosa Tbk">Dian Swastatika Sentosa Tbk</span>
+            <span class="badge badge-neutral">Second-liner</span>
+          </div>
+          <div class="ctx-price-row">
+            <span class="ctx-price num">945</span>
+            <span class="ctx-chg num">−40 · −4.06%</span>
+            <span class="ctx-asof">at close, August 11, 2026</span>
+          </div>
+        </div>
+        <div class="ctx-actions">
+          <button class="btn btn-ghost" type="button">Broker Flow</button>
+          <button class="btn btn-primary gap-flag" type="button" title="Proposed — no watchlist-add action exists in the current build">Add to Watchlist *</button>
+        </div>
+      </div>
+
+      <div class="metrics">
+        <div class="metric">
+          <div class="metric-label">Open</div>
+          <div class="metric-val num">990</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">High</div>
+          <div class="metric-val num">995</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Low</div>
+          <div class="metric-val num">920</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Prev close</div>
+          <div class="metric-val num">985</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Volume</div>
+          <div class="metric-val num">685,466 · 1.19×</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Value traded</div>
+          <div class="metric-val num">Rp64.7B</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Frequency</div>
+          <div class="metric-val num">2,832</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">RSI (14)</div>
+          <div class="metric-val num">59.6</div>
+        </div>
+      </div>
+
+      <div class="chart-panel">
+        <div class="chart-head">
+          <div class="chart-head-left">
+            <span class="chart-title">Price &amp; volume</span>
+            <span class="chart-meta">30 trading days to August 11, 2026</span>
+          </div>
+          <div class="chart-head-right">
+            <span class="seg-label">MA</span>
+            <div class="seg" aria-label="Moving averages">
+              <span class="seg-btn on">10</span>
+              <span class="seg-btn on">20</span>
+              <span class="seg-btn">50</span>
+              <span class="seg-btn">200</span>
+            </div>
+            <div class="seg gap-flag" aria-label="Timeframe" title="Proposed — the current chart has no timeframe switch; the default 60-trading-day window is unchanged">
+              <span class="seg-btn">1D</span>
+              <span class="seg-btn">7D</span>
+              <span class="seg-btn">14D</span>
+              <span class="seg-btn on">30D</span>
+              <span class="seg-btn">60D</span>
+            </div>
+            <button class="btn btn-secondary btn-mini" type="button">Fullscreen</button>
+            <a class="chart-link" href="#">TradingView ↗</a>
+          </div>
+        </div>
+        <div class="chart-canvas">
+          <svg viewBox="0 0 1200 460" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" aria-label="DSSA price and volume chart">
+            <!-- Plot area: x 0–1154, y 8–400 (392px); axis gutter 46px on right -->
+            <!-- Price scale 760–1000 maps to y: 400 (760) → 8 (1000). y = 8 + (1000-p)/240 * 392 -->
+            <defs>
+              <clipPath id="plotClip"><rect x="0" y="8" width="1154" height="392"/></clipPath>
+            </defs>
+
+            <!-- Horizontal gridlines -->
+            <g stroke="rgba(255,255,255,0.04)" stroke-width="1">
+              <line x1="0" y1="8" x2="1154" y2="8"/>
+              <line x1="0" y1="73.333" x2="1154" y2="73.333"/>
+              <line x1="0" y1="138.667" x2="1154" y2="138.667"/>
+              <line x1="0" y1="204" x2="1154" y2="204"/>
+              <line x1="0" y1="269.333" x2="1154" y2="269.333"/>
+              <line x1="0" y1="334.667" x2="1154" y2="334.667"/>
+              <line x1="0" y1="400" x2="1154" y2="400"/>
+            </g>
+
+            <!-- Right axis ticks -->
+            <g fill="#565d64" font-family="'Zen Kaku Gothic New', sans-serif" font-size="10" font-variant-numeric="tabular-nums" text-anchor="start">
+              <text x="1162" y="12">1,000</text>
+              <text x="1162" y="77">960</text>
+              <text x="1162" y="143">920</text>
+              <text x="1162" y="208">880</text>
+              <text x="1162" y="273">840</text>
+              <text x="1162" y="339">800</text>
+              <text x="1162" y="404">760</text>
+            </g>
+
+            <!-- Resistance / Support dashed rules -->
+            <!-- Resistance 995: y = 8 + (1000-995)/240*392 = 8 + 8.167 = 16.17 -->
+            <line x1="0" y1="16.17" x2="1090" y2="16.17" stroke="#3f4650" stroke-width="1" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/>
+            <!-- Support 903: y = 8 + (1000-903)/240*392 = 8 + 158.43 = 166.43 -->
+            <line x1="0" y1="166.43" x2="1090" y2="166.43" stroke="#3f4650" stroke-width="1" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/>
+
+            <!-- Label chips -->
+            <g font-family="'Zen Kaku Gothic New', sans-serif" font-size="10">
+              <rect x="1038" y="8" width="100" height="16" rx="3" fill="#14181c" stroke="#2f3641" stroke-width="1"/>
+              <text x="1088" y="19.5" text-anchor="middle" fill="#98a0a8">Resistance 995</text>
+              <rect x="1048" y="158" width="90" height="16" rx="3" fill="#14181c" stroke="#2f3641" stroke-width="1"/>
+              <text x="1093" y="169.5" text-anchor="middle" fill="#98a0a8">Support 903</text>
+            </g>
+
+            <!-- Candles: 30 days, slot width ~36.5, gap 2px, body inset 10% -->
+            <!-- Helper: y(p) = 8 + (1000-p)/240*392 = 8 + (1000-p)*1.63333 -->
+            <g clip-path="url(#plotClip)">
+              <!-- Day 1 Jun 29-ish: ~780 -->
+              <g stroke="#3fae6f" stroke-opacity="0.7" stroke-width="1" fill="#3fae6f">
+                <line x1="20.25" y1="375.2" x2="20.25" y2="352.0"/><rect x="16.2" y="359.3" width="8.1" height="9.8"/>
+              </g>
+              <g stroke="#d9564d" stroke-opacity="0.7" stroke-width="1" fill="#d9564d">
+                <line x1="56.75" y1="370.3" x2="56.75" y2="347.1"/><rect x="52.7" y="352.0" width="8.1" height="13.1"/>
+              </g>
+              <g stroke="#3fae6f" stroke-opacity="0.7" stroke-width="1" fill="#3fae6f">
+                <line x1="93.25" y1="365.4" x2="93.25" y2="335.9"/><rect x="89.2" y="347.1" width="8.1" height="13.1"/>
+              </g>
+              <g stroke="#3fae6f" stroke-opacity="0.7" stroke-width="1" fill="#3fae6f">
+                <line x1="129.75" y1="352.0" x2="129.75" y2="319.5"/><rect x="125.7" y="335.9" width="8.1" height="11.5"/>
+              </g>
+              <g stroke="#d9564d" stroke-opacity="0.7" stroke-width="1" fill="#d9564d">
+                <line x1="166.25" y1="348.7" x2="166.25" y2="319.5"/><rect x="162.2" y="327.7" width="8.1" height="13.1"/>
+              </g>
+              <!-- approaching mid-July ~840-860 -->
+              <g stroke="#3fae6f" stroke-opacity="0.7" stroke-width="1" fill="#3fae6f">
+                <line x1="202.75" y1="335.9" x2="202.75" y2="303.4"/><rect x="198.7" y="319.5" width="8.1" height="11.5"/>
+              </g>
+              <g stroke="#3fae6f" stroke-opacity="0.7" stroke-width="1" fill="#3fae6f">
+                <line x1="239.25" y1="319.5" x2="239.25" y2="287.0"/><rect x="235.2" y="303.4" width="8.1" height="9.8"/>
+              </g>
+              <g stroke="#d9564d" stroke-opacity="0.7" stroke-width="1" fill="#d9564d">
+                <line x1="275.75" y1="316.3" x2="275.75" y2="278.8"/><rect x="271.7" y="287.0" width="8.1" height="16.3"/>
+              </g>
+              <g stroke="#3fae6f" stroke-opacity="0.7" stroke-width="1" fill="#3fae6f">
+                <line x1="312.25" y1="303.4" x2="312.25" y2="262.4"/><rect x="308.2" y="278.8" width="8.1" height="16.3"/>
+              </g>
+              <!-- mid-July ~880 -->
+              <g stroke="#3fae6f" stroke-opacity="0.7" stroke-width="1" fill="#3fae6f">
+                <line x1="348.75" y1="278.8" x2="348.75" y2="237.9"/><rect x="344.7" y="254.2" width="8.1" height="16.3"/>
+              </g>
+              <g stroke="#d9564d" stroke-opacity="0.7" stroke-width="1" fill="#d9564d">
+                <line x1="385.25" y1="270.6" x2="385.25" y2="229.7"/><rect x="381.2" y="237.9" width="8.1" height="20.4"/>
+              </g>
+              <g stroke="#3fae6f" stroke-opacity="0.7" stroke-width="1" fill="#3fae6f">
+                <line x1="421.75" y1="254.2" x2="421.75" y2="213.3"/><rect x="417.7" y="229.7" width="8.1" height="16.3"/>
+              </g>
+              <!-- chop 850–920 -->
+              <g stroke="#d9564d" stroke-opacity="0.7" stroke-width="1" fill="#d9564d">
+                <line x1="458.25" y1="246.0" x2="458.25" y2="188.6"/><rect x="454.2" y="213.3" width="8.1" height="24.5"/>
+              </g>
+              <g stroke="#3fae6f" stroke-opacity="0.7" stroke-width="1" fill="#3fae6f">
+                <line x1="494.75" y1="229.7" x2="494.75" y2="172.2"/><rect x="490.7" y="196.9" width="8.1" height="24.5"/>
+              </g>
+              <g stroke="#d9564d" stroke-opacity="0.7" stroke-width="1" fill="#d9564d">
+                <line x1="531.25" y1="221.5" x2="531.25" y2="164.0"/><rect x="527.2" y="180.4" width="8.1" height="28.6"/>
+              </g>
+              <g stroke="#3fae6f" stroke-opacity="0.7" stroke-width="1" fill="#3fae6f">
+                <line x1="567.75" y1="205.1" x2="567.75" y2="147.6"/><rect x="563.7" y="172.2" width="8.1" height="24.5"/>
+              </g>
+              <g stroke="#d9564d" stroke-opacity="0.7" stroke-width="1" fill="#d9564d">
+                <line x1="604.25" y1="213.3" x2="604.25" y2="155.8"/><rect x="600.2" y="172.2" width="8.1" height="28.6"/>
+              </g>
+              <g stroke="#3fae6f" stroke-opacity="0.7" stroke-width="1" fill="#3fae6f">
+                <line x1="640.75" y1="196.9" x2="640.75" y2="139.4"/><rect x="636.7" y="164.0" width="8.1" height="24.5"/>
+              </g>
+              <g stroke="#d9564d" stroke-opacity="0.7" stroke-width="1" fill="#d9564d">
+                <line x1="677.25" y1="205.1" x2="677.25" y2="147.6"/><rect x="673.2" y="164.0" width="8.1" height="28.6"/>
+              </g>
+              <g stroke="#3fae6f" stroke-opacity="0.7" stroke-width="1" fill="#3fae6f">
+                <line x1="713.75" y1="188.6" x2="713.75" y2="131.2"/><rect x="709.7" y="155.8" width="8.1" height="24.5"/>
+              </g>
+              <g stroke="#3fae6f" stroke-opacity="0.7" stroke-width="1" fill="#3fae6f">
+                <line x1="750.25" y1="172.2" x2="750.25" y2="114.8"/><rect x="746.2" y="139.4" width="8.1" height="24.5"/>
+              </g>
+              <g stroke="#d9564d" stroke-opacity="0.7" stroke-width="1" fill="#d9564d">
+                <line x1="786.75" y1="180.4" x2="786.75" y2="106.5"/><rect x="782.7" y="131.2" width="8.1" height="32.7"/>
+              </g>
+              <g stroke="#3fae6f" stroke-opacity="0.7" stroke-width="1" fill="#3fae6f">
+                <line x1="823.25" y1="155.8" x2="823.25" y2="90.2"/><rect x="819.2" y="122.9" width="8.1" height="24.5"/>
+              </g>
+              <g stroke="#d9564d" stroke-opacity="0.7" stroke-width="1" fill="#d9564d">
+                <line x1="859.75" y1="164.0" x2="859.75" y2="82.0"/><rect x="855.7" y="114.8" width="8.1" height="32.7"/>
+              </g>
+              <!-- approaching wick to 995 -->
+              <g stroke="#3fae6f" stroke-opacity="0.7" stroke-width="1" fill="#3fae6f">
+                <line x1="896.25" y1="147.6" x2="896.25" y2="49.3"/><rect x="892.2" y="98.3" width="8.1" height="32.7"/>
+              </g>
+              <g stroke="#3fae6f" stroke-opacity="0.7" stroke-width="1" fill="#3fae6f">
+                <line x1="932.75" y1="131.2" x2="932.75" y2="32.8"/><rect x="928.7" y="73.8" width="8.1" height="40.8"/>
+              </g>
+              <g stroke="#d9564d" stroke-opacity="0.7" stroke-width="1" fill="#d9564d">
+                <line x1="969.25" y1="122.9" x2="969.25" y2="24.7"/><rect x="965.2" y="57.5" width="8.1" height="49.0"/>
+              </g>
+              <g stroke="#3fae6f" stroke-opacity="0.7" stroke-width="1" fill="#3fae6f">
+                <line x1="1005.75" y1="98.3" x2="1005.75" y2="16.2"/><rect x="1001.7" y="41.1" width="8.1" height="40.8"/>
+              </g>
+              <!-- day 29: high wick to 995, close near 990 -->
+              <g stroke="#3fae6f" stroke-opacity="0.7" stroke-width="1" fill="#3fae6f">
+                <line x1="1042.25" y1="73.8" x2="1042.25" y2="16.2"/><rect x="1038.2" y="24.7" width="8.1" height="32.7"/>
+              </g>
+              <!-- Final strong DOWN: O990 H995 L920 C945 -->
+              <!-- y(990)=24.67, y(995)=16.17, y(920)=138.67, y(945)=97.83 -->
+              <g stroke="#d9564d" stroke-opacity="0.7" stroke-width="1" fill="#d9564d">
+                <line x1="1078.75" y1="138.67" x2="1078.75" y2="16.17"/>
+                <rect x="1074.7" y="24.67" width="8.1" height="73.16"/>
+              </g>
+            </g>
+
+            <!-- MA fast #98a0a8 ends ~948 (y≈92.9); slow #565d64 ends ~875 (y≈212.2) -->
+            <path d="M20,367 L57,360 L93,352 L130,340 L166,340 L203,324 L239,308 L276,303 L312,287 L349,262 L385,254 L422,238 L458,229 L495,213 L531,205 L568,188 L604,197 L641,180 L677,189 L714,172 L750,155 L787,164 L823,139 L860,148 L896,122 L933,98 L969,90 L1006,82 L1042,78 L1079,92.9"
+              fill="none" stroke="#98a0a8" stroke-width="1.1" vector-effect="non-scaling-stroke"/>
+            <path d="M20,375 L57,372 L93,368 L130,360 L166,355 L203,348 L239,340 L276,335 L312,325 L349,310 L385,300 L422,288 L458,280 L495,270 L531,262 L568,252 L604,250 L641,242 L677,240 L714,232 L750,224 L787,222 L823,218 L860,216 L896,214 L933,213 L969,212.5 L1006,212.3 L1042,212.2 L1079,212.2"
+              fill="none" stroke="#565d64" stroke-width="1.1" vector-effect="non-scaling-stroke"/>
+
+            <!-- Volume bars: y 408–458 (50px), colors at 32% opacity -->
+            <g>
+              <rect x="16.2" y="432" width="8.1" height="26" fill="#3fae6f" fill-opacity="0.32"/>
+              <rect x="52.7" y="438" width="8.1" height="20" fill="#d9564d" fill-opacity="0.32"/>
+              <rect x="89.2" y="428" width="8.1" height="30" fill="#3fae6f" fill-opacity="0.32"/>
+              <rect x="125.7" y="424" width="8.1" height="34" fill="#3fae6f" fill-opacity="0.32"/>
+              <rect x="162.2" y="436" width="8.1" height="22" fill="#d9564d" fill-opacity="0.32"/>
+              <rect x="198.7" y="422" width="8.1" height="36" fill="#3fae6f" fill-opacity="0.32"/>
+              <rect x="235.2" y="430" width="8.1" height="28" fill="#3fae6f" fill-opacity="0.32"/>
+              <rect x="271.7" y="434" width="8.1" height="24" fill="#d9564d" fill-opacity="0.32"/>
+              <rect x="308.2" y="418" width="8.1" height="40" fill="#3fae6f" fill-opacity="0.32"/>
+              <rect x="344.7" y="414" width="8.1" height="44" fill="#3fae6f" fill-opacity="0.32"/>
+              <rect x="381.2" y="426" width="8.1" height="32" fill="#d9564d" fill-opacity="0.32"/>
+              <rect x="417.7" y="420" width="8.1" height="38" fill="#3fae6f" fill-opacity="0.32"/>
+              <rect x="454.2" y="432" width="8.1" height="26" fill="#d9564d" fill-opacity="0.32"/>
+              <rect x="490.7" y="416" width="8.1" height="42" fill="#3fae6f" fill-opacity="0.32"/>
+              <rect x="527.2" y="428" width="8.1" height="30" fill="#d9564d" fill-opacity="0.32"/>
+              <rect x="563.7" y="412" width="8.1" height="46" fill="#3fae6f" fill-opacity="0.32"/>
+              <rect x="600.2" y="430" width="8.1" height="28" fill="#d9564d" fill-opacity="0.32"/>
+              <rect x="636.7" y="418" width="8.1" height="40" fill="#3fae6f" fill-opacity="0.32"/>
+              <rect x="673.2" y="434" width="8.1" height="24" fill="#d9564d" fill-opacity="0.32"/>
+              <rect x="709.7" y="422" width="8.1" height="36" fill="#3fae6f" fill-opacity="0.32"/>
+              <rect x="746.2" y="410" width="8.1" height="48" fill="#3fae6f" fill-opacity="0.32"/>
+              <rect x="782.7" y="426" width="8.1" height="32" fill="#d9564d" fill-opacity="0.32"/>
+              <rect x="819.2" y="414" width="8.1" height="44" fill="#3fae6f" fill-opacity="0.32"/>
+              <rect x="855.7" y="424" width="8.1" height="34" fill="#d9564d" fill-opacity="0.32"/>
+              <rect x="892.2" y="408" width="8.1" height="50" fill="#3fae6f" fill-opacity="0.32"/>
+              <rect x="928.7" y="412" width="8.1" height="46" fill="#3fae6f" fill-opacity="0.32"/>
+              <rect x="965.2" y="420" width="8.1" height="38" fill="#d9564d" fill-opacity="0.32"/>
+              <rect x="1001.7" y="406" width="8.1" height="52" fill="#3fae6f" fill-opacity="0.32"/>
+              <rect x="1038.2" y="410" width="8.1" height="48" fill="#3fae6f" fill-opacity="0.32"/>
+              <rect x="1074.7" y="400" width="8.1" height="58" fill="#d9564d" fill-opacity="0.32"/>
+            </g>
+
+            <!-- Date axis -->
+            <g fill="#565d64" font-family="'Zen Kaku Gothic New', sans-serif" font-size="10" text-anchor="middle">
+              <text x="20" y="456">June 29</text>
+              <text x="385" y="456">July 13</text>
+              <text x="750" y="456">July 27</text>
+              <text x="1079" y="456">August 11</text>
+            </g>
+          </svg>
+        </div>
+      </div>
+
+      <div class="drawer">
+        <div class="drawer-tabs">
+          <span class="drawer-tab active">Levels</span>
+          <span class="drawer-tab">Indicators 8</span>
+          <span class="drawer-tab">What changed 10</span>
+          <span class="drawer-tab">Risk Simulator</span>
+          <span class="drawer-tab">Methodology</span>
+          <div class="drawer-tabs-right">
+            <button class="btn btn-ghost btn-mini" type="button">Collapse ▾</button>
+          </div>
+        </div>
+        <div class="levels">
+          <div class="level">
+            <div class="level-label">Confirmation entry</div>
+            <div class="level-val num">945</div>
+            <div class="level-sub">Breakout above 945</div>
+          </div>
+          <div class="level level-warn">
+            <div class="level-label">Setup fails below</div>
+            <div class="level-val num">903</div>
+            <div class="level-sub">4.44% under last close</div>
+          </div>
+          <div class="level">
+            <div class="level-label">Target</div>
+            <div class="level-val num">995</div>
+            <div class="level-sub up">+5.29% upside</div>
+          </div>
+          <div class="level">
+            <div class="level-label">Support</div>
+            <div class="level-val num">903</div>
+            <div class="level-sub">then 850 · 760</div>
+          </div>
+          <div class="level">
+            <div class="level-label">Resistance</div>
+            <div class="level-val num">995</div>
+            <div class="level-sub">tested twice in 30 trading days</div>
+          </div>
+          <div class="level">
+            <div class="level-label">Reward / risk</div>
+            <div class="level-val num">1.19</div>
+            <div class="level-sub">+5.29% up · −4.44% down</div>
+          </div>
+        </div>
+        <div class="summary">
+          <p class="summary-text">Rangebound. Price lost MA10 at 948 today on 1.19× volume, and the top five brokers were net sellers (−28.5% concentration).</p>
+          <span class="badge badge-warn">Bearish balance</span>
+        </div>
+      </div>
+
+      <p class="page-foot">Methodology &amp; limitations — levels are pivot-based; moving averages move daily and are shown separately. Estimates are not recommendations.</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>
