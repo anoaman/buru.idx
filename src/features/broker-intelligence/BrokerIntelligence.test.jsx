@@ -384,7 +384,7 @@ describe('BrokerIntelligence', () => {
     expect(screen.getByText(/Estimated inventory changed from/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /AK/i }));
     expect(await screen.findByText(/No estimated inventory curve/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/Unavailable/i).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Avg Unavailable/i)).not.toBeInTheDocument();
   });
 
   it('deep-links selected broker into broker lens', async () => {
@@ -401,11 +401,11 @@ describe('BrokerIntelligence', () => {
     expect(link).toHaveAttribute('href', '/workbench?ticker=BBCA');
   });
 
-  it('displays Unavailable for null estimated average cost', async () => {
+  it('omits average-cost noise when estimated average cost is null', async () => {
     renderAt('/broker-intelligence?lens=stock&ticker=BBCA&days=30');
     await screen.findByText('Bank Central Asia');
     fireEvent.click(screen.getByRole('button', { name: /AK/i }));
-    expect(screen.getAllByText(/Unavailable/i).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Avg Unavailable/i)).not.toBeInTheDocument();
   });
 
   it('keeps disclosures visible', async () => {

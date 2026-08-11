@@ -112,7 +112,7 @@ describe('Radar', () => {
     renderRadar();
 
     expect(await screen.findByText('ADRO')).toBeInTheDocument();
-    expect(screen.getByText('No recorded counter-evidence')).toBeInTheDocument();
+    expect(screen.queryByText('No recorded counter-evidence')).not.toBeInTheDocument();
     expect(screen.getByText('unknown data quality')).toBeInTheDocument();
   });
 

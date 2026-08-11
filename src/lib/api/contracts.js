@@ -414,6 +414,11 @@ function normalizeScoutCandidate(row) {
     board: row.board || null,
     rank: Number.isFinite(row.rank) ? row.rank : null,
     score: preserveFiniteOrNull(row.score),
+    evidenceBand: ['high', 'medium', 'low'].includes(row.evidenceBand) ? row.evidenceBand : 'low',
+    failedCondition: typeof row.failedCondition === 'string' ? row.failedCondition : null,
+    scoreBreakdown: row.scoreBreakdown && typeof row.scoreBreakdown === 'object'
+      ? Object.fromEntries(Object.entries(row.scoreBreakdown).map(([key, value]) => [key, preserveFiniteOrNull(value)]))
+      : {},
     price: {
       lastPrice: preserveFiniteOrNull(price.lastPrice),
       priceDate: price.priceDate || null,

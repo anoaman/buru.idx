@@ -5,6 +5,7 @@ import {
   guardBrokerStockIntelligence,
   guardCases,
   guardOpportunities,
+  guardRadarScout,
   guardStockBrokerIntelligence,
   normalizeServing,
 } from './contracts.js';
@@ -293,5 +294,76 @@ describe('public Stock Analysis contracts', () => {
       current: null,
     });
     expect(result.data.staleCount).toBe(0);
+  });
+});
+
+describe('Radar Scout contracts', () => {
+  const scoutPrice = {
+    lastPrice: 1000,
+    priceDate: '2026-08-11',
+    support: 900,
+    supportTouches: 3,
+    distanceFromSupportPct: 0.02,
+    consolidationRangePct: 0.05,
+    averageValue: 1_000_000_000,
+  };
+
+  it('preserves evidence band, score breakdown, and null failedCondition for qualified candidates', () => {
+    const result = guardRadarScout({
+      success: true,
+      data: {
+        recipe: { id: 'quiet_accumulation', label: 'Quiet accumulation' },
+        candidates: [{
+          ticker: 'bbri',
+          name: 'Bank BRI',
+          rank: 1,
+          score: 82.5,
+          evidenceBand: 'high',
+          scoreBreakdown: { broker: 40, support: 30, compression: 12.5, junk: 'x' },
+          failedCondition: null,
+          price: scoutPrice,
+          reasons: ['lead buyer near support'],
+          risks: [],
+        }],
+        nearMisses: [],
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.data.candidates[0]).toMatchObject({
+      ticker: 'BBRI',
+      evidenceBand: 'high',
+      failedCondition: null,
+      scoreBreakdown: { broker: 40, support: 30, compression: 12.5, junk: null },
+    });
+  });
+
+  it('preserves failedCondition and defaults evidenceBand for near-miss candidates', () => {
+    const result = guardRadarScout({
+      success: true,
+      data: {
+        recipe: { id: 'quiet_accumulation', label: 'Quiet accumulation' },
+        candidates: [],
+        nearMisses: [{
+          ticker: 'ELSA',
+          rank: 1,
+          score: 55,
+          evidenceBand: 'suspicious',
+          failedCondition: 'Missed liquidity floor ≥ Rp500M/day',
+          scoreBreakdown: { broker: 20, support: 18, liquidity: null },
+          price: scoutPrice,
+          reasons: [],
+          risks: ['thin average value'],
+        }],
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.data.nearMisses[0]).toMatchObject({
+      ticker: 'ELSA',
+      evidenceBand: 'low',
+      failedCondition: 'Missed liquidity floor ≥ Rp500M/day',
+      scoreBreakdown: { broker: 20, support: 18, liquidity: null },
+    });
   });
 });

@@ -27,6 +27,36 @@ describe('public API allowlist', () => {
     expect(resolvePublicApiRequest('GET', '/api/watchlist').ok).toBe(true);
   });
 
+  it('forwards Scout custom broker dates and lead-broker minimum to upstream', () => {
+    const result = resolvePublicApiRequest(
+      'GET',
+      '/api/radar/scout?recipe=quiet_accumulation&brokerPreset=custom&brokerFrom=2026-01-01&brokerTo=2026-08-01&minLeadBrokerValue=500000000&useLeadBrokerValue=true&limit=25',
+    );
+    expect(result.ok).toBe(true);
+    const sent = new URL(result.path, 'http://internal').searchParams;
+    expect(sent.get('brokerPreset')).toBe('custom');
+    expect(sent.get('brokerFrom')).toBe('2026-01-01');
+    expect(sent.get('brokerTo')).toBe('2026-08-01');
+    expect(sent.get('minLeadBrokerValue')).toBe('500000000');
+    expect(sent.get('useLeadBrokerValue')).toBe('true');
+    expect(sent.get('limit')).toBe('25');
+  });
+
+  it('drops unknown Scout parameters while keeping the route GET/HEAD-only', () => {
+    const result = resolvePublicApiRequest(
+      'GET',
+      '/api/radar/scout?recipe=quiet_accumulation&brokerSessions=7&debug=1&dbPath=/etc/passwd',
+    );
+    expect(result.ok).toBe(true);
+    const sent = new URL(result.path, 'http://internal').searchParams;
+    expect(sent.get('recipe')).toBe('quiet_accumulation');
+    expect(sent.get('brokerSessions')).toBe('7');
+    expect(sent.get('debug')).toBeNull();
+    expect(sent.get('dbPath')).toBeNull();
+    expect(resolvePublicApiRequest('POST', '/api/radar/scout').status).toBe(405);
+    expect(resolvePublicApiRequest('HEAD', '/api/radar/scout?recipe=quiet_accumulation').ok).toBe(true);
+  });
+
   // An allowlist that silently drops a parameter the app depends on is a broken
   // app, and it fails at runtime rather than in the build. The first version of
   // this list guessed "asOf" and "broker"; the client sends "date" and "code",
@@ -42,6 +72,7 @@ describe('public API allowlist', () => {
       '/api/broker-intelligence/broker?code=ZP&days=30&limit=25',
       '/api/broker-intelligence/broker?code=ZP&days=7&limit=25&date=2026-08-07',
       '/api/radar/scout?recipe=dominant_broker&brokerSessions=7&consolidationSessions=10&supportSessions=20&maxPrice=1000&minAverageValue=500000000&limit=10&useBroker=true&useSupport=false&useSideways=false&useMaxPrice=true&useLiquidity=true',
+      '/api/radar/scout?recipe=quiet_accumulation&brokerPreset=custom&brokerFrom=2026-01-01&brokerTo=2026-08-01&minLeadBrokerValue=1000000&useLeadBrokerValue=true&limit=50',
     ];
     for (const requested of clientRequests) {
       const result = resolvePublicApiRequest('GET', requested);

@@ -64,9 +64,7 @@ function CandidateRow({ row, onInvestigate, onActors }) {
       </div>
       <div className="radar-row__why">
         <strong>{primaryReason || 'Qualified structure'}</strong>
-        <span className={primaryRisk ? 'radar-row__risk' : ''}>
-          {primaryRisk ? `Against: ${primaryRisk}` : 'No recorded counter-evidence'}
-        </span>
+        {primaryRisk ? <span className="radar-row__risk">Against: {primaryRisk}</span> : null}
       </div>
       <div className="radar-row__levels">
         <span>Breakout above <strong>{formatPrice(row.levels.trigger)}</strong></span>

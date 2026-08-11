@@ -47,16 +47,22 @@ function signedLots(value) {
 }
 
 function consistencyLabel(consistency) {
-  if (!consistency) return '—';
-  const side = consistency.dominantSide || 'mixed';
-  const pct = Number.isFinite(consistency.consistencyRatio)
-    ? `${Math.round(consistency.consistencyRatio * 100)}%`
-    : '—';
-  return `${side} · ${pct}`;
+  if (!consistency) return null;
+  const side = consistency.dominantSide;
+  const ratio = consistency.consistencyRatio;
+  // Suppress empty / zero-value status noise ("buy · 100%" with no real side/value).
+  if (!side || side === 'mixed') {
+    if (!Number.isFinite(ratio) || ratio <= 0) return null;
+  }
+  if (!Number.isFinite(ratio) || ratio <= 0) {
+    return side || null;
+  }
+  if (!side) return null;
+  return `${side} · ${Math.round(ratio * 100)}%`;
 }
 
 function avgCostLabel(value) {
-  return Number.isFinite(value) ? formatPrice(value) : 'Unavailable';
+  return Number.isFinite(value) ? formatPrice(value) : null;
 }
 
 function coveragePct(coverage) {
@@ -221,8 +227,8 @@ function RankingRow({
         <span className={`bi-rank__net tabular ${netValue > 0 ? 'text-positive' : netValue < 0 ? 'text-negative' : 'text-secondary'}`}>
           {signedValue(netValue)}
         </span>
-        <span className="bi-rank__side text-secondary">{sideLabel}</span>
-        <span className="bi-rank__cost text-tertiary">Avg {avgCost}</span>
+        {sideLabel ? <span className="bi-rank__side text-secondary">{sideLabel}</span> : null}
+        {avgCost ? <span className="bi-rank__cost text-tertiary">Avg {avgCost}</span> : null}
       </div>
     </button>
   );

@@ -154,7 +154,7 @@ export default function Cases() {
       {!state.loading && !state.error && items.length === 0 && (
         <EmptyState
           title="Your watchlist is empty"
-          message="Add a stock from the screener or stock analysis page."
+          message="No saved setups yet. Watchlist management will appear here when the workflow is enabled."
         />
       )}
 
