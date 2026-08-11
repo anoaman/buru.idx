@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import BrokerIntelligence from './BrokerIntelligence.jsx';
 
@@ -369,13 +369,21 @@ describe('BrokerIntelligence', () => {
     expect(screen.getByText(/Dist 5/i)).toBeInTheDocument();
   });
 
-  it('renders both accumulation and distribution rankings', async () => {
+  it('renders a single merged signed ranking table with explicit buy/sell sides', async () => {
     renderAt('/broker-intelligence?lens=stock&ticker=BBCA&days=30');
     await screen.findByText('Bank Central Asia');
-    expect(screen.getByText('Accumulation ranking')).toBeInTheDocument();
-    expect(screen.getByText('Distribution ranking')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /YP/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /AK/i })).toBeInTheDocument();
+    expect(screen.getByText('Broker net ranking')).toBeInTheDocument();
+    expect(screen.queryByText('Accumulation ranking')).not.toBeInTheDocument();
+    expect(screen.queryByText('Distribution ranking')).not.toBeInTheDocument();
+    expect(screen.getByText('Buyers · 1')).toBeInTheDocument();
+    expect(screen.getByText('Sellers · 1')).toBeInTheDocument();
+
+    const buyerRow = screen.getByRole('button', { name: /YP/i });
+    expect(within(buyerRow).getByText('Buy')).toBeInTheDocument();
+    expect(within(buyerRow).getByText('9.000')).toBeInTheDocument(); // avg price when available
+
+    const sellerRow = screen.getByRole('button', { name: /AK/i });
+    expect(within(sellerRow).getByText('Sell')).toBeInTheDocument();
   });
 
   it('changes curve/detail when ranking selection changes', async () => {
@@ -385,6 +393,80 @@ describe('BrokerIntelligence', () => {
     fireEvent.click(screen.getByRole('button', { name: /AK/i }));
     expect(await screen.findByText(/No estimated inventory curve/i)).toBeInTheDocument();
     expect(screen.queryByText(/Avg Unavailable/i)).not.toBeInTheDocument();
+  });
+
+  it('drives detail/inventory view when selecting from either the buyer or seller side', async () => {
+    renderAt('/broker-intelligence?lens=stock&ticker=BBCA&days=30');
+    await screen.findByText('Bank Central Asia');
+    // Default selection is the top buyer (YP).
+    expect(screen.getByText(/Estimated inventory changed from/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /AK/i }));
+    expect(await screen.findByText(/No estimated inventory curve/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /YP/i }));
+    expect(await screen.findByText(/Estimated inventory changed from/i)).toBeInTheDocument();
+  });
+
+  it('renders the merged ranking with explicit sides for the broker lens too', async () => {
+    renderAt('/broker-intelligence?lens=broker&code=YP&days=30');
+    await screen.findByText(/Observed stocks 12/i);
+    expect(screen.getByText('Stock net ranking')).toBeInTheDocument();
+
+    const buyerRow = screen.getByRole('button', { name: /BBCA/i });
+    expect(within(buyerRow).getByText('Buy')).toBeInTheDocument();
+
+    const sellerRow = screen.getByRole('button', { name: /BMRI/i });
+    expect(within(sellerRow).getByText('Sell')).toBeInTheDocument();
+  });
+
+  it('shows a quiet note instead of breaking when the buyer side is empty', async () => {
+    getStockBrokerIntelligence.mockResolvedValue({
+      ...STOCK_OK,
+      data: { ...STOCK_OK.data, accumulation: [] },
+    });
+    renderAt('/broker-intelligence?lens=stock&ticker=BBCA&days=30');
+    await screen.findByText('Bank Central Asia');
+    expect(screen.getByText(/No buyers observed/i)).toBeInTheDocument();
+    expect(screen.queryByText(/^Buyers ·/)).not.toBeInTheDocument();
+    const sellerRow = screen.getByRole('button', { name: /AK/i });
+    expect(within(sellerRow).getByText('Sell')).toBeInTheDocument();
+    // Falls back to the seller row when there is no buyer to default-select.
+    expect(await screen.findByText(/No estimated inventory curve/i)).toBeInTheDocument();
+  });
+
+  it('shows a quiet note instead of breaking when the seller side is empty', async () => {
+    getStockBrokerIntelligence.mockResolvedValue({
+      ...STOCK_OK,
+      data: { ...STOCK_OK.data, distribution: [] },
+    });
+    renderAt('/broker-intelligence?lens=stock&ticker=BBCA&days=30');
+    await screen.findByText('Bank Central Asia');
+    expect(screen.getByText(/No sellers observed/i)).toBeInTheDocument();
+    expect(screen.queryByText(/^Sellers ·/)).not.toBeInTheDocument();
+    const buyerRow = screen.getByRole('button', { name: /YP/i });
+    expect(within(buyerRow).getByText('Buy')).toBeInTheDocument();
+    expect(await screen.findByText(/Estimated inventory changed from/i)).toBeInTheDocument();
+  });
+
+  it('supports the Custom date preset with explicit from/to inputs', async () => {
+    renderAt('/broker-intelligence?lens=stock&ticker=BBCA&days=30');
+    await screen.findByText('Bank Central Asia');
+    fireEvent.click(screen.getByRole('button', { name: /^Custom$/i }));
+    expect(screen.getByText(/Select both dates/i)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('From'), { target: { value: '2026-06-01' } });
+    fireEvent.change(screen.getByLabelText('To'), { target: { value: '2026-06-30' } });
+
+    await waitFor(() => {
+      expect(getStockBrokerIntelligence).toHaveBeenCalledWith({
+        ticker: 'BBCA',
+        days: 30,
+        from: '2026-06-01',
+        to: '2026-06-30',
+      });
+    });
+    expect(screen.getByRole('button', { name: /^Custom$/i })).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('deep-links selected broker into broker lens', async () => {
@@ -406,6 +488,14 @@ describe('BrokerIntelligence', () => {
     await screen.findByText('Bank Central Asia');
     fireEvent.click(screen.getByRole('button', { name: /AK/i }));
     expect(screen.queryByText(/Avg Unavailable/i)).not.toBeInTheDocument();
+  });
+
+  it('shows a quiet dash in the merged table when the avg price is missing', async () => {
+    renderAt('/broker-intelligence?lens=stock&ticker=BBCA&days=30');
+    await screen.findByText('Bank Central Asia');
+    const sellerRow = screen.getByRole('button', { name: /AK/i }); // estimatedAverageCost: null
+    expect(within(sellerRow).getByText('—')).toBeInTheDocument();
+    expect(within(sellerRow).queryByText(/Unavailable/i)).not.toBeInTheDocument();
   });
 
   it('keeps disclosures visible', async () => {

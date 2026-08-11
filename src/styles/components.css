@@ -3098,3 +3098,30 @@
   text-transform: uppercase;
   margin-bottom: var(--space-3);
 }
+
+/* Phase 6 — Broker Flow merged signed ranking table (display-only merge). */
+.bi-merged__scroll {
+  max-height: 420px;
+  overflow: auto;
+}
+.bi-merged__identity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.bi-merged__note {
+  white-space: nowrap;
+}
+.bi-merged__row {
+  cursor: pointer;
+}
+.bi-merged__row:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+@media (max-width: 720px) {
+  .bi-merged__scroll {
+    max-height: none;
+  }
+}

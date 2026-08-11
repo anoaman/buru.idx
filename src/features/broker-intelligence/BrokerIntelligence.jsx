@@ -203,34 +203,95 @@ function ArchiveHealthStrip({ health, loading, error, onRetry }) {
   );
 }
 
-function RankingRow({
-  selected,
-  onSelect,
-  primary,
-  secondary,
-  netValue,
-  sideLabel,
-  avgCost,
-}) {
+// Phase 6: the two default accumulation/distribution panel lists are merged, on the
+// frontend only, into one signed net ranking table (no backend/calculation changes).
+function SideBadge({ side }) {
   return (
-    <button
-      type="button"
-      className={`bi-rank__row ${selected ? 'bi-rank__row--selected' : ''}`}
-      onClick={onSelect}
+    <span className={side === 'buy' ? 'ui-side-buy' : 'ui-side-sell'}>
+      {side === 'buy' ? 'Buy' : 'Sell'}
+    </span>
+  );
+}
+
+function MergedRankRow({ side, row, lens, selected, onSelect }) {
+  const primary = lens === 'stock' ? row.code : row.ticker;
+  const secondary = lens === 'stock' ? (row.sourceType || '—') : row.name;
+  const note = consistencyLabel(row.consistency);
+  const avgCost = avgCostLabel(row.estimatedAverageCost);
+  const netValue = row.netValue;
+  const netLots = row.netLots;
+
+  const handleKeyDown = (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onSelect();
+    }
+  };
+
+  return (
+    <tr
+      className={`ui-row bi-merged__row ${selected ? 'is-selected' : ''}`}
+      role="button"
+      tabIndex={0}
       aria-pressed={selected}
+      onClick={onSelect}
+      onKeyDown={handleKeyDown}
     >
-      <div className="bi-rank__identity">
-        <span className="bi-rank__primary">{primary}</span>
-        <span className="bi-rank__secondary text-secondary">{secondary}</span>
-      </div>
-      <div className="bi-rank__metrics">
-        <span className={`bi-rank__net tabular ${netValue > 0 ? 'text-positive' : netValue < 0 ? 'text-negative' : 'text-secondary'}`}>
-          {signedValue(netValue)}
-        </span>
-        {sideLabel ? <span className="bi-rank__side text-secondary">{sideLabel}</span> : null}
-        {avgCost ? <span className="bi-rank__cost text-tertiary">Avg {avgCost}</span> : null}
-      </div>
-    </button>
+      <td>
+        <div className="bi-merged__identity">
+          <span className="bi-rank__primary">{primary}</span>
+          <span className="bi-rank__secondary text-secondary">{secondary}</span>
+        </div>
+      </td>
+      <td>
+        <SideBadge side={side} />
+        {note ? <span className="bi-merged__note text-tertiary"> · {note}</span> : null}
+      </td>
+      <td className={`tabular ${netValue > 0 ? 'text-positive' : netValue < 0 ? 'text-negative' : 'text-secondary'}`}>
+        {signedValue(netValue)}
+      </td>
+      <td className={`tabular ${netLots > 0 ? 'text-positive' : netLots < 0 ? 'text-negative' : 'text-secondary'}`}>
+        {signedLots(netLots)}
+      </td>
+      <td className="tabular bi-merged__avg text-tertiary">{avgCost || '—'}</td>
+    </tr>
+  );
+}
+
+// Default order: positive net buyers descending, then a quiet group-label row,
+// then negative net sellers by absolute net value descending. An empty side
+// renders a quiet fallback row instead of breaking the table.
+function MergedRankGroup({ side, rows, lens, selectedRow, onSelect, emptyLabel }) {
+  if (!rows.length) {
+    return (
+      <tr className="ui-group-row">
+        <td colSpan={5} className="text-tertiary">{emptyLabel}</td>
+      </tr>
+    );
+  }
+  const label = side === 'buy' ? 'Buyers' : 'Sellers';
+  return (
+    <>
+      <tr className="ui-group-row">
+        <td colSpan={5}>{label} · {rows.length}</td>
+      </tr>
+      {rows.map((row) => {
+        const key = lens === 'stock' ? row.code : row.ticker;
+        const isSelected = Boolean(selectedRow) && (
+          lens === 'stock' ? selectedRow.code === row.code : selectedRow.ticker === row.ticker
+        );
+        return (
+          <MergedRankRow
+            key={`${side}-${key}`}
+            side={side}
+            row={row}
+            lens={lens}
+            selected={isSelected}
+            onSelect={() => onSelect(key)}
+          />
+        );
+      })}
+    </>
   );
 }
 
@@ -541,12 +602,29 @@ export default function BrokerIntelligence() {
   const accumulation = viewData?.accumulation || [];
   const distribution = viewData?.distribution || [];
 
+  // Display-only merge: sort buyers by net value descending and sellers by
+  // absolute net value descending. No backend/calculation changes.
+  const buyers = useMemo(() => (
+    [...accumulation].sort((a, b) => {
+      const av = Number.isFinite(a?.netValue) ? a.netValue : -Infinity;
+      const bv = Number.isFinite(b?.netValue) ? b.netValue : -Infinity;
+      return bv - av;
+    })
+  ), [accumulation]);
+  const sellers = useMemo(() => (
+    [...distribution].sort((a, b) => {
+      const av = Number.isFinite(a?.netValue) ? Math.abs(a.netValue) : -Infinity;
+      const bv = Number.isFinite(b?.netValue) ? Math.abs(b.netValue) : -Infinity;
+      return bv - av;
+    })
+  ), [distribution]);
+
   const mismatched = Boolean(data) && !viewData;
   const showLensLoading = lensState.loading;
   const showRefreshing = lensState.refreshing && !lensState.loading;
 
   const selectedRow = useMemo(() => {
-    const all = [...accumulation, ...distribution];
+    const all = [...buyers, ...sellers];
     if (!all.length) return null;
     if (selectedKey) {
       const found = all.find((row) => (
@@ -554,8 +632,8 @@ export default function BrokerIntelligence() {
       ));
       if (found) return found;
     }
-    return accumulation[0] || distribution[0] || null;
-  }, [accumulation, distribution, selectedKey, lens]);
+    return buyers[0] || sellers[0] || null;
+  }, [buyers, sellers, selectedKey, lens]);
 
   const identityLabel = selectedRow
     ? (lens === 'stock' ? selectedRow.code : selectedRow.ticker)
@@ -768,59 +846,45 @@ export default function BrokerIntelligence() {
             />
           ) : (
             <div className="bi-workstation">
-              <div className="bi-rankings">
-                <section className="bi-rank" aria-label={lens === 'stock' ? 'Accumulation ranking' : 'Accumulated stocks'}>
-                  <h3 className="bi-rank__title">
-                    {lens === 'stock' ? 'Accumulation ranking' : 'Accumulated stocks'}
-                  </h3>
-                  <div className="bi-rank__list">
-                    {accumulation.length === 0 && (
-                      <div className="bi-rank__empty text-tertiary">No accumulation rows</div>
-                    )}
-                    {accumulation.map((row) => {
-                      const key = lens === 'stock' ? row.code : row.ticker;
-                      return (
-                        <RankingRow
-                          key={`acc-${key}`}
-                          selected={selectedRow && (lens === 'stock' ? selectedRow.code === row.code : selectedRow.ticker === row.ticker)}
-                          onSelect={() => setSelectedKey(key)}
-                          primary={key}
-                          secondary={lens === 'stock' ? (row.sourceType || '—') : row.name}
-                          netValue={row.netValue}
-                          sideLabel={consistencyLabel(row.consistency)}
-                          avgCost={avgCostLabel(row.estimatedAverageCost)}
-                        />
-                      );
-                    })}
-                  </div>
-                </section>
-
-                <section className="bi-rank" aria-label={lens === 'stock' ? 'Distribution ranking' : 'Distributed stocks'}>
-                  <h3 className="bi-rank__title">
-                    {lens === 'stock' ? 'Distribution ranking' : 'Distributed stocks'}
-                  </h3>
-                  <div className="bi-rank__list">
-                    {distribution.length === 0 && (
-                      <div className="bi-rank__empty text-tertiary">No distribution rows</div>
-                    )}
-                    {distribution.map((row) => {
-                      const key = lens === 'stock' ? row.code : row.ticker;
-                      return (
-                        <RankingRow
-                          key={`dist-${key}`}
-                          selected={selectedRow && (lens === 'stock' ? selectedRow.code === row.code : selectedRow.ticker === row.ticker)}
-                          onSelect={() => setSelectedKey(key)}
-                          primary={key}
-                          secondary={lens === 'stock' ? (row.sourceType || '—') : row.name}
-                          netValue={row.netValue}
-                          sideLabel={consistencyLabel(row.consistency)}
-                          avgCost={avgCostLabel(row.estimatedAverageCost)}
-                        />
-                      );
-                    })}
-                  </div>
-                </section>
-              </div>
+              <section
+                className="bi-rank bi-merged"
+                aria-label={lens === 'stock' ? 'Broker net ranking' : 'Stock net ranking'}
+              >
+                <h3 className="bi-rank__title">
+                  {lens === 'stock' ? 'Broker net ranking' : 'Stock net ranking'}
+                </h3>
+                <div className="bi-merged__scroll">
+                  <table className="ui-table bi-merged__table">
+                    <thead>
+                      <tr>
+                        <th scope="col">{lens === 'stock' ? 'Broker' : 'Stock'}</th>
+                        <th scope="col">Side</th>
+                        <th scope="col" className="tabular">Net value</th>
+                        <th scope="col" className="tabular">Net lots</th>
+                        <th scope="col" className="tabular">Avg price</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <MergedRankGroup
+                        side="buy"
+                        rows={buyers}
+                        lens={lens}
+                        selectedRow={selectedRow}
+                        onSelect={setSelectedKey}
+                        emptyLabel="No buyers observed"
+                      />
+                      <MergedRankGroup
+                        side="sell"
+                        rows={sellers}
+                        lens={lens}
+                        selectedRow={selectedRow}
+                        onSelect={setSelectedKey}
+                        emptyLabel="No sellers observed"
+                      />
+                    </tbody>
+                  </table>
+                </div>
+              </section>
 
               <div className="bi-inspect">
                 <InventoryCurve
