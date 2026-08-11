@@ -9,28 +9,46 @@ case tracking from the retiring cockpit without duplicating backend engines.
 ## Boundaries
 
 - `src/features/workbench/` owns ticker analysis presentation and chart views.
-  Its investigation order is market overview, annotated market chart,
-  invalidation simulator, the collapsed evidence ledger, then the setup
-  timeline. The chart uses TradingView Lightweight Charts so first-party levels
-  remain auditable. Nothing on the page may be labelled from the search box:
-  the loading line, the failure title and Retry all name the ticker the open
-  request was actually made for, and a response that is no longer the newest
-  request is discarded rather than rendered.
-- `src/features/broker-intelligence/` owns stock/broker lenses and inventory
-  curve presentation.
+  Layout order is market overview, full-width market chart, then a docked
+  accessible `DetailDrawer` with tabs: Levels · Indicators · Broker Flow ·
+  What Changed · Risk Simulator · Methodology. The chart uses TradingView
+  Lightweight Charts so first-party levels remain auditable. Nothing on the
+  page may be labelled from a stale request: cold loads use skeletons; warm
+  ticker switches keep the previous completed frame (still labelled with its
+  own ticker) dimmed under a non-blocking “Loading {ticker}…” overlay; a
+  response that is no longer the newest request is discarded rather than
+  rendered; failures name the ticker that failed and do not silently replace
+  a prior good frame.
+- `src/features/workbench/DetailDrawer.jsx` owns tablist/tab/tabpanel
+  semantics and keyboard Left/Right/Home/End navigation. Network-triggering
+  panels (BrokerEvidence) mount only when their tab is selected.
+- `src/features/broker-intelligence/` owns stock/broker lenses, the merged
+  signed ranking table (frontend display merge of accumulation + distribution
+  arrays only), and inventory curve presentation.
 - `src/lib/api/client.js` is the only first-party network boundary and prefixes
-  every API path with `VITE_API_BASE`.
-- `src/lib/api/contracts.js` normalizes only the contracts consumed by these two
-  features.
+  every API path with `VITE_API_BASE`. Successful GET responses for
+  `/api/broker-intelligence/*` and `/api/analyze` are cached ~45s with
+  in-flight dedupe; failures are never cached.
+  `invalidateBrokerCache()` clears only broker-intelligence keys.
+- `src/lib/api/contracts.js` normalizes only the contracts consumed by these
+  features. Scout candidates keep `evidenceBand`, `failedCondition`, and
+  `scoreBreakdown`.
 - `src/lib/format/market.js` owns only the market formatters they consume.
 - `src/components/AnalysisShell.jsx` owns private navigation and the global
-  ticker/window command bar.
+  ticker command bar. Broker date windows are owned by Broker Flow, not the
+  shell. Theme preference uses `localStorage` key `nalar-theme` and
+  `document.documentElement.dataset.theme`. First visit defaults to Paper
+  Ledger (`light`); Graphite Ledger is the redesigned `dark` theme. Chart
+  canvas stays dark in both themes.
 - `src/components/AnalysisContext.jsx` owns cross-route ticker, window and as-of
   context. Feature pages remain responsible for their own network state.
 - `src/features/radar/` and `src/features/cases/` read the scan and case
   contracts through `contracts.js` like every other feature. They rank nothing,
   score nothing, and decide no material change; those all arrive already
   computed. Radar's lane filter only hides rows the backend already ranked.
+  Custom Screener uses a split layout (conditions column + results table) and
+  forwards broker custom range / lead-broker minimum through the public
+  allowlist.
 - `confidence` is a deprecated pre-1.2 alias for source freshness and coverage,
   not outcome probability. The view models expose it as `dataQuality` and drop
   the alias, so no component can render it under the wrong label.
@@ -46,14 +64,13 @@ case tracking from the retiring cockpit without duplicating backend engines.
   reporting the actual observed trading-day count. Chart defaults show the
   latest 60 trading days, exclude overlays from the initial price range, keep
   manual scale control, and allow moving-average lines to be hidden.
-- `src/styles/tokens.css` owns the Paper Ledger semantic theme contract. Light
-  is the default workstation theme, dark is an optional persisted preference,
-  and feature styles consume semantic tokens rather than theme-specific color
-  literals. The market chart deliberately keeps a dark plotting surface in
-  both themes so its candle and overlay contrast remains stable.
+- `src/styles/tokens.css` owns the Paper Ledger (light) and Graphite Ledger
+  (dark) semantic theme contract plus motion tokens. Feature styles consume
+  semantic tokens rather than theme-specific color literals.
 - `src/styles/global.css` owns typography, numerical rendering and universal
-  interaction states. `src/styles/components.css` owns shared shell, panel,
-  table, control and responsive geometry; feature components may supply class
+  interaction states (including `prefers-reduced-motion`).
+  `src/styles/components.css` owns shared shell, panel, table, control,
+  drawer and responsive geometry; feature components may supply class
   structure but must not create independent visual systems.
 
 The frontend performs no analysis, ranking, broker inventory, or coverage
@@ -94,3 +111,11 @@ turn the proxy into a wildcard forwarder.
   outcomes are preserved until replacement routes are verified against the
   same records.
 - FCA remains independently deployed and outside the Analysis V2 UI rewrite.
+
+## Deferred (Graphite pass)
+
+- Chart OHLC hover readout / MA legend highlight: only if implementable via
+  existing Lightweight Charts APIs without recreating the chart or changing
+  scale — deferred rather than faked.
+- Watchlist write workflow and rail count pill.
+- House number format (P6 / cross-repo `number.js`).

@@ -5,6 +5,7 @@ import { formatPrice, formatRelativeDays } from '../../lib/format/market.js';
 import EmptyState from '../../components/EmptyState.jsx';
 import ErrorState from '../../components/ErrorState.jsx';
 import InfoTip from '../../components/InfoTip.jsx';
+import Skeleton from '../../components/Skeleton.jsx';
 import { useAnalysisContext } from '../../components/AnalysisContext.jsx';
 
 const MONITORING_LABEL = {
@@ -128,7 +129,7 @@ export default function Cases() {
         <p>Saved setups and what has changed since you added them.</p>
       </header>
 
-      {state.loading && <p className="text-tertiary">Loading watchlist…</p>}
+      {state.loading && <Skeleton label="Loading watchlist…" />}
 
       {state.error && !state.loading && (
         <ErrorState title="Watchlist unavailable" error={state.error} onRetry={load} />

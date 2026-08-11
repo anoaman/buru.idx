@@ -4,6 +4,7 @@ import { guardOpportunities, guardRadarScout } from '../../lib/api/contracts.js'
 import { formatDate, formatIDR, formatPct, formatPrice, formatRatio, formatRelativeDays } from '../../lib/format/market.js';
 import EmptyState from '../../components/EmptyState.jsx';
 import ErrorState from '../../components/ErrorState.jsx';
+import Skeleton from '../../components/Skeleton.jsx';
 import { useAnalysisContext } from '../../components/AnalysisContext.jsx';
 
 const ALL_LANES = 'all';
@@ -480,7 +481,7 @@ export default function Radar() {
 
       {view === 'scan' && <>
 
-      {state.loading && <p className="text-tertiary">Loading the latest qualified scan…</p>}
+      {state.loading && <Skeleton label="Loading the latest qualified scan…" />}
 
       {state.error && !state.loading && (
         <ErrorState title="Scan unavailable" error={state.error} onRetry={load} />
