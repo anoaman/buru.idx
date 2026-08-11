@@ -8,14 +8,27 @@ const COLORS = {
   entry: '#60a5fa', target: '#22c55e', stop: '#ef4444',
 };
 const MA_COLORS = { ma5: '#60a5fa', ma10: '#a78bfa', ma20: '#fbbf24', ma50: '#f97316', ma200: '#ef4444' };
+const DEFAULT_CHART_HEIGHT = 480;
 
 export default function MarketChart({ chart, geometry, ticker }) {
   const containerRef = useRef(null);
   const sectionRef = useRef(null);
+  const chartRef = useRef(null);
   const [fullscreen, setFullscreen] = useState(false);
 
   useEffect(() => {
-    const sync = () => setFullscreen(document.fullscreenElement === sectionRef.current);
+    const sync = () => {
+      const active = document.fullscreenElement === sectionRef.current;
+      setFullscreen(active);
+      requestAnimationFrame(() => {
+        const container = containerRef.current;
+        if (!container || !chartRef.current) return;
+        chartRef.current.applyOptions({
+          width: container.clientWidth,
+          height: active ? container.clientHeight : DEFAULT_CHART_HEIGHT,
+        });
+      });
+    };
     document.addEventListener('fullscreenchange', sync);
     return () => document.removeEventListener('fullscreenchange', sync);
   }, []);
@@ -24,13 +37,14 @@ export default function MarketChart({ chart, geometry, ticker }) {
     if (!containerRef.current || !chart?.candles?.length) return undefined;
     const instance = createChart(containerRef.current, {
       width: containerRef.current.clientWidth,
-      height: containerRef.current.clientHeight || 480,
+      height: containerRef.current.clientHeight || DEFAULT_CHART_HEIGHT,
       layout: { background: { color: 'transparent' }, textColor: COLORS.text, fontSize: 11 },
       grid: { vertLines: { color: COLORS.grid }, horzLines: { color: COLORS.grid } },
       rightPriceScale: { borderColor: COLORS.border },
       timeScale: { borderColor: COLORS.border, timeVisible: false },
       crosshair: { mode: 1 },
     });
+    chartRef.current = instance;
     const candles = instance.addSeries(CandlestickSeries, {
       upColor: COLORS.up, downColor: COLORS.down, borderUpColor: COLORS.up,
       borderDownColor: COLORS.down, wickUpColor: COLORS.up, wickDownColor: COLORS.down,
@@ -61,10 +75,10 @@ export default function MarketChart({ chart, geometry, ticker }) {
 
     instance.timeScale().fitContent();
     const observer = new ResizeObserver(([entry]) => {
-      if (entry?.contentRect.width) instance.applyOptions({ width: entry.contentRect.width, height: entry.contentRect.height || 480 });
+      if (entry?.contentRect.width) instance.applyOptions({ width: entry.contentRect.width, height: entry.contentRect.height || DEFAULT_CHART_HEIGHT });
     });
     observer.observe(containerRef.current);
-    return () => { observer.disconnect(); instance.remove(); };
+    return () => { observer.disconnect(); chartRef.current = null; instance.remove(); };
   }, [chart, geometry, ticker]);
 
   if (!chart?.candles?.length) return <div className="wb-market-chart wb-market-chart--empty">Chart history unavailable.</div>;

@@ -211,10 +211,10 @@ describe('Radar', () => {
     renderRadar();
     fireEvent.click(screen.getByRole('tab', { name: 'Scout' }));
     expect(screen.getByText(/Combines persistent broker concentration/)).toBeInTheDocument();
-    expect(screen.getByLabelText('Maximum price')).toHaveValue('1,000');
-    expect(screen.getByLabelText('Minimum avg value')).toHaveValue('500,000,000');
-    fireEvent.click(screen.getByLabelText('Broker concentration'));
-    expect(screen.getByLabelText('Broker sessions')).toBeDisabled();
+    expect(screen.getByLabelText('Rp')).toHaveValue('1,000');
+    expect(screen.getByLabelText('Rp average')).toHaveValue('500,000,000');
+    fireEvent.click(screen.getByLabelText(/Broker concentration/));
+    expect(screen.getAllByLabelText('Sessions')[0]).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Run Scout' }));
 
     expect(await screen.findByText('AHAP')).toBeInTheDocument();

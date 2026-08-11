@@ -155,21 +155,35 @@ function Scout({ onInvestigate, onActors }) {
   return (
     <div className="scout-view">
       <form className="scout-controls" onSubmit={run}>
-        <label className="scout-controls__recipe">Recipe<select value={filters.recipe} onChange={selectRecipe}>{RECIPES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
-        <label className="scout-toggle"><input type="checkbox" checked={filters.useBroker} onChange={update('useBroker')} /><span>Broker concentration</span></label>
-        <label className={!filters.useBroker ? 'scout-field is-disabled' : 'scout-field'}>Broker sessions<input type="number" min="3" max="20" disabled={!filters.useBroker} value={filters.brokerSessions} onChange={update('brokerSessions')} /></label>
-        <label className="scout-toggle"><input type="checkbox" checked={filters.useSupport} onChange={update('useSupport')} /><span>Near repeated support</span></label>
-        <label className={!filters.useSupport ? 'scout-field is-disabled' : 'scout-field'}>Support sessions<input type="number" min="5" max="60" disabled={!filters.useSupport} value={filters.supportSessions} onChange={update('supportSessions')} /></label>
-        <label className="scout-toggle"><input type="checkbox" checked={filters.useSideways} onChange={update('useSideways')} /><span>Sideways compression</span></label>
-        <label className={!filters.useSideways ? 'scout-field is-disabled' : 'scout-field'}>Sideways candles<input type="number" min="5" max="20" disabled={!filters.useSideways} value={filters.consolidationSessions} onChange={update('consolidationSessions')} /></label>
-        <label className="scout-toggle"><input type="checkbox" checked={filters.useMaxPrice} onChange={update('useMaxPrice')} /><span>Apply maximum price</span></label>
-        <label className={!filters.useMaxPrice ? 'scout-field is-disabled' : 'scout-field'}>Maximum price<input type="text" inputMode="numeric" disabled={!filters.useMaxPrice} value={numericText(filters.maxPrice)} onChange={update('maxPrice')} /></label>
-        <label className="scout-toggle"><input type="checkbox" checked={filters.useLiquidity} onChange={update('useLiquidity')} /><span>Apply liquidity floor</span></label>
-        <label className={!filters.useLiquidity ? 'scout-field is-disabled' : 'scout-field'}>Minimum avg value<input type="text" inputMode="numeric" disabled={!filters.useLiquidity} value={numericText(filters.minAverageValue)} onChange={update('minAverageValue')} /></label>
-        <button type="submit" disabled={state.loading}>{state.loading ? 'Screening…' : 'Run Scout'}</button>
+        <div className="scout-controls__intro">
+          <label className="scout-controls__recipe">Screening recipe<select value={filters.recipe} onChange={selectRecipe}>{RECIPES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+          <div className="scout-recipe-explanation"><strong>{recipe.label}</strong><p>{recipe.description}</p><span>Recipe defaults are editable below. Scout requires every enabled condition.</span></div>
+        </div>
+        <fieldset className="scout-conditions">
+          <legend>Conditions</legend>
+          <div className={!filters.useBroker ? 'scout-condition is-disabled' : 'scout-condition'}>
+            <label className="scout-toggle"><input type="checkbox" checked={filters.useBroker} onChange={update('useBroker')} /><span><strong>Broker concentration</strong><small>One buyer leads the positive flow.</small></span></label>
+            <label className="scout-condition__value">Sessions<input type="number" min="3" max="20" disabled={!filters.useBroker} value={filters.brokerSessions} onChange={update('brokerSessions')} /></label>
+          </div>
+          <div className={!filters.useSupport ? 'scout-condition is-disabled' : 'scout-condition'}>
+            <label className="scout-toggle"><input type="checkbox" checked={filters.useSupport} onChange={update('useSupport')} /><span><strong>Repeated support</strong><small>Price remains near a tested support zone.</small></span></label>
+            <label className="scout-condition__value">Sessions<input type="number" min="5" max="60" disabled={!filters.useSupport} value={filters.supportSessions} onChange={update('supportSessions')} /></label>
+          </div>
+          <div className={!filters.useSideways ? 'scout-condition is-disabled' : 'scout-condition'}>
+            <label className="scout-toggle"><input type="checkbox" checked={filters.useSideways} onChange={update('useSideways')} /><span><strong>Sideways compression</strong><small>Recent candles stay inside a narrow range.</small></span></label>
+            <label className="scout-condition__value">Candles<input type="number" min="5" max="20" disabled={!filters.useSideways} value={filters.consolidationSessions} onChange={update('consolidationSessions')} /></label>
+          </div>
+          <div className={!filters.useMaxPrice ? 'scout-condition is-disabled' : 'scout-condition'}>
+            <label className="scout-toggle"><input type="checkbox" checked={filters.useMaxPrice} onChange={update('useMaxPrice')} /><span><strong>Maximum price</strong><small>Keep the universe inside your price band.</small></span></label>
+            <label className="scout-condition__value">Rp<input type="text" inputMode="numeric" disabled={!filters.useMaxPrice} value={numericText(filters.maxPrice)} onChange={update('maxPrice')} /></label>
+          </div>
+          <div className={!filters.useLiquidity ? 'scout-condition is-disabled' : 'scout-condition'}>
+            <label className="scout-toggle"><input type="checkbox" checked={filters.useLiquidity} onChange={update('useLiquidity')} /><span><strong>Liquidity floor</strong><small>Minimum average traded value per session.</small></span></label>
+            <label className="scout-condition__value">Rp average<input type="text" inputMode="numeric" disabled={!filters.useLiquidity} value={numericText(filters.minAverageValue)} onChange={update('minAverageValue')} /></label>
+          </div>
+        </fieldset>
+        <div className="scout-controls__footer"><span>No AI · cached EOD data · deterministic ranking</span><button type="submit" disabled={state.loading}>{state.loading ? 'Screening…' : 'Run Scout'}</button></div>
       </form>
-      <div className="scout-recipe-explanation"><strong>{recipe.label}</strong><p>{recipe.description}</p><span>Every checked condition is required. Uncheck any condition you do not want Scout to apply.</span></div>
-      <p className="scout-method">No AI and no live fetch. Scout applies fixed, auditable rules to cached EOD prices and observed broker flow.</p>
       {state.error && <ErrorState title="Scout unavailable" error={state.error} onRetry={run} />}
       {!state.data && !state.loading && !state.error && <EmptyState title="Choose a recipe" message="Run Scout to screen the cached IDX universe. Nothing is ranked in the browser." />}
       {state.data && <>
