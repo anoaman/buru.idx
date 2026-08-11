@@ -71,7 +71,10 @@ export function formatRatio(value, decimals = 2) {
 
 export function formatDate(value) {
   if (!value) return unavailable;
-  const date = new Date(value);
+  const text = String(value);
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(text)
+    ? new Date(`${text}T00:00:00`)
+    : new Date(value);
   if (Number.isNaN(date.getTime())) return unavailable;
-  return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+  return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 }

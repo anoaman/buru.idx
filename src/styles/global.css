@@ -17,10 +17,29 @@ html, body, #root {
   -moz-osx-font-smoothing: grayscale;
 }
 
+body { transition: background-color .18s ease, color .18s ease; }
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  letter-spacing: .005em;
+}
+
+input, select, textarea {
+  font: inherit;
+  color: var(--text-primary);
+}
+
+input[type='date'] { color-scheme: light; }
+:root[data-theme='dark'] input[type='date'] { color-scheme: dark; }
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
 /* Tabular numerals for market data */
 .tabular {
   font-variant-numeric: tabular-nums;
-  font-family: var(--font-tabular);
 }
 
 /* Scrollbars */
@@ -113,8 +132,9 @@ button {
 /* Card surface */
 .card {
   background: var(--bg-elevated);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
+  box-shadow: var(--panel-shadow);
 }
 
 /* Responsive breakpoints */

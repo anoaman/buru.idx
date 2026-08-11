@@ -1,66 +1,95 @@
 :root {
-  /* Backgrounds — near-black blue-gray foundation */
-  --bg-base: #0b0d12;
-  --bg-elevated: #11141c;
-  --bg-surface: #161a24;
-  --bg-hover: #1c2130;
-  --bg-active: #222838;
+  color-scheme: light;
 
-  /* Borders — subtle, not heavy shadows */
-  --border-subtle: rgba(255, 255, 255, 0.06);
-  --border-default: rgba(255, 255, 255, 0.10);
-  --border-strong: rgba(255, 255, 255, 0.16);
+  /* Paper Ledger — light-first workstation surfaces */
+  --bg-base: #f3f1eb;
+  --bg-elevated: #fffefa;
+  --bg-surface: #f8f7f2;
+  --bg-hover: #eeece5;
+  --bg-active: #e6e3d9;
+  --bg-chart: #0c0f12;
 
-  /* Text — high contrast for data, muted for labels */
-  --text-primary: #e8eaed;
-  --text-secondary: #9aa0a6;
-  --text-tertiary: #5f6368;
-  --text-disabled: #3c4043;
+  --border-subtle: rgba(31, 38, 43, 0.08);
+  --border-default: rgba(31, 38, 43, 0.14);
+  --border-strong: rgba(31, 38, 43, 0.24);
 
-  /* Semantic — IDX-familiar green/red, amber for warnings */
-  --color-positive: #34a853;
-  --color-positive-dim: rgba(52, 168, 83, 0.15);
-  --color-negative: #ea4335;
-  --color-negative-dim: rgba(234, 67, 53, 0.15);
-  --color-warning: #f9ab00;
-  --color-warning-dim: rgba(249, 171, 0, 0.15);
-  --color-info: #4285f4;
-  --color-info-dim: rgba(66, 133, 244, 0.15);
-  --color-accent: #d8ff3e;
-  --color-accent-dim: rgba(216, 255, 62, 0.10);
+  --text-primary: #1f262b;
+  --text-secondary: #596168;
+  --text-tertiary: #7b8287;
+  --text-disabled: #a7aaa7;
 
-  /* Freshness states */
+  --color-positive: #18784a;
+  --color-positive-dim: rgba(24, 120, 74, 0.10);
+  --color-negative: #b43f38;
+  --color-negative-dim: rgba(180, 63, 56, 0.10);
+  --color-warning: #a96808;
+  --color-warning-dim: rgba(169, 104, 8, 0.10);
+  --color-info: #315f72;
+  --color-info-dim: rgba(49, 95, 114, 0.10);
+  --color-accent: #536b13;
+  --color-accent-hover: #40540d;
+  --color-accent-on: #ffffff;
+  --color-accent-dim: rgba(83, 107, 19, 0.10);
+  --color-neutral-bar: #737e84;
+
   --freshness-fresh: var(--color-positive);
   --freshness-degraded: var(--color-warning);
   --freshness-stale: var(--color-negative);
   --freshness-unknown: var(--text-tertiary);
 
-  /* Typography */
-  --font-ui: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
-  --font-tabular: 'JetBrains Mono', 'SF Mono', monospace;
+  --font-ui: 'Zen Kaku Gothic New', system-ui, -apple-system, sans-serif;
+  --font-heading: 'Zen Kaku Gothic Antique', var(--font-ui);
+  --font-mono: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  --font-tabular: var(--font-ui);
 
-  /* Spacing scale */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-8: 32px;
-  --space-10: 40px;
-  --space-12: 48px;
+  --space-4: 14px;
+  --space-5: 16px;
+  --space-6: 18px;
+  --space-8: 22px;
+  --space-10: 32px;
+  --space-12: 40px;
 
-  /* Layout */
-  --sidebar-width: 218px;
-  --header-height: 64px;
-  --content-max: 1440px;
-  --radius-sm: 2px;
-  --radius-md: 4px;
-  --radius-lg: 6px;
-
-  /* Density */
-  --density-compact: 28px;
+  --sidebar-width: 190px;
+  --header-height: 46px;
+  --content-max: 1600px;
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --density-compact: 30px;
   --density-normal: 36px;
-  --density-loose: 48px;
+  --density-loose: 44px;
+  --panel-shadow: none;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg-base: #0c0e10;
+  --bg-elevated: #14181c;
+  --bg-surface: #191d21;
+  --bg-hover: #1f2429;
+  --bg-active: #272d33;
+  --bg-chart: #08090b;
+  --border-subtle: rgba(228, 231, 234, 0.07);
+  --border-default: rgba(228, 231, 234, 0.12);
+  --border-strong: rgba(228, 231, 234, 0.20);
+  --text-primary: #e4e7ea;
+  --text-secondary: #c3c9ce;
+  --text-tertiary: #8f979e;
+  --text-disabled: #565d64;
+  --color-positive: #3fae6f;
+  --color-positive-dim: rgba(63, 174, 111, 0.10);
+  --color-negative: #d9564d;
+  --color-negative-dim: rgba(217, 86, 77, 0.10);
+  --color-warning: #d99a34;
+  --color-warning-dim: rgba(217, 154, 52, 0.08);
+  --color-info: #8ca6b2;
+  --color-info-dim: rgba(140, 166, 178, 0.10);
+  --color-accent: #a8c93a;
+  --color-accent-hover: #b6d84a;
+  --color-accent-on: #0c0e10;
+  --color-accent-dim: rgba(168, 201, 58, 0.10);
+  --color-neutral-bar: #7f8a96;
 }

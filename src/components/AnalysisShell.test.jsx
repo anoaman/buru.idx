@@ -26,6 +26,11 @@ function renderShell(path = '/workbench?ticker=BBCA') {
 }
 
 describe('AnalysisShell', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    delete document.documentElement.dataset.theme;
+  });
+
   it('opens a ticker from the global command bar and preserves it as context', async () => {
     renderShell();
     const input = screen.getByLabelText(/Open ticker investigation/i);
@@ -53,5 +58,13 @@ describe('AnalysisShell', () => {
     expect(screen.getByRole('link', { name: /Stock Analysis/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Broker Flow/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Watchlist/i })).toBeInTheDocument();
+  });
+
+  it('defaults to Paper Ledger and persists the optional dark theme', () => {
+    renderShell();
+    expect(document.documentElement).toHaveAttribute('data-theme', 'light');
+    fireEvent.click(screen.getByRole('button', { name: 'Use dark theme' }));
+    expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
+    expect(localStorage.getItem('nalar-theme')).toBe('dark');
   });
 });

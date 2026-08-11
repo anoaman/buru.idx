@@ -690,15 +690,13 @@ export default function BrokerIntelligence() {
                 )}
               </div>
               <div className="bi-summary__metrics">
-                <div className="bi-summary__primary">
-                  <span className="text-tertiary">Preferred-broker share</span>
-                  <strong className="tabular">
-                    {stockData.preferredBroker.share == null ? '—' : `${(stockData.preferredBroker.share * 100).toFixed(1)}%`}
-                  </strong>
-                  <small className="text-tertiary">
-                    {(stockData.preferredBroker.observedCodes || []).join(', ') || 'No preferred broker observed'}
-                  </small>
-                </div>
+                {(stockData.preferredBroker.observedCodes || []).length > 0 && stockData.preferredBroker.share > 0 && (
+                  <div className="bi-summary__primary">
+                    <span className="text-tertiary">Preferred-broker share</span>
+                    <strong className="tabular">{`${(stockData.preferredBroker.share * 100).toFixed(1)}%`}</strong>
+                    <small className="text-tertiary">{stockData.preferredBroker.observedCodes.join(', ')}</small>
+                  </div>
+                )}
                 <div>
                   <span className="text-tertiary">Observed net value</span>
                   <span className={`tabular ${stockData.observedFlow.netValue > 0 ? 'text-positive' : stockData.observedFlow.netValue < 0 ? 'text-negative' : ''}`}>

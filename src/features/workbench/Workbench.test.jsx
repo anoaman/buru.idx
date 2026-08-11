@@ -177,7 +177,7 @@ describe('Workbench', () => {
     // Grade
     expect(screen.getByText('B+')).toBeInTheDocument();
 
-    expect(screen.getByText('NALAR Market Chart')).toBeInTheDocument();
+    expect(screen.getByText('Price & volume')).toBeInTheDocument();
 
     // Technical indicators
     expect(screen.getByText(/Technical indicators/i)).toBeInTheDocument();
@@ -206,7 +206,7 @@ describe('Workbench', () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText('NALAR Market Chart')).toBeInTheDocument();
+    expect(await screen.findByText('Price & volume')).toBeInTheDocument();
     expect(screen.getAllByText('MA5').length).toBeGreaterThan(0);
     expect(screen.getAllByText('MA200').length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'Full screen' })).toBeInTheDocument();
@@ -222,7 +222,7 @@ describe('Workbench', () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText('NALAR Market Chart')).toBeInTheDocument();
+    expect(await screen.findByText('Price & volume')).toBeInTheDocument();
 
     const tlkmData = {
       ...mockData,
@@ -246,7 +246,7 @@ describe('Workbench', () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText('NALAR Market Chart')).toBeInTheDocument();
+    expect(await screen.findByText('Price & volume')).toBeInTheDocument();
     expect(screen.getAllByText('MA20').length).toBeGreaterThan(0);
   });
 
@@ -348,7 +348,7 @@ describe('Workbench', () => {
     fireEvent.click(screen.getByRole('button', { name: /Analyze/i }));
 
     // Analysis result renders (mock data is BBRI, but form submission works)
-    expect(await screen.findByText('NALAR Market Chart')).toBeInTheDocument();
+    expect(await screen.findByText('Price & volume')).toBeInTheDocument();
   });
 
   it('shows error for invalid ticker format', () => {

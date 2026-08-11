@@ -46,6 +46,15 @@ case tracking from the retiring cockpit without duplicating backend engines.
   reporting the actual observed trading-day count. Chart defaults show the
   latest 60 trading days, exclude overlays from the initial price range, keep
   manual scale control, and allow moving-average lines to be hidden.
+- `src/styles/tokens.css` owns the Paper Ledger semantic theme contract. Light
+  is the default workstation theme, dark is an optional persisted preference,
+  and feature styles consume semantic tokens rather than theme-specific color
+  literals. The market chart deliberately keeps a dark plotting surface in
+  both themes so its candle and overlay contrast remains stable.
+- `src/styles/global.css` owns typography, numerical rendering and universal
+  interaction states. `src/styles/components.css` owns shared shell, panel,
+  table, control and responsive geometry; feature components may supply class
+  structure but must not create independent visual systems.
 
 The frontend performs no analysis, ranking, broker inventory, or coverage
 calculation. Those remain backend responsibilities.

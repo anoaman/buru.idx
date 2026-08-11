@@ -65,7 +65,7 @@ describe('Radar', () => {
     renderRadar();
 
     expect(await screen.findByText('BBRI')).toBeInTheDocument();
-    expect(screen.getByText('07 Agu 2026')).toBeInTheDocument();
+    expect(screen.getByText('August 7, 2026')).toBeInTheDocument();
     expect(screen.getByText('1 stocks')).toBeInTheDocument();
     expect(screen.getByText('How stocks qualify')).toBeInTheDocument();
     expect(screen.queryByText(/Scan #41/)).not.toBeInTheDocument();

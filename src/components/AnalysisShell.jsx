@@ -3,10 +3,10 @@ import { NavLink, useLocation } from 'react-router';
 import { useAnalysisContext } from './AnalysisContext.jsx';
 
 const NAV = [
-  { path: '/radar', label: 'Screener' },
-  { path: '/workbench', label: 'Stock Analysis' },
-  { path: '/broker-intelligence', label: 'Broker Flow' },
-  { path: '/cases', label: 'Watchlist' },
+  { path: '/radar', label: 'Screener', mark: 'SC' },
+  { path: '/workbench', label: 'Stock Analysis', mark: 'SA' },
+  { path: '/broker-intelligence', label: 'Broker Flow', mark: 'BF' },
+  { path: '/cases', label: 'Watchlist', mark: 'WL' },
 ];
 
 function CommandBar() {
@@ -61,6 +61,7 @@ function CommandBar() {
 
 export default function AnalysisShell({ children }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [theme, setTheme] = useState(() => localStorage.getItem('nalar-theme') || 'light');
   const location = useLocation();
   const current = NAV.find((item) => location.pathname.startsWith(item.path)) || NAV[1];
   const { investigationUrl, brokerFlowUrl } = useAnalysisContext();
@@ -69,6 +70,11 @@ export default function AnalysisShell({ children }) {
     : item.path === '/broker-intelligence'
       ? brokerFlowUrl()
       : item.path;
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem('nalar-theme', theme);
+  }, [theme]);
 
   return (
     <div className={`app-shell ${mobileOpen ? 'app-shell--mobile-open' : ''}`}>
@@ -90,12 +96,14 @@ export default function AnalysisShell({ children }) {
               }
               onClick={() => setMobileOpen(false)}
             >
+              <span className="app-shell__nav-mark" aria-hidden="true">{item.mark}</span>
               <span className="app-shell__nav-label">{item.label}</span>
             </NavLink>
           ))}
         </nav>
         <div className="app-shell__footer">
-          <span className="app-shell__delay-label">PRIVATE · DELAYED DATA</span>
+          <span className="app-shell__market"><i aria-hidden="true" />IDX workstation</span>
+          <span className="app-shell__delay-label">Private · delayed data</span>
         </div>
       </aside>
 
@@ -110,9 +118,18 @@ export default function AnalysisShell({ children }) {
             ☰
           </button>
           <div className="app-shell__section-id">
-            <h1 className="app-shell__title">{current.label}</h1>
+            <span>NALAR</span><b>/</b><h1 className="app-shell__title">{current.label}</h1>
           </div>
           <CommandBar />
+          <button
+            type="button"
+            className="app-shell__theme"
+            onClick={() => setTheme((value) => value === 'light' ? 'dark' : 'light')}
+            aria-label={`Use ${theme === 'light' ? 'dark' : 'light'} theme`}
+            title={`Use ${theme === 'light' ? 'dark' : 'light'} theme`}
+          >
+            {theme === 'light' ? 'Dark' : 'Light'}
+          </button>
         </header>
         <main className="app-shell__content">{children}</main>
       </div>

@@ -3,9 +3,9 @@ import { createChart, CandlestickSeries, HistogramSeries, LineSeries } from 'lig
 import { formatDate, formatPrice } from '../../lib/format/market.js';
 
 const COLORS = {
-  text: '#9aa0b4', up: '#34d399', down: '#f87171', grid: 'rgba(255,255,255,.04)',
-  border: 'rgba(255,255,255,.08)', support: '#34d399', resistance: '#f87171',
-  target: '#22c55e', stop: '#ef4444',
+  background: '#0c0f12', text: '#98a0a8', up: '#3fae6f', down: '#d9564d',
+  grid: 'rgba(255,255,255,.04)', border: 'rgba(255,255,255,.10)',
+  support: '#77828a', resistance: '#77828a', target: '#3fae6f', stop: '#d99a34',
 };
 const MA_COLORS = { ma5: '#60a5fa', ma10: '#a78bfa', ma20: '#fbbf24', ma50: '#f97316', ma200: '#ef4444' };
 const DEFAULT_CHART_HEIGHT = 480;
@@ -39,7 +39,7 @@ export default function MarketChart({ chart, geometry, ticker }) {
     const instance = createChart(containerRef.current, {
       width: containerRef.current.clientWidth,
       height: containerRef.current.clientHeight || DEFAULT_CHART_HEIGHT,
-      layout: { background: { color: 'transparent' }, textColor: COLORS.text, fontSize: 11 },
+      layout: { background: { color: COLORS.background }, textColor: COLORS.text, fontSize: 11 },
       grid: { vertLines: { color: COLORS.grid }, horzLines: { color: COLORS.grid } },
       rightPriceScale: { borderColor: COLORS.border },
       timeScale: { borderColor: COLORS.border, timeVisible: false },
@@ -66,7 +66,7 @@ export default function MarketChart({ chart, geometry, ticker }) {
     (chart.levels?.supports || []).slice(0, 3).forEach((level) => candles.createPriceLine({ price: level.price, color: COLORS.support, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: `S ${formatPrice(level.price)}` }));
     (chart.levels?.resistances || []).slice(0, 3).forEach((level) => candles.createPriceLine({ price: level.price, color: COLORS.resistance, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: `R ${formatPrice(level.price)}` }));
     if (!(chart.levels?.resistances || []).length && ticker?.high > ticker?.close) {
-      candles.createPriceLine({ price: ticker.high, color: '#fbbf24', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: `SESSION HIGH · UNCONFIRMED ${formatPrice(ticker.high)}` });
+      candles.createPriceLine({ price: ticker.high, color: '#d99a34', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: `DAY HIGH · UNCONFIRMED ${formatPrice(ticker.high)}` });
     }
     const best = geometry?.bestSetup;
     const tradeLines = [
@@ -93,7 +93,7 @@ export default function MarketChart({ chart, geometry, ticker }) {
   return (
     <section className="wb-market-chart" ref={sectionRef}>
       <header>
-        <div><strong>NALAR Market Chart</strong><span>TradingView Lightweight Charts · data through {formatDate(chart.source?.lastDate)}</span></div>
+        <div><strong>Price & volume</strong><span>Data through {formatDate(chart.source?.lastDate)}</span></div>
         <div className="wb-market-chart__actions">
           <button type="button" aria-pressed={showMovingAverages} onClick={() => setShowMovingAverages((visible) => !visible)}>{showMovingAverages ? 'Hide MA lines' : 'Show MA lines'}</button>
           <button type="button" onClick={() => (fullscreen ? document.exitFullscreen() : sectionRef.current?.requestFullscreen())}>{fullscreen ? 'Exit full screen' : 'Full screen'}</button>
