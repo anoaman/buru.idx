@@ -418,6 +418,7 @@ function Scout({ onInvestigate, onActors }) {
 
         <div className="scout-results">
           {state.error && <ErrorState title="Custom Screener unavailable" error={state.error} onRetry={run} />}
+          {!state.data && state.loading && <Skeleton label="Screening…" />}
           {!state.data && !state.loading && !state.error && <EmptyState title="Choose a recipe" message="Run the screener to find stocks matching your selected conditions." />}
           {state.data && <>
             <div className="radar-run"><strong>{state.data.recipe.label}</strong><span>Prices through {formatDate(state.data.asOf.priceDate)}</span><span>Broker flow {formatDate(state.data.asOf.brokerFrom)}–{formatDate(state.data.asOf.brokerTo)} · {state.data.asOf.brokerSessions} trading days</span><span>{state.data.coverage.matched} matched</span><span>Showing {state.data.coverage.returned}</span></div>
