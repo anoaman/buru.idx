@@ -60,4 +60,3 @@ export function gradeColor(grade) {
     default: return 'var(--text-tertiary)';
   }
 }
-
