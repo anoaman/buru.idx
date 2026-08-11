@@ -42,14 +42,11 @@ describe('AnalysisShell', () => {
     expect(screen.getByText('TLKM')).toBeInTheDocument();
   });
 
-  it('changes the Broker Map window without dropping ticker, lens, or date', async () => {
+  it('keeps Broker Flow date controls out of the global command bar', () => {
     renderShell('/broker-intelligence?lens=stock&ticker=BBRI&days=1&date=2026-08-07');
-    fireEvent.click(screen.getByRole('button', { name: '30D' }));
-    await waitFor(() => {
-      expect(screen.getByLabelText('location')).toHaveTextContent(
-        '/broker-intelligence?lens=stock&ticker=BBRI&days=30&date=2026-08-07',
-      );
-    });
+    expect(screen.queryByRole('button', { name: '30D' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '7D' })).not.toBeInTheDocument();
+    expect(screen.getByText('as of 2026-08-07')).toBeInTheDocument();
   });
 
   it('exposes all four private workstation destinations', () => {

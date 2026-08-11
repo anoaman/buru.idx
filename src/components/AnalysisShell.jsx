@@ -10,8 +10,7 @@ const NAV = [
 ];
 
 function CommandBar() {
-  const location = useLocation();
-  const { ticker, days, allowedWindows, openTicker, updateWindow } = useAnalysisContext();
+  const { ticker, asOf, openTicker } = useAnalysisContext();
   const [query, setQuery] = useState(ticker);
 
   useEffect(() => setQuery(ticker), [ticker]);
@@ -38,22 +37,13 @@ function CommandBar() {
       </form>
       <div className="analysis-command__context" aria-label="Selected ticker">
         <span className="analysis-command__identity">{ticker}</span>
-      </div>
-      <div className="analysis-command__windows" aria-label="Broker window">
-        {allowedWindows.map((value) => (
-          <button
-            key={value}
-            type="button"
-            className={days === value ? 'is-active' : ''}
-            aria-pressed={days === value}
-            onClick={() => updateWindow(value)}
-            title={location.pathname.startsWith('/broker-intelligence')
-              ? `Load ${value}-day Broker Map window`
-              : `Keep ${value}-day window for Broker Map`}
-          >
-            {value}D
-          </button>
-        ))}
+        {asOf ? (
+          <span className="analysis-command__asof text-tertiary" title="Selected as-of date">
+            as of {asOf}
+          </span>
+        ) : (
+          <span className="analysis-command__asof text-tertiary">delayed EOD</span>
+        )}
       </div>
     </div>
   );
@@ -126,9 +116,9 @@ export default function AnalysisShell({ children }) {
             className="app-shell__theme"
             onClick={() => setTheme((value) => value === 'light' ? 'dark' : 'light')}
             aria-label={`Use ${theme === 'light' ? 'dark' : 'light'} theme`}
-            title={`Use ${theme === 'light' ? 'dark' : 'light'} theme`}
+            title={theme === 'light' ? 'Switch to Graphite Ledger' : 'Switch to Paper Ledger'}
           >
-            {theme === 'light' ? 'Dark' : 'Light'}
+            {theme === 'light' ? 'Graphite' : 'Paper'}
           </button>
         </header>
         <main className="app-shell__content">{children}</main>
