@@ -41,6 +41,48 @@ function candidate(overrides = {}) {
   };
 }
 
+function scoutCandidate(overrides = {}) {
+  return {
+    ticker: 'AHAP',
+    name: 'Asuransi Harta Aman Pratama Tbk',
+    board: 'Development',
+    rank: 1,
+    score: 88.4,
+    evidenceBand: 'high',
+    failedCondition: null,
+    scoreBreakdown: { broker: 41, support: 32, compression: 12.5 },
+    price: {
+      lastPrice: 101, priceDate: '2026-08-10', support: 98, supportTouches: 4, distanceFromSupportPct: 3.06,
+      consolidationRangePct: 7.1, recentAtrPct: 2, priorAtrPct: 3, volatilityContracting: true,
+      averageValue: 1_100_000_000, zeroVolumeSessions: 0,
+    },
+    broker: {
+      observedSessions: 7, expectedSessions: 7,
+      lead: { code: 'CC', netValue: 1_200_000_000, buySessions: 6, sellSessions: 1 },
+      second: { code: 'YP', netValue: 300_000_000 },
+      leadToSecondRatio: 4, leadSharePct: 58,
+    },
+    reasons: ['CC accumulated Rp1200M, 4.0× YP, across 6/7 sessions.'],
+    risks: ['CC distributed in 1 observed session.'],
+    ...overrides,
+  };
+}
+
+function scoutResponse({ candidates = [], nearMisses = [], coverage } = {}) {
+  return {
+    success: true,
+    data: {
+      recipe: { id: 'quiet_accumulation', label: 'Quiet Accumulation Near Support' },
+      options: { brokerSessions: 7 },
+      asOf: { priceDate: '2026-08-10', brokerFrom: '2026-07-31', brokerTo: '2026-08-10', brokerSessions: 7 },
+      coverage: coverage || { evaluated: 900, matched: candidates.length, returned: candidates.length, nearMisses: nearMisses.length },
+      candidates,
+      nearMisses,
+      disclosures: ['Observed flow is not a holdings ledger.'],
+    },
+  };
+}
+
 function renderRadar() {
   return render(
     <MemoryRouter initialEntries={['/radar']}>
@@ -86,8 +128,8 @@ describe('Radar', () => {
     const grade = await screen.findByText('medium data quality');
     expect(grade).toBeInTheDocument();
     expect(screen.queryByText(/medium confidence/i)).not.toBeInTheDocument();
-    // Degraded sources are marked with a class that out-ranks the `.radar-row__*
-    // span` descendant rules; a text-* utility alone would lose the cascade.
+    // Degraded sources are marked with a class that out-ranks the default
+    // secondary-text color; a text-* utility alone would lose the cascade.
     expect(grade).toHaveClass('is-degraded');
   });
 
@@ -189,25 +231,9 @@ describe('Radar', () => {
     expect(screen.queryByText(/Loading the latest qualified scan/)).not.toBeInTheDocument();
   });
 
-  it('runs deterministic Scout recipes and renders the returned evidence', async () => {
+  it('runs deterministic Scout recipes and renders the returned evidence behind a disclosure', async () => {
     getOpportunities.mockResolvedValue({ success: true, data: { run: RUN, opportunities: [] } });
-    getRadarScout.mockResolvedValue({
-      success: true,
-      data: {
-        recipe: { id: 'quiet_accumulation', label: 'Quiet Accumulation Near Support' },
-        options: { brokerSessions: 7 },
-        asOf: { priceDate: '2026-08-10', brokerFrom: '2026-07-31', brokerTo: '2026-08-10', brokerSessions: 7 },
-        coverage: { evaluated: 900, matched: 1, returned: 1 },
-        candidates: [{
-          ticker: 'AHAP', name: 'Asuransi Harta Aman Pratama Tbk', board: 'Development', rank: 1, score: 88.4,
-          price: { lastPrice: 101, priceDate: '2026-08-10', support: 98, supportTouches: 4, distanceFromSupportPct: 3.06, consolidationRangePct: 7.1, recentAtrPct: 2, priorAtrPct: 3, volatilityContracting: true, averageValue: 1_100_000_000, zeroVolumeSessions: 0 },
-          broker: { observedSessions: 7, expectedSessions: 7, lead: { code: 'CC', netValue: 1_200_000_000, buySessions: 6, sellSessions: 1 }, second: { code: 'YP', netValue: 300_000_000 }, leadToSecondRatio: 4, leadSharePct: 58 },
-          reasons: ['CC accumulated Rp1200M, 4.0× YP, across 6/7 sessions.'],
-          risks: ['CC distributed in 1 observed session.'],
-        }],
-        disclosures: ['Observed flow is not a holdings ledger.'],
-      },
-    });
+    getRadarScout.mockResolvedValue(scoutResponse({ candidates: [scoutCandidate()] }));
 
     renderRadar();
     fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
@@ -219,9 +245,160 @@ describe('Radar', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
     expect(await screen.findByText('AHAP')).toBeInTheDocument();
+    expect(screen.getByText('1 matched')).toBeInTheDocument();
+    // The dense results row shows primary metrics without the full narrative.
+    expect(screen.queryByText('CC accumulated Rp1200M, 4.0× YP, across 6/7 sessions.')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show AHAP evidence' }));
     expect(screen.getByText('CC accumulated Rp1200M, 4.0× YP, across 6/7 sessions.')).toBeInTheDocument();
     expect(screen.getByText('CC distributed in 1 observed session.')).toBeInTheDocument();
-    expect(screen.getByText('1 matched')).toBeInTheDocument();
+
     expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({ recipe: 'quiet_accumulation', brokerPreset: '7d', useBroker: false }));
+  });
+
+  it('submits a custom broker date range through the client', async () => {
+    getOpportunities.mockResolvedValue({ success: true, data: { run: RUN, opportunities: [] } });
+    getRadarScout.mockResolvedValue(scoutResponse({ candidates: [] }));
+
+    renderRadar();
+    fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
+    fireEvent.change(screen.getByLabelText('Date range'), { target: { value: 'custom' } });
+    fireEvent.change(screen.getByLabelText('From'), { target: { value: '2026-07-01' } });
+    fireEvent.change(screen.getByLabelText('To'), { target: { value: '2026-07-31' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
+
+    await waitFor(() => expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({
+      brokerPreset: 'custom',
+      brokerFrom: '2026-07-01',
+      brokerTo: '2026-07-31',
+    })));
+  });
+
+  it('submits the lead-broker minimum once the condition is enabled', async () => {
+    getOpportunities.mockResolvedValue({ success: true, data: { run: RUN, opportunities: [] } });
+    getRadarScout.mockResolvedValue(scoutResponse({ candidates: [] }));
+
+    renderRadar();
+    fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
+    fireEvent.click(screen.getByLabelText(/Lead broker minimum/));
+    fireEvent.change(screen.getByLabelText('Rp net buy'), { target: { value: '2500000000' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
+
+    await waitFor(() => expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({
+      useLeadBrokerValue: true,
+      minLeadBrokerValue: 2_500_000_000,
+    })));
+  });
+
+  it('renders the evidence band as a signal-strength badge on every qualified row', async () => {
+    getOpportunities.mockResolvedValue({ success: true, data: { run: RUN, opportunities: [] } });
+    getRadarScout.mockResolvedValue(scoutResponse({ candidates: [scoutCandidate({ evidenceBand: 'medium' })] }));
+
+    renderRadar();
+    fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
+
+    expect(await screen.findByText('Medium signal')).toBeInTheDocument();
+  });
+
+  it('renders the score breakdown behind the row disclosure without dropping it', async () => {
+    getOpportunities.mockResolvedValue({ success: true, data: { run: RUN, opportunities: [] } });
+    getRadarScout.mockResolvedValue(scoutResponse({
+      candidates: [scoutCandidate({ scoreBreakdown: { broker: 41, supportCompression: 19 } })],
+    }));
+
+    renderRadar();
+    fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
+
+    expect(await screen.findByText('AHAP')).toBeInTheDocument();
+    expect(screen.queryByText('41')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show AHAP evidence' }));
+    expect(screen.getByText('Broker')).toBeInTheDocument();
+    expect(screen.getByText('41')).toBeInTheDocument();
+    expect(screen.getByText('Support Compression')).toBeInTheDocument();
+    expect(screen.getByText('19')).toBeInTheDocument();
+  });
+
+  it('keeps near-miss stocks visually separate and shows the failed condition', async () => {
+    getOpportunities.mockResolvedValue({ success: true, data: { run: RUN, opportunities: [] } });
+    const nearMiss = scoutCandidate({
+      ticker: 'ELSA',
+      evidenceBand: 'low',
+      failedCondition: 'liquidity floor ≥ Rp500M/day',
+      scoreBreakdown: { broker: 20, liquidity: null },
+      reasons: [],
+      risks: ['thin average value'],
+    });
+    getRadarScout.mockResolvedValue(scoutResponse({ candidates: [scoutCandidate()], nearMisses: [nearMiss] }));
+
+    renderRadar();
+    fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
+
+    expect(await screen.findByText('Almost Matched')).toBeInTheDocument();
+    expect(screen.getByText('ELSA')).toBeInTheDocument();
+    expect(screen.getByText('Missed: liquidity floor ≥ Rp500M/day')).toBeInTheDocument();
+    // A near-miss keeps its own table (fewer columns, no lead-broker/support
+    // metrics) so it never reads as a qualified row.
+    const qualifiedTable = screen.getByRole('table', { name: 'Scout candidates' });
+    const nearMissTable = screen.getByRole('table', { name: 'Almost matched stocks' });
+    expect(qualifiedTable.querySelectorAll('thead th').length).toBeGreaterThan(nearMissTable.querySelectorAll('thead th').length);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show ELSA evidence' }));
+    expect(screen.getByText('thin average value')).toBeInTheDocument();
+    expect(screen.getByText('Broker')).toBeInTheDocument();
+    expect(screen.getByText('20')).toBeInTheDocument();
+  });
+
+  it('renders qualified results at the 100-result limit', async () => {
+    getOpportunities.mockResolvedValue({ success: true, data: { run: RUN, opportunities: [] } });
+    const manyCandidates = Array.from({ length: 100 }, (_, index) => scoutCandidate({
+      ticker: `T${String(index).padStart(3, '0')}`,
+      rank: index + 1,
+    }));
+    getRadarScout.mockResolvedValue(scoutResponse({
+      candidates: manyCandidates,
+      coverage: { evaluated: 900, matched: 100, returned: 100, nearMisses: 0 },
+    }));
+
+    renderRadar();
+    fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
+    fireEvent.change(screen.getByLabelText('Return'), { target: { value: '100' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
+
+    expect(await screen.findByText('T099')).toBeInTheDocument();
+    expect(screen.getByText('T000')).toBeInTheDocument();
+    expect(screen.getByText('Showing 100')).toBeInTheDocument();
+    expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({ limit: 100 }));
+  });
+
+  it('preserves the new-tab Analysis / Broker Flow handoffs from both tables', async () => {
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => {});
+    getOpportunities.mockResolvedValue({ success: true, data: { run: RUN, opportunities: [candidate()] } });
+    getRadarScout.mockResolvedValue(scoutResponse({ candidates: [scoutCandidate()] }));
+
+    renderRadar();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Open BBRI analysis' }));
+    expect(openSpy.mock.calls.at(-1)[0]).toBe('/workbench?ticker=BBRI');
+    expect(openSpy.mock.calls.at(-1)[1]).toBe('_blank');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open BBRI broker flow' }));
+    expect(openSpy.mock.calls.at(-1)[0]).toContain('/broker-intelligence?');
+    expect(openSpy.mock.calls.at(-1)[0]).toContain('ticker=BBRI');
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Open AHAP analysis' }));
+    expect(openSpy.mock.calls.at(-1)[0]).toBe('/workbench?ticker=AHAP');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open AHAP broker flow' }));
+    expect(openSpy.mock.calls.at(-1)[0]).toContain('/broker-intelligence?');
+    expect(openSpy.mock.calls.at(-1)[0]).toContain('ticker=AHAP');
+
+    openSpy.mockRestore();
   });
 });

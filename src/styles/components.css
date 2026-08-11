@@ -2459,18 +2459,9 @@
 .radar-lanes button { border: 1px solid var(--border-default); background: transparent; color: var(--text-tertiary); padding: 5px 10px; border-radius: var(--radius-sm); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; cursor: pointer; }
 .radar-lanes button:hover { color: var(--text-secondary); border-color: var(--border-strong); }
 .radar-lanes button.is-active { border-color: var(--color-accent); color: var(--color-accent); }
-.radar-list { display: grid; }
-.radar-row { display: grid; grid-template-columns: 38px 90px 110px minmax(220px, 1fr) 160px auto; align-items: center; gap: var(--space-3); padding: 15px 8px; border-bottom: 1px solid var(--border-default); }
-.radar-row:hover { background: var(--bg-hover); }
-.radar-row__rank { color: var(--text-tertiary); font-size: 11px; }
-.radar-row__identity, .radar-row__score, .radar-row__why, .radar-row__levels { display: flex; flex-direction: column; gap: 3px; }
-.radar-row__identity strong { font-size: 18px; }
-.radar-row__identity span, .radar-row__score span, .radar-row__why span, .radar-row__levels span { color: var(--text-tertiary); font-size: 10px; }
-.radar-row__score strong { font-size: 18px; color: var(--color-accent); }
-.radar-row__why strong { font-size: 12px; }
-.radar-row__why .radar-row__risk { color: var(--color-warning); line-height: 1.45; }
-.radar-row__score .is-degraded { color: var(--color-warning); }
-.radar-row__actions, .case-card__actions { display: flex; gap: 6px; }
+.radar-row__risk { color: var(--color-warning); line-height: 1.45; }
+.is-degraded { color: var(--color-warning); }
+.radar-row__actions, .case-card__actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .radar-row__actions button, .case-card__actions button { border: 1px solid var(--border-default); background: transparent; color: var(--text-secondary); padding: 7px 9px; border-radius: var(--radius-sm); cursor: pointer; }
 .radar-row__actions button:first-child { border-color: var(--color-accent); color: var(--color-accent); }
 .scout-controls { overflow: hidden; border: 1px solid var(--border-default); border-radius: var(--radius-md); background: var(--bg-elevated); }
@@ -2501,28 +2492,6 @@
 .scout-recipe-explanation strong { font-size: 12px; }
 .scout-recipe-explanation p { margin: 3px 0; color: var(--text-secondary); font-size: 11px; }
 .scout-recipe-explanation span { color: var(--text-tertiary); font-size: 9px; }
-.scout-list { display: grid; gap: 10px; }
-.scout-card { border: 1px solid var(--border-default); padding: 13px; background: var(--bg-elevated); }
-.scout-card__identity { display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 8px; padding-bottom: 10px; border-bottom: 1px solid var(--border-default); }
-.scout-card__identity div { display: flex; align-items: baseline; gap: 8px; }
-.scout-card__identity div strong { font-size: 18px; }
-.scout-card__identity div span, .scout-card__rank { color: var(--text-tertiary); font-size: 10px; }
-.scout-card__identity > b { display: grid; color: var(--color-accent); font-size: 18px; text-align: right; }
-.scout-card__identity > b small { color: var(--text-tertiary); font-size: 8px; text-transform: uppercase; }
-.scout-card__metrics { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; padding: 12px 0; }
-.scout-card__metrics div { display: grid; gap: 2px; }
-.scout-card__metrics span, .scout-card__metrics small, .scout-card__evidence span { color: var(--text-tertiary); font-size: 9px; text-transform: uppercase; letter-spacing: .04em; }
-.scout-card__metrics strong { font-size: 13px; }
-.scout-card__evidence { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; padding: 10px 0; border-top: 1px solid var(--border-default); }
-.scout-card__evidence p { margin: 4px 0 0; color: var(--text-secondary); font-size: 11px; line-height: 1.45; }
-.scout-card__evidence .has-risk p { color: var(--color-warning); }
-.scout-card__breakdown { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 0 10px; }
-.scout-card__breakdown span { padding: 4px 7px; border: 1px solid var(--border-default); color: var(--text-tertiary); font-size: 9px; text-transform: capitalize; }
-.scout-card__breakdown strong { color: var(--text-primary); }
-.scout-near-misses { margin-top: var(--space-5); }
-.scout-near-misses > h3 { margin-bottom: 2px; }
-.scout-near-misses > p { margin: 0 0 var(--space-3); color: var(--text-tertiary); font-size: 10px; }
-.scout-near-miss > span { display: inline-block; margin-bottom: 4px; color: var(--color-warning); font-size: 9px; text-transform: uppercase; }
 .scout-disclosures { margin-top: var(--space-3); color: var(--text-tertiary); font-size: 9px; }
 .scout-disclosures p { margin: 3px 0; }
 .cases-summary { display: flex; flex-wrap: wrap; gap: var(--space-3); padding: 9px 0; margin-bottom: var(--space-3); border-block: 1px solid var(--border-default); color: var(--text-tertiary); font-size: 11px; }
@@ -2617,19 +2586,7 @@
   color: var(--color-accent);
 }
 
-.radar-list {
-  overflow: hidden;
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
-  background: var(--bg-elevated);
-}
-.radar-row { min-height: 48px; padding: 9px 12px; border-bottom-color: var(--border-subtle); }
-.radar-row:last-child { border-bottom: 0; }
-.radar-row__identity strong,
-.scout-card__identity div strong,
 .case-card h3 { font-family: var(--font-heading); }
-.radar-row__score strong,
-.scout-card__identity > b { color: var(--text-primary); }
 .radar-row__actions button,
 .case-card__actions button {
   border-radius: var(--radius-md);
@@ -2666,9 +2623,6 @@
   font-weight: 500;
 }
 .scout-recipe-explanation { border-left-color: var(--border-strong); }
-.scout-list { gap: 8px; }
-.scout-card { border-radius: var(--radius-md); }
-.scout-card__breakdown span { border-radius: var(--radius-sm); background: var(--bg-surface); }
 
 .wb-result { gap: 14px; }
 .wb-header { background: transparent; }
@@ -2730,7 +2684,6 @@
 @media (max-width: 1200px) {
   .app-shell__section-id { min-width: auto; }
   .analysis-command__context { display: none; }
-  .scout-conditions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .cases-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
@@ -2743,29 +2696,14 @@
   .app-shell__nav-item { justify-content: center; padding-inline: 8px; border-radius: 0; }
   .app-shell__nav-mark { width: auto; }
   .analysis-command__windows { display: none; }
-  .radar-row { min-width: 900px; }
-  .radar-list { overflow-x: auto; }
 }
 
 @media (max-width: 900px) {
-  .scout-conditions { grid-template-columns: repeat(2, 1fr); }
-  .scout-condition { border-bottom: 1px solid var(--border-default); }
-  .scout-card__metrics { grid-template-columns: repeat(3, 1fr); }
-  .radar-row { grid-template-columns: 32px 80px 90px 1fr; }
-  .radar-row__levels, .radar-row__actions { grid-column: 4; }
   .cases-grid { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 640px) {
-  .scout-controls__intro, .scout-conditions, .scout-card__evidence { grid-template-columns: 1fr; }
-  .scout-condition { min-height: 0; border-right: 0; }
-  .scout-controls__footer { align-items: stretch; flex-direction: column; }
-  .scout-controls__actions { align-items: stretch; flex-direction: column; }
-  .scout-card__identity div { display: grid; gap: 2px; }
-  .scout-card__metrics { grid-template-columns: repeat(2, 1fr); }
   .module-heading { align-items: flex-start; flex-direction: column; }
   .module-heading p { text-align: left; }
-  .radar-row { grid-template-columns: 28px 1fr auto; gap: var(--space-2); }
-  .radar-row__why, .radar-row__levels, .radar-row__actions { grid-column: 2 / 4; }
   .cases-grid { grid-template-columns: 1fr; }
 }
 
@@ -3098,6 +3036,104 @@
   text-transform: uppercase;
   margin-bottom: var(--space-3);
 }
+.scout-near-miss__intro {
+  margin: 0 0 var(--space-3);
+  color: var(--text-tertiary);
+  font-size: var(--type-floor);
+}
+.scout-near-miss__missed {
+  color: var(--color-warning);
+  font-weight: 600;
+}
+
+/* ============================================
+   Phase 5 — Screener tables (Market Shortlist + Custom Screener)
+   ============================================ */
+
+/* The conditions form keeps its full grammar (recipe, six conditions, custom
+   dates, footer) but now lives in a fixed ~352px sidebar, so it always renders
+   single-column regardless of viewport — the multi-column layout only made
+   sense at full page width. */
+.scout-layout__conditions.scout-controls {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
+}
+.scout-layout__conditions .scout-controls__intro,
+.scout-layout__conditions .scout-conditions {
+  grid-template-columns: 1fr;
+}
+.scout-layout__conditions .scout-condition {
+  border-right: 0;
+  border-bottom: 1px solid var(--border-default);
+}
+.scout-layout__conditions .scout-condition:last-child { border-bottom: 0; }
+.scout-layout__conditions .scout-controls__footer,
+.scout-layout__conditions .scout-controls__actions {
+  align-items: stretch;
+  flex-direction: column;
+}
+@media (max-width: 1100px) {
+  .scout-layout__conditions { position: static; }
+}
+
+.radar-cell-ticker,
+.radar-cell-levels,
+.radar-cell-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.radar-cell-ticker strong { font-family: var(--font-heading); font-size: 13px; color: var(--text-primary); }
+.radar-cell-ticker span,
+.radar-cell-levels span,
+.radar-cell-metric span { color: var(--text-tertiary); font-size: var(--type-floor); }
+.radar-cell-levels { text-align: right; }
+.radar-cell-metric { text-align: right; }
+.radar-cell-metric strong { color: var(--text-primary); }
+
+.ui-table td .badge { font-size: var(--type-floor); }
+
+.ui-row-detail td {
+  padding: 0;
+  background: var(--bg-sunken);
+}
+.radar-detail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+.radar-detail h4 {
+  margin: 0 0 6px;
+  color: var(--text-tertiary);
+  font-size: var(--type-floor);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.radar-detail p {
+  margin: 3px 0;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+.radar-detail p.is-risk { color: var(--color-warning); }
+.radar-detail__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.radar-detail__chips span {
+  padding: 3px 7px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  font-size: var(--type-floor);
+  text-transform: capitalize;
+}
+.radar-detail__chips strong { color: var(--text-primary); }
 
 /* Phase 6 — Broker Flow merged signed ranking table (display-only merge). */
 .bi-merged__scroll {

@@ -24,9 +24,21 @@ const RECIPE_CONDITIONS = Object.freeze({
   dominant_broker: { useBroker: true, useSupport: false, useSideways: false },
   support_compression: { useBroker: false, useSupport: true, useSideways: true },
 });
+const EVIDENCE_BAND_LABEL = { high: 'High signal', medium: 'Medium signal', low: 'Low signal' };
+const EVIDENCE_BAND_TONE = { high: 'badge-positive', medium: 'badge-info', low: 'badge-neutral' };
 
 function numericText(value) {
   return Number.isFinite(value) ? value.toLocaleString('en-US') : '';
+}
+
+function breakdownLabel(key) {
+  const spaced = key.replace(/([A-Z])/g, ' $1');
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+function EvidenceBandBadge({ band }) {
+  const key = EVIDENCE_BAND_LABEL[band] ? band : 'low';
+  return <span className={`badge ${EVIDENCE_BAND_TONE[key]}`}>{EVIDENCE_BAND_LABEL[key]}</span>;
 }
 
 function ScanProvenance({ run, candidateCount }) {
@@ -42,74 +54,295 @@ function ScanProvenance({ run, candidateCount }) {
   );
 }
 
-function CandidateRow({ row, onInvestigate, onActors }) {
+// Dense table, not card-bands: rank, ticker+lane, score, why/against, levels, actions.
+function ShortlistRow({ row, onInvestigate, onActors }) {
   const primaryReason = row.reasons[0];
   const primaryRisk = row.risks[0];
   return (
-    <article className="radar-row" role="listitem">
-      <div className="radar-row__rank">
-        {Number.isFinite(row.rank) ? String(row.rank).padStart(2, '0') : '—'}
-      </div>
-      <div className="radar-row__identity">
-        <strong>{row.ticker}</strong>
-        <span>
-          {row.lane || 'lane unknown'}
-          {row.isFca ? ' · FCA' : ''}
-          {row.ineligible ? ' · gated' : ''}
-        </span>
-      </div>
-      <div className="radar-row__score">
+    <tr className="ui-row">
+      <td className="tabular text-tertiary">{Number.isFinite(row.rank) ? String(row.rank).padStart(2, '0') : '—'}</td>
+      <td>
+        <div className="radar-cell-ticker">
+          <strong>{row.ticker}</strong>
+          <span>
+            {row.lane || 'lane unknown'}
+            {row.isFca ? ' · FCA' : ''}
+            {row.ineligible ? ' · gated' : ''}
+          </span>
+        </div>
+      </td>
+      <td className="tabular">
         <strong>{Number.isFinite(row.score) ? row.score.toFixed(1) : '—'}</strong>
         {row.dataQuality !== 'high' && <span className="is-degraded">{row.dataQuality} data quality</span>}
-      </div>
-      <div className="radar-row__why">
+      </td>
+      <td>
         <strong>{primaryReason || 'Qualified structure'}</strong>
         {primaryRisk ? <span className="radar-row__risk">Against: {primaryRisk}</span> : null}
-      </div>
-      <div className="radar-row__levels">
-        <span>Breakout above <strong>{formatPrice(row.levels.trigger)}</strong></span>
-        <span>Setup fails below <strong>{formatPrice(row.levels.invalidation)}</strong></span>
-        <span>Reward / risk <strong>{formatRatio(row.levels.netRewardRisk)}</strong></span>
-      </div>
-      <div className="radar-row__actions">
-        <button type="button" aria-label={`Open ${row.ticker} analysis`} onClick={onInvestigate}>
-          Open Analysis
-        </button>
-        <button type="button" aria-label={`Open ${row.ticker} broker flow`} onClick={onActors}>
-          Broker Flow
-        </button>
-      </div>
-    </article>
+      </td>
+      <td className="tabular">
+        <div className="radar-cell-levels">
+          <span>Breakout above <strong>{formatPrice(row.levels.trigger)}</strong></span>
+          <span>Setup fails below <strong>{formatPrice(row.levels.invalidation)}</strong></span>
+          <span>Reward / risk <strong>{formatRatio(row.levels.netRewardRisk)}</strong></span>
+        </div>
+      </td>
+      <td>
+        <div className="radar-row__actions">
+          <button type="button" className="ui-btn ui-btn--ghost" aria-label={`Open ${row.ticker} analysis`} onClick={onInvestigate}>
+            Open Analysis
+          </button>
+          <button type="button" className="ui-btn ui-btn--ghost" aria-label={`Open ${row.ticker} broker flow`} onClick={onActors}>
+            Broker Flow
+          </button>
+        </div>
+      </td>
+    </tr>
   );
 }
 
-function ScoutCandidate({ row, onInvestigate, onActors }) {
+function ShortlistTable({ rows, onInvestigate, onActors }) {
+  return (
+    <div className="ui-table-wrap">
+      <table className="ui-table" aria-label="Shortlisted candidates">
+        <thead>
+          <tr>
+            <th className="tabular">#</th>
+            <th>Ticker</th>
+            <th className="tabular">Score</th>
+            <th>Why</th>
+            <th className="tabular">Levels</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <ShortlistRow
+              key={row.ticker}
+              row={row}
+              onInvestigate={() => onInvestigate(row.ticker)}
+              onActors={() => onActors(row.ticker)}
+            />
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// Shared by qualified and near-miss Scout rows: reasons, risks, broker context and
+// scoreBreakdown are always preserved here (behind a disclosure), even when a row's
+// primary columns differ between the two tables.
+function ScoutDetail({ row }) {
   const breakdown = Object.entries(row.scoreBreakdown || {});
   return (
-    <article className="scout-card" role="listitem">
-      <div className="scout-card__identity">
-        <span className="scout-card__rank">{String(row.rank ?? '—').padStart(2, '0')}</span>
-        <div><strong>{row.ticker}</strong><span>{row.name} · {row.board || 'board unavailable'}</span></div>
-        <b>{Number.isFinite(row.score) ? row.score.toFixed(1) : '—'} <small>{row.evidenceBand} signal strength</small></b>
+    <div className="radar-detail">
+      <div>
+        <h4>Why it appeared</h4>
+        {row.reasons.length > 0
+          ? row.reasons.map((reason) => <p key={reason}>{reason}</p>)
+          : <p>No reasons recorded.</p>}
       </div>
-      {breakdown.length > 0 && <div className="scout-card__breakdown" aria-label="Score breakdown">{breakdown.map(([key, value]) => <span key={key}>{key.replace(/([A-Z])/g, ' $1')} <strong>{Number.isFinite(value) ? value.toFixed(0) : '—'}</strong></span>)}</div>}
-      <div className="scout-card__metrics">
-        <div><span>Lead broker</span><strong>{row.broker?.lead?.code || '—'}</strong><small>{formatIDR(row.broker?.lead?.netValue, true)}</small></div>
-        <div><span>Lead gap</span><strong>{formatRatio(row.broker?.leadToSecondRatio)}</strong><small>{row.broker?.second?.code ? `vs ${row.broker.second.code}` : 'no second buyer'}</small></div>
-        <div><span>Positive share</span><strong>{formatPct(row.broker?.leadSharePct, 0, false)}</strong><small>{row.broker?.lead ? `${row.broker.lead.buySessions}/${row.broker.expectedSessions} buying days` : 'unavailable'}</small></div>
-        <div><span>Support</span><strong>{formatPrice(row.price.support)}</strong><small>{formatPct(row.price.distanceFromSupportPct)} away · {row.price.supportTouches} touches</small></div>
-        <div><span>Compression</span><strong>{formatPct(row.price.consolidationRangePct, 1, false)}</strong><small>{row.price.volatilityContracting ? 'volatility contracting' : 'not contracting'}</small></div>
-        <div><span>Avg value</span><strong>{formatIDR(row.price.averageValue, true)}</strong><small>per trading day</small></div>
+      <div>
+        <h4>Check manually</h4>
+        {row.risks.length > 0
+          ? row.risks.map((risk) => <p key={risk} className="is-risk">{risk}</p>)
+          : <p>No additional warning triggered.</p>}
       </div>
-      <div className="scout-card__evidence">
-        <div><span>Why it passed</span>{row.reasons.map((reason) => <p key={reason}>{reason}</p>)}</div>
-        <div className={row.risks.length ? 'has-risk' : ''}><span>Check manually</span>{row.risks.length ? row.risks.map((risk) => <p key={risk}>{risk}</p>) : <p>No additional warning triggered.</p>}</div>
+      {row.broker && (
+        <div>
+          <h4>Positive share</h4>
+          <p>
+            {formatPct(row.broker.leadSharePct, 0, false)} of buying value
+            {row.broker.lead ? ` · ${row.broker.lead.buySessions}/${row.broker.expectedSessions} buying days` : ''}
+          </p>
+        </div>
+      )}
+      {breakdown.length > 0 && (
+        <div>
+          <h4>Score breakdown</h4>
+          <div className="radar-detail__chips" aria-label="Score breakdown">
+            {breakdown.map(([key, value]) => (
+              <span key={key}>{breakdownLabel(key)} <strong>{Number.isFinite(value) ? value.toFixed(0) : '—'}</strong></span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const QUALIFIED_COLUMNS = 10;
+
+function QualifiedRow({ row, onInvestigate, onActors }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <>
+      <tr className="ui-row">
+        <td className="tabular text-tertiary">{String(row.rank ?? '—').padStart(2, '0')}</td>
+        <td>
+          <div className="radar-cell-ticker">
+            <strong>{row.ticker}</strong>
+            <span>{row.name}{row.board ? ` · ${row.board}` : ''}</span>
+          </div>
+        </td>
+        <td className="tabular"><strong>{Number.isFinite(row.score) ? row.score.toFixed(1) : '—'}</strong></td>
+        <td><EvidenceBandBadge band={row.evidenceBand} /></td>
+        <td className="tabular">
+          <div className="radar-cell-metric">
+            <strong>{row.broker?.lead?.code || '—'}</strong>
+            <span>{formatIDR(row.broker?.lead?.netValue, true)}</span>
+          </div>
+        </td>
+        <td className="tabular">
+          <div className="radar-cell-metric">
+            <strong>{formatRatio(row.broker?.leadToSecondRatio)}</strong>
+            <span>{row.broker?.second?.code ? `vs ${row.broker.second.code}` : 'no second buyer'}</span>
+          </div>
+        </td>
+        <td className="tabular">
+          <div className="radar-cell-metric">
+            <strong>{formatPrice(row.price.support)}</strong>
+            <span>{formatPct(row.price.distanceFromSupportPct)} · {row.price.supportTouches} touches</span>
+          </div>
+        </td>
+        <td className="tabular">
+          <div className="radar-cell-metric">
+            <strong>{formatPct(row.price.consolidationRangePct, 1, false)}</strong>
+            <span>{row.price.volatilityContracting ? 'contracting' : 'not contracting'}</span>
+          </div>
+        </td>
+        <td className="tabular"><strong>{formatIDR(row.price.averageValue, true)}</strong></td>
+        <td>
+          <div className="radar-row__actions">
+            <button type="button" className="ui-btn ui-btn--ghost" aria-label={`Open ${row.ticker} analysis`} onClick={onInvestigate}>Open Analysis</button>
+            <button type="button" className="ui-btn ui-btn--ghost" aria-label={`Open ${row.ticker} broker flow`} onClick={onActors}>Broker Flow</button>
+            <button
+              type="button"
+              className="ui-btn ui-btn--ghost"
+              aria-expanded={expanded}
+              aria-label={`${expanded ? 'Hide' : 'Show'} ${row.ticker} evidence`}
+              onClick={() => setExpanded((value) => !value)}
+            >
+              {expanded ? 'Hide' : 'Details'}
+            </button>
+          </div>
+        </td>
+      </tr>
+      {expanded && (
+        <tr className="ui-row-detail">
+          <td colSpan={QUALIFIED_COLUMNS}><ScoutDetail row={row} /></td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+function ScoutQualifiedTable({ rows, onInvestigate, onActors }) {
+  return (
+    <div className="ui-table-wrap">
+      <table className="ui-table" aria-label="Scout candidates">
+        <thead>
+          <tr>
+            <th className="tabular">#</th>
+            <th>Ticker</th>
+            <th className="tabular">Score</th>
+            <th>Signal</th>
+            <th className="tabular">Lead broker</th>
+            <th className="tabular">Lead gap</th>
+            <th className="tabular">Support</th>
+            <th className="tabular">Compression</th>
+            <th className="tabular">Avg value</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <QualifiedRow
+              key={row.ticker}
+              row={row}
+              onInvestigate={() => onInvestigate(row.ticker)}
+              onActors={() => onActors(row.ticker)}
+            />
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+const NEAR_MISS_COLUMNS = 6;
+
+function NearMissRow({ row, onInvestigate, onActors }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <>
+      <tr className="ui-row">
+        <td className="tabular text-tertiary">{String(row.rank ?? '—').padStart(2, '0')}</td>
+        <td>
+          <div className="radar-cell-ticker">
+            <strong>{row.ticker}</strong>
+            <span>{row.name}{row.board ? ` · ${row.board}` : ''}</span>
+          </div>
+        </td>
+        <td className="tabular"><strong>{Number.isFinite(row.score) ? row.score.toFixed(1) : '—'}</strong></td>
+        <td><EvidenceBandBadge band={row.evidenceBand} /></td>
+        <td><span className="scout-near-miss__missed">Missed: {row.failedCondition || 'unspecified condition'}</span></td>
+        <td>
+          <div className="radar-row__actions">
+            <button type="button" className="ui-btn ui-btn--ghost" aria-label={`Open ${row.ticker} analysis`} onClick={onInvestigate}>Open Analysis</button>
+            <button type="button" className="ui-btn ui-btn--ghost" aria-label={`Open ${row.ticker} broker flow`} onClick={onActors}>Broker Flow</button>
+            <button
+              type="button"
+              className="ui-btn ui-btn--ghost"
+              aria-expanded={expanded}
+              aria-label={`${expanded ? 'Hide' : 'Show'} ${row.ticker} evidence`}
+              onClick={() => setExpanded((value) => !value)}
+            >
+              {expanded ? 'Hide' : 'Details'}
+            </button>
+          </div>
+        </td>
+      </tr>
+      {expanded && (
+        <tr className="ui-row-detail">
+          <td colSpan={NEAR_MISS_COLUMNS}><ScoutDetail row={row} /></td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+function ScoutNearMissSection({ rows, onInvestigate, onActors }) {
+  if (rows.length === 0) return null;
+  return (
+    <section className="scout-near-miss" aria-label="Almost matched stocks">
+      <h3 className="scout-near-miss__title">Almost Matched</h3>
+      <p className="scout-near-miss__intro">These stocks missed one enabled condition.</p>
+      <div className="ui-table-wrap">
+        <table className="ui-table" aria-label="Almost matched stocks">
+          <thead>
+            <tr>
+              <th className="tabular">#</th>
+              <th>Ticker</th>
+              <th className="tabular">Score</th>
+              <th>Signal</th>
+              <th>Missed condition</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <NearMissRow
+                key={row.ticker}
+                row={row}
+                onInvestigate={() => onInvestigate(row.ticker)}
+                onActors={() => onActors(row.ticker)}
+              />
+            ))}
+          </tbody>
+        </table>
       </div>
-      <div className="radar-row__actions">
-        <button type="button" onClick={onInvestigate}>Open Analysis</button>
-        <button type="button" onClick={onActors}>Broker Flow</button>
-      </div>
-    </article>
+    </section>
   );
 }
 
@@ -139,55 +372,62 @@ function Scout({ onInvestigate, onActors }) {
   };
   return (
     <div className="scout-view">
-      <form className="scout-controls" onSubmit={run}>
-        <div className="scout-controls__intro">
-          <label className="scout-controls__recipe">Screening recipe<select value={filters.recipe} onChange={selectRecipe}>{RECIPES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
-          <div className="scout-recipe-explanation"><strong>{recipe.label}</strong><p>{recipe.description}</p><span>Every enabled condition must pass.</span></div>
+      <div className="scout-layout">
+        <form className="scout-controls scout-layout__conditions" onSubmit={run}>
+          <div className="scout-controls__intro">
+            <label className="scout-controls__recipe">Screening recipe<select value={filters.recipe} onChange={selectRecipe}>{RECIPES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+            <div className="scout-recipe-explanation"><strong>{recipe.label}</strong><p>{recipe.description}</p><span>Every enabled condition must pass.</span></div>
+          </div>
+          <fieldset className="scout-conditions">
+            <legend>Conditions</legend>
+            <div className={!filters.useBroker ? 'scout-condition is-disabled' : 'scout-condition'}>
+              <label className="scout-toggle"><input type="checkbox" checked={filters.useBroker} onChange={update('useBroker')} /><span><strong>Broker concentration</strong><small>One buyer leads the positive flow.</small></span></label>
+              <label className="scout-condition__value">Date range<select disabled={!filters.useBroker} value={filters.brokerPreset} onChange={(event) => setFilters((current) => ({ ...current, brokerPreset: event.target.value }))}>{BROKER_RANGES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+              {filters.brokerPreset === 'custom' && <div className="scout-condition__dates"><label>From<input type="date" disabled={!filters.useBroker} value={filters.brokerFrom} onChange={(event) => setFilters((current) => ({ ...current, brokerFrom: event.target.value }))} /></label><label>To<input type="date" disabled={!filters.useBroker} value={filters.brokerTo} onChange={(event) => setFilters((current) => ({ ...current, brokerTo: event.target.value }))} /></label></div>}
+            </div>
+            <div className={!filters.useSupport ? 'scout-condition is-disabled' : 'scout-condition'}>
+              <label className="scout-toggle"><input type="checkbox" checked={filters.useSupport} onChange={update('useSupport')} /><span><strong>Repeated support</strong><small>Price remains near a tested support zone.</small></span></label>
+              <label className="scout-condition__value">Trading days<input type="number" min="5" max="120" disabled={!filters.useSupport} value={filters.supportSessions} onChange={update('supportSessions')} /></label>
+            </div>
+            <div className={!filters.useSideways ? 'scout-condition is-disabled' : 'scout-condition'}>
+              <label className="scout-toggle"><input type="checkbox" checked={filters.useSideways} onChange={update('useSideways')} /><span><strong>Sideways compression</strong><small>Recent candles stay inside a narrow range.</small></span></label>
+              <label className="scout-condition__value">Trading days<input type="number" min="5" max="60" disabled={!filters.useSideways} value={filters.consolidationSessions} onChange={update('consolidationSessions')} /></label>
+            </div>
+            <div className={!filters.useMaxPrice ? 'scout-condition is-disabled' : 'scout-condition'}>
+              <label className="scout-toggle"><input type="checkbox" checked={filters.useMaxPrice} onChange={update('useMaxPrice')} /><span><strong>Maximum price</strong><small>Keep the universe inside your price band.</small></span></label>
+              <label className="scout-condition__value">Rp<input type="text" inputMode="numeric" disabled={!filters.useMaxPrice} value={numericText(filters.maxPrice)} onChange={update('maxPrice')} /></label>
+            </div>
+            <div className={!filters.useLiquidity ? 'scout-condition is-disabled' : 'scout-condition'}>
+              <label className="scout-toggle"><input type="checkbox" checked={filters.useLiquidity} onChange={update('useLiquidity')} /><span><strong>Liquidity floor</strong><small>Minimum average traded value per trading day.</small></span></label>
+              <label className="scout-condition__value">Rp average<input type="text" inputMode="numeric" disabled={!filters.useLiquidity} value={numericText(filters.minAverageValue)} onChange={update('minAverageValue')} /></label>
+            </div>
+            <div className={!filters.useLeadBrokerValue ? 'scout-condition is-disabled' : 'scout-condition'}>
+              <label className="scout-toggle"><input type="checkbox" checked={filters.useLeadBrokerValue} onChange={update('useLeadBrokerValue')} /><span><strong>Lead broker minimum</strong><small>Minimum net accumulation by the top buyer.</small></span></label>
+              <label className="scout-condition__value">Rp net buy<input type="text" inputMode="numeric" disabled={!filters.useLeadBrokerValue} value={numericText(filters.minLeadBrokerValue)} onChange={update('minLeadBrokerValue')} /></label>
+            </div>
+          </fieldset>
+          <div className="scout-controls__footer">
+            <span>No AI · cached EOD data · deterministic ranking</span>
+            <div className="scout-controls__actions">
+              <label>Return<select value={filters.limit} onChange={update('limit')}><option value="10">10 stocks</option><option value="25">25 stocks</option><option value="50">50 stocks</option><option value="100">100 stocks</option></select></label>
+              <button type="submit" className="ui-btn ui-btn--primary" disabled={state.loading}>{state.loading ? 'Screening…' : 'Run Screener'}</button>
+            </div>
+          </div>
+        </form>
+
+        <div className="scout-results">
+          {state.error && <ErrorState title="Custom Screener unavailable" error={state.error} onRetry={run} />}
+          {!state.data && !state.loading && !state.error && <EmptyState title="Choose a recipe" message="Run the screener to find stocks matching your selected conditions." />}
+          {state.data && <>
+            <div className="radar-run"><strong>{state.data.recipe.label}</strong><span>Prices through {formatDate(state.data.asOf.priceDate)}</span><span>Broker flow {formatDate(state.data.asOf.brokerFrom)}–{formatDate(state.data.asOf.brokerTo)} · {state.data.asOf.brokerSessions} trading days</span><span>{state.data.coverage.matched} matched</span><span>Showing {state.data.coverage.returned}</span></div>
+            {state.data.candidates.length === 0
+              ? <EmptyState title="No stocks passed this recipe" message="That is a valid screen result. Widen the price or liquidity boundary only if it matches your intended trade universe." />
+              : <ScoutQualifiedTable rows={state.data.candidates} onInvestigate={onInvestigate} onActors={(ticker) => onActors(ticker, filters.brokerSessions)} />}
+            <ScoutNearMissSection rows={state.data.nearMisses} onInvestigate={onInvestigate} onActors={(ticker) => onActors(ticker, filters.brokerSessions)} />
+            <div className="scout-disclosures">{state.data.disclosures.map((item) => <p key={item}>{item}</p>)}</div>
+          </>}
         </div>
-        <fieldset className="scout-conditions">
-          <legend>Conditions</legend>
-          <div className={!filters.useBroker ? 'scout-condition is-disabled' : 'scout-condition'}>
-            <label className="scout-toggle"><input type="checkbox" checked={filters.useBroker} onChange={update('useBroker')} /><span><strong>Broker concentration</strong><small>One buyer leads the positive flow.</small></span></label>
-            <label className="scout-condition__value">Date range<select disabled={!filters.useBroker} value={filters.brokerPreset} onChange={(event) => setFilters((current) => ({ ...current, brokerPreset: event.target.value }))}>{BROKER_RANGES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-            {filters.brokerPreset === 'custom' && <div className="scout-condition__dates"><label>From<input type="date" disabled={!filters.useBroker} value={filters.brokerFrom} onChange={(event) => setFilters((current) => ({ ...current, brokerFrom: event.target.value }))} /></label><label>To<input type="date" disabled={!filters.useBroker} value={filters.brokerTo} onChange={(event) => setFilters((current) => ({ ...current, brokerTo: event.target.value }))} /></label></div>}
-          </div>
-          <div className={!filters.useSupport ? 'scout-condition is-disabled' : 'scout-condition'}>
-            <label className="scout-toggle"><input type="checkbox" checked={filters.useSupport} onChange={update('useSupport')} /><span><strong>Repeated support</strong><small>Price remains near a tested support zone.</small></span></label>
-            <label className="scout-condition__value">Trading days<input type="number" min="5" max="120" disabled={!filters.useSupport} value={filters.supportSessions} onChange={update('supportSessions')} /></label>
-          </div>
-          <div className={!filters.useSideways ? 'scout-condition is-disabled' : 'scout-condition'}>
-            <label className="scout-toggle"><input type="checkbox" checked={filters.useSideways} onChange={update('useSideways')} /><span><strong>Sideways compression</strong><small>Recent candles stay inside a narrow range.</small></span></label>
-            <label className="scout-condition__value">Trading days<input type="number" min="5" max="60" disabled={!filters.useSideways} value={filters.consolidationSessions} onChange={update('consolidationSessions')} /></label>
-          </div>
-          <div className={!filters.useMaxPrice ? 'scout-condition is-disabled' : 'scout-condition'}>
-            <label className="scout-toggle"><input type="checkbox" checked={filters.useMaxPrice} onChange={update('useMaxPrice')} /><span><strong>Maximum price</strong><small>Keep the universe inside your price band.</small></span></label>
-            <label className="scout-condition__value">Rp<input type="text" inputMode="numeric" disabled={!filters.useMaxPrice} value={numericText(filters.maxPrice)} onChange={update('maxPrice')} /></label>
-          </div>
-          <div className={!filters.useLiquidity ? 'scout-condition is-disabled' : 'scout-condition'}>
-            <label className="scout-toggle"><input type="checkbox" checked={filters.useLiquidity} onChange={update('useLiquidity')} /><span><strong>Liquidity floor</strong><small>Minimum average traded value per trading day.</small></span></label>
-            <label className="scout-condition__value">Rp average<input type="text" inputMode="numeric" disabled={!filters.useLiquidity} value={numericText(filters.minAverageValue)} onChange={update('minAverageValue')} /></label>
-          </div>
-          <div className={!filters.useLeadBrokerValue ? 'scout-condition is-disabled' : 'scout-condition'}>
-            <label className="scout-toggle"><input type="checkbox" checked={filters.useLeadBrokerValue} onChange={update('useLeadBrokerValue')} /><span><strong>Lead broker minimum</strong><small>Minimum net accumulation by the top buyer.</small></span></label>
-            <label className="scout-condition__value">Rp net buy<input type="text" inputMode="numeric" disabled={!filters.useLeadBrokerValue} value={numericText(filters.minLeadBrokerValue)} onChange={update('minLeadBrokerValue')} /></label>
-          </div>
-        </fieldset>
-        <div className="scout-controls__footer">
-          <span>No AI · cached EOD data · deterministic ranking</span>
-          <div className="scout-controls__actions">
-            <label>Return<select value={filters.limit} onChange={update('limit')}><option value="10">10 stocks</option><option value="25">25 stocks</option><option value="50">50 stocks</option><option value="100">100 stocks</option></select></label>
-            <button type="submit" disabled={state.loading}>{state.loading ? 'Screening…' : 'Run Screener'}</button>
-          </div>
-        </div>
-      </form>
-      {state.error && <ErrorState title="Custom Screener unavailable" error={state.error} onRetry={run} />}
-      {!state.data && !state.loading && !state.error && <EmptyState title="Choose a recipe" message="Run the screener to find stocks matching your selected conditions." />}
-      {state.data && <>
-        <div className="radar-run"><strong>{state.data.recipe.label}</strong><span>Prices through {formatDate(state.data.asOf.priceDate)}</span><span>Broker flow {formatDate(state.data.asOf.brokerFrom)}–{formatDate(state.data.asOf.brokerTo)} · {state.data.asOf.brokerSessions} trading days</span><span>{state.data.coverage.matched} matched</span><span>Showing {state.data.coverage.returned}</span></div>
-        {state.data.candidates.length === 0 ? <EmptyState title="No stocks passed this recipe" message="That is a valid screen result. Widen the price or liquidity boundary only if it matches your intended trade universe." /> : <div className="scout-list" role="list" aria-label="Scout candidates">{state.data.candidates.map((row) => <ScoutCandidate key={row.ticker} row={row} onInvestigate={() => onInvestigate(row.ticker)} onActors={() => onActors(row.ticker, filters.brokerSessions)} />)}</div>}
-        {state.data.nearMisses.length > 0 && <section className="scout-near-misses"><h3>Almost Matched</h3><p>These stocks missed one enabled condition.</p><div className="scout-list" role="list" aria-label="Almost matched stocks">{state.data.nearMisses.map((row) => <div key={row.ticker} className="scout-near-miss"><span>Missed: {row.failedCondition}</span><ScoutCandidate row={row} onInvestigate={() => onInvestigate(row.ticker)} onActors={() => onActors(row.ticker, filters.brokerSessions)} /></div>)}</div></section>}
-        <div className="scout-disclosures">{state.data.disclosures.map((item) => <p key={item}>{item}</p>)}</div>
-      </>}
+      </div>
     </div>
   );
 }
@@ -301,16 +541,11 @@ export default function Radar() {
           )}
 
           {visible.length > 0 && (
-            <div className="radar-list" role="list" aria-label="Shortlisted candidates">
-              {visible.map((row) => (
-                <CandidateRow
-                  key={row.ticker}
-                  row={row}
-                  onInvestigate={() => openInvestigationTab(row.ticker)}
-                  onActors={() => openBrokerFlowTab(row.ticker)}
-                />
-              ))}
-            </div>
+            <ShortlistTable
+              rows={visible}
+              onInvestigate={openInvestigationTab}
+              onActors={openBrokerFlowTab}
+            />
           )}
         </>
       )}
