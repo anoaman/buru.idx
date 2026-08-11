@@ -861,7 +861,7 @@ export default function BrokerIntelligence() {
                   {lens === 'stock' ? 'Broker net ranking' : 'Stock net ranking'}
                 </h3>
                 <div className="bi-merged__scroll">
-                  <table className="ui-table bi-merged__table">
+                  <table className="ui-table ui-table--broker-ranking bi-merged__table">
                     <thead>
                       <tr>
                         <th scope="col">{lens === 'stock' ? 'Broker' : 'Stock'}</th>

@@ -173,7 +173,9 @@
 
 .app-shell__content {
   flex: 1;
-  overflow-x: auto;
+  /* Horizontal overflow belongs to the component that owns the wide content
+     (for example .ui-table-wrap), never to the page shell. */
+  overflow-x: hidden;
   overflow-y: auto;
   padding: var(--space-6);
   min-width: 0;
@@ -2152,6 +2154,7 @@
 .case-card__risk { min-height: 0; margin: 0 0 var(--space-2); font-size: var(--type-caption); line-height: 1.5; }
 .case-card__provenance { display: flex; flex-direction: column; gap: 2px; margin-bottom: var(--space-3); font-size: var(--type-meta); }
 .case-card__actions { margin-top: auto; }
+.case-card__actions button { min-width: 0; white-space: nowrap; }
 
 /* ============================================
    Paper Ledger — shared visual tightening
@@ -2240,6 +2243,15 @@
   color: var(--text-primary);
 }
 .radar-row__actions button:first-child:hover { border-color: var(--color-accent); color: var(--color-accent); }
+.ui-table .radar-row__actions {
+  align-items: center;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+.ui-table .radar-row__actions button {
+  flex: 0 0 auto;
+  font-size: 12px;
+}
 
 .scout-controls {
   border-radius: var(--radius-lg);
@@ -2447,7 +2459,11 @@
 
 .ui-table-wrap {
   width: 100%;
-  overflow: auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   background: var(--bg-elevated);
@@ -2492,8 +2508,7 @@
   position: relative;
   transition: background var(--motion-fast) var(--ease-out);
 }
-.ui-row::before,
-.ui-table tbody tr::before {
+.ui-row::before {
   content: '';
   position: absolute;
   left: 0;
@@ -2503,18 +2518,17 @@
   background: transparent;
   transition: background var(--motion-fast) var(--ease-out);
 }
-.ui-table tbody tr {
-  position: relative;
-}
 .ui-row:hover,
 .ui-table tbody tr:hover {
   background: var(--bg-hover);
 }
 .ui-row:hover::before,
-.ui-table tbody tr:hover::before,
-.ui-row.is-selected::before,
-.ui-table tbody tr.is-selected::before {
+.ui-row.is-selected::before {
   background: var(--color-accent);
+}
+.ui-table tbody tr:hover > td:first-child,
+.ui-table tbody tr.is-selected > td:first-child {
+  box-shadow: inset 2px 0 0 var(--color-accent);
 }
 .ui-row.is-selected,
 .ui-table tbody tr.is-selected {
@@ -2524,6 +2538,49 @@
 .ui-table tbody tr:active {
   background: var(--bg-active);
 }
+
+/* Table grammar: each data family has a deliberate minimum canvas and fixed
+   tracks. Narrow panes scroll inside .ui-table-wrap instead of widening the
+   application shell or letting auto layout move the action column. */
+.ui-table--shortlist {
+  width: max-content;
+  min-width: 980px;
+  table-layout: fixed;
+}
+.ui-table--shortlist th:nth-child(1), .ui-table--shortlist td:nth-child(1) { width: 48px; }
+.ui-table--shortlist th:nth-child(2), .ui-table--shortlist td:nth-child(2) { width: 145px; }
+.ui-table--shortlist th:nth-child(3), .ui-table--shortlist td:nth-child(3) { width: 82px; }
+.ui-table--shortlist th:nth-child(4), .ui-table--shortlist td:nth-child(4) { width: 235px; }
+.ui-table--shortlist th:nth-child(5), .ui-table--shortlist td:nth-child(5) { width: 235px; }
+.ui-table--shortlist th:nth-child(6), .ui-table--shortlist td:nth-child(6) { width: 235px; }
+
+.ui-table--scout {
+  width: max-content;
+  min-width: 1260px;
+  table-layout: fixed;
+}
+.ui-table--scout th:nth-child(1), .ui-table--scout td:nth-child(1) { width: 48px; }
+.ui-table--scout th:nth-child(2), .ui-table--scout td:nth-child(2) { width: 155px; }
+.ui-table--scout th:nth-child(3), .ui-table--scout td:nth-child(3) { width: 78px; }
+.ui-table--scout th:nth-child(4), .ui-table--scout td:nth-child(4) { width: 128px; }
+.ui-table--scout th:nth-child(5), .ui-table--scout td:nth-child(5) { width: 145px; }
+.ui-table--scout th:nth-child(6), .ui-table--scout td:nth-child(6) { width: 125px; }
+.ui-table--scout th:nth-child(7), .ui-table--scout td:nth-child(7) { width: 135px; }
+.ui-table--scout th:nth-child(8), .ui-table--scout td:nth-child(8) { width: 135px; }
+.ui-table--scout th:nth-child(9), .ui-table--scout td:nth-child(9) { width: 120px; }
+.ui-table--scout th:nth-child(10), .ui-table--scout td:nth-child(10) { width: 240px; }
+
+.ui-table--near-miss {
+  width: max-content;
+  min-width: 940px;
+  table-layout: fixed;
+}
+.ui-table--near-miss th:nth-child(1), .ui-table--near-miss td:nth-child(1) { width: 48px; }
+.ui-table--near-miss th:nth-child(2), .ui-table--near-miss td:nth-child(2) { width: 165px; }
+.ui-table--near-miss th:nth-child(3), .ui-table--near-miss td:nth-child(3) { width: 82px; }
+.ui-table--near-miss th:nth-child(4), .ui-table--near-miss td:nth-child(4) { width: 128px; }
+.ui-table--near-miss th:nth-child(5), .ui-table--near-miss td:nth-child(5) { width: 275px; }
+.ui-table--near-miss th:nth-child(6), .ui-table--near-miss td:nth-child(6) { width: 242px; }
 
 .ui-group-row td {
   background: var(--bg-sunken);
@@ -2667,6 +2724,8 @@
   align-items: start;
   width: 100%;
   min-width: 0;
+  container-type: inline-size;
+  container-name: scout-layout;
 }
 .scout-layout__conditions {
   position: sticky;
@@ -2698,16 +2757,16 @@
   gap: 6px;
   white-space: nowrap;
 }
-@media (max-width: 1500px) {
-  /* Prefer a real condition column when the results pane still has room. */
+@container scout-layout (min-width: 1051px) and (max-width: 1280px) {
+  /* The split is based on the content pane, not the viewport (the shell has a
+     persistent navigation rail). */
   .scout-layout {
     grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
   }
 }
-/* 1366×768: stack so the results table gets the full content width and Actions
-   stay reachable without page-level clipping. Media overrides must follow the
-   sticky base rule so position:static actually wins. */
-@media (max-width: 1400px) {
+@container scout-layout (max-width: 1050px) {
+  /* Stack when the actual results pane would become too narrow. Actions stay
+     reachable in the contained table scroller. */
   .scout-layout {
     grid-template-columns: 1fr;
   }
@@ -2803,7 +2862,7 @@
 .radar-cell-metric span {
   display: block;
   color: var(--text-tertiary);
-  font-size: var(--type-meta);
+  font-size: 12px;
   line-height: 1.4;
   white-space: normal;
 }
@@ -2862,8 +2921,25 @@
 
 /* Phase 6 — Broker Flow merged signed ranking table (display-only merge). */
 .bi-merged__scroll {
+  min-width: 0;
   max-height: 420px;
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.ui-table--broker-ranking {
+  width: max-content;
+  min-width: 700px;
+  table-layout: fixed;
+}
+.ui-table--broker-ranking th:nth-child(1), .ui-table--broker-ranking td:nth-child(1) { width: 210px; }
+.ui-table--broker-ranking th:nth-child(2), .ui-table--broker-ranking td:nth-child(2) { width: 105px; }
+.ui-table--broker-ranking th:nth-child(3), .ui-table--broker-ranking td:nth-child(3) { width: 145px; }
+.ui-table--broker-ranking th:nth-child(4), .ui-table--broker-ranking td:nth-child(4) { width: 115px; }
+.ui-table--broker-ranking th:nth-child(5), .ui-table--broker-ranking td:nth-child(5) { width: 125px; }
+.ui-table--broker-ranking td {
+  font-size: 12.5px;
+  color: var(--text-secondary);
 }
 .bi-merged__identity {
   display: flex;

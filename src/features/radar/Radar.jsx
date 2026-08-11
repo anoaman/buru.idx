@@ -141,7 +141,7 @@ function ShortlistRow({ row, onInvestigate, onActors }) {
 function ShortlistTable({ rows, onInvestigate, onActors }) {
   return (
     <div className="ui-table-wrap">
-      <table className="ui-table" aria-label="Shortlisted candidates">
+      <table className="ui-table ui-table--shortlist" aria-label="Shortlisted candidates">
         <thead>
           <tr>
             <th className="tabular">#</th>
@@ -278,7 +278,7 @@ function QualifiedRow({ row, onInvestigate, onActors }) {
 function ScoutQualifiedTable({ rows, onInvestigate, onActors }) {
   return (
     <div className="ui-table-wrap">
-      <table className="ui-table" aria-label="Scout candidates">
+      <table className="ui-table ui-table--scout" aria-label="Scout candidates">
         <thead>
           <tr>
             <th className="tabular">#</th>
@@ -357,7 +357,7 @@ function ScoutNearMissSection({ rows, onInvestigate, onActors }) {
       <h3 className="scout-near-miss__title">Almost Matched</h3>
       <p className="scout-near-miss__intro">These stocks missed one enabled condition.</p>
       <div className="ui-table-wrap">
-        <table className="ui-table" aria-label="Almost matched stocks">
+        <table className="ui-table ui-table--near-miss" aria-label="Almost matched stocks">
           <thead>
             <tr>
               <th className="tabular">#</th>
