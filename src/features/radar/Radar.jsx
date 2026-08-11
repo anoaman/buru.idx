@@ -159,6 +159,7 @@ function Scout({ onInvestigate, onActors }) {
         <label className="scout-toggle"><input type="checkbox" checked={filters.useBroker} onChange={update('useBroker')} /><span>Broker concentration</span></label>
         <label className={!filters.useBroker ? 'scout-field is-disabled' : 'scout-field'}>Broker sessions<input type="number" min="3" max="20" disabled={!filters.useBroker} value={filters.brokerSessions} onChange={update('brokerSessions')} /></label>
         <label className="scout-toggle"><input type="checkbox" checked={filters.useSupport} onChange={update('useSupport')} /><span>Near repeated support</span></label>
+        <label className={!filters.useSupport ? 'scout-field is-disabled' : 'scout-field'}>Support sessions<input type="number" min="5" max="60" disabled={!filters.useSupport} value={filters.supportSessions} onChange={update('supportSessions')} /></label>
         <label className="scout-toggle"><input type="checkbox" checked={filters.useSideways} onChange={update('useSideways')} /><span>Sideways compression</span></label>
         <label className={!filters.useSideways ? 'scout-field is-disabled' : 'scout-field'}>Sideways candles<input type="number" min="5" max="20" disabled={!filters.useSideways} value={filters.consolidationSessions} onChange={update('consolidationSessions')} /></label>
         <label className="scout-toggle"><input type="checkbox" checked={filters.useMaxPrice} onChange={update('useMaxPrice')} /><span>Apply maximum price</span></label>
