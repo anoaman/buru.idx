@@ -20,6 +20,10 @@ describe('public API allowlist', () => {
       path: '/api/broker-intelligence/stock?ticker=BBCA&days=7',
     });
     expect(resolvePublicApiRequest('GET', '/api/opportunities').ok).toBe(true);
+    expect(resolvePublicApiRequest('GET', '/api/radar/scout?recipe=quiet_accumulation&brokerSessions=7')).toEqual({
+      ok: true,
+      path: '/api/radar/scout?recipe=quiet_accumulation&brokerSessions=7',
+    });
     expect(resolvePublicApiRequest('GET', '/api/watchlist').ok).toBe(true);
   });
 
@@ -37,6 +41,7 @@ describe('public API allowlist', () => {
       '/api/broker-intelligence/stock?ticker=BBCA&days=1&from=2026-01-01&to=2026-08-07',
       '/api/broker-intelligence/broker?code=ZP&days=30&limit=25',
       '/api/broker-intelligence/broker?code=ZP&days=7&limit=25&date=2026-08-07',
+      '/api/radar/scout?recipe=dominant_broker&brokerSessions=7&consolidationSessions=10&supportSessions=20&maxPrice=1000&minAverageValue=500000000&limit=10',
     ];
     for (const requested of clientRequests) {
       const result = resolvePublicApiRequest('GET', requested);

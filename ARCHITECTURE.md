@@ -34,6 +34,9 @@ case tracking from the retiring cockpit without duplicating backend engines.
 - `confidence` is a deprecated pre-1.2 alias for source freshness and coverage,
   not outcome probability. The view models expose it as `dataQuality` and drop
   the alias, so no component can render it under the wrong label.
+- Radar's Scout sub-view reads deterministic `/api/radar/scout` results. The
+  backend owns recipes, thresholds, measurements, qualification and ranking;
+  React only submits bounded filters and renders the returned evidence.
 
 The frontend performs no analysis, ranking, broker inventory, or coverage
 calculation. Those remain backend responsibilities.

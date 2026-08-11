@@ -399,6 +399,94 @@ export function guardOpportunities(raw) {
   };
 }
 
+function normalizeScoutCandidate(row) {
+  if (!row || typeof row !== 'object' || !row.ticker) return null;
+  const price = row.price && typeof row.price === 'object' ? row.price : {};
+  const broker = row.broker && typeof row.broker === 'object' ? row.broker : null;
+  return {
+    ticker: String(row.ticker).toUpperCase(),
+    name: row.name || row.ticker,
+    board: row.board || null,
+    rank: Number.isFinite(row.rank) ? row.rank : null,
+    score: preserveFiniteOrNull(row.score),
+    price: {
+      lastPrice: preserveFiniteOrNull(price.lastPrice),
+      priceDate: price.priceDate || null,
+      support: preserveFiniteOrNull(price.support),
+      supportTouches: Number.isFinite(price.supportTouches) ? price.supportTouches : 0,
+      distanceFromSupportPct: preserveFiniteOrNull(price.distanceFromSupportPct),
+      consolidationRangePct: preserveFiniteOrNull(price.consolidationRangePct),
+      recentAtrPct: preserveFiniteOrNull(price.recentAtrPct),
+      priorAtrPct: preserveFiniteOrNull(price.priorAtrPct),
+      volatilityContracting: price.volatilityContracting === true,
+      averageValue: preserveFiniteOrNull(price.averageValue),
+      zeroVolumeSessions: Number.isFinite(price.zeroVolumeSessions) ? price.zeroVolumeSessions : 0,
+      distinctCloses: Number.isFinite(price.distinctCloses) ? price.distinctCloses : 0,
+    },
+    broker: broker
+      ? {
+          observedSessions: Number.isFinite(broker.observedSessions) ? broker.observedSessions : 0,
+          expectedSessions: Number.isFinite(broker.expectedSessions) ? broker.expectedSessions : 0,
+          lead: broker.lead && broker.lead.code
+            ? {
+                code: String(broker.lead.code).toUpperCase(),
+                netValue: preserveFiniteOrNull(broker.lead.netValue),
+                buySessions: Number.isFinite(broker.lead.buySessions) ? broker.lead.buySessions : 0,
+                sellSessions: Number.isFinite(broker.lead.sellSessions) ? broker.lead.sellSessions : 0,
+              }
+            : null,
+          second: broker.second?.code
+            ? { code: String(broker.second.code).toUpperCase(), netValue: preserveFiniteOrNull(broker.second.netValue) }
+            : null,
+          leadToSecondRatio: preserveFiniteOrNull(broker.leadToSecondRatio),
+          leadSharePct: preserveFiniteOrNull(broker.leadSharePct),
+        }
+      : null,
+    reasons: normalizeStringList(row.reasons, 6),
+    risks: normalizeStringList(row.risks, 6),
+  };
+}
+
+export function guardRadarScout(raw) {
+  if (!raw || raw.success === false) {
+    return { ok: false, error: raw?.error || 'Invalid Scout response', data: null };
+  }
+  const data = raw.data;
+  if (!data || typeof data !== 'object') {
+    return { ok: false, error: 'Missing Scout data', data: null };
+  }
+  const recipe = data.recipe && typeof data.recipe === 'object' ? data.recipe : {};
+  const asOf = data.asOf && typeof data.asOf === 'object' ? data.asOf : {};
+  const coverage = data.coverage && typeof data.coverage === 'object' ? data.coverage : {};
+  return {
+    ok: true,
+    error: null,
+    data: {
+      recipe: {
+        id: recipe.id || null,
+        label: recipe.label || 'Scout',
+        description: recipe.description || null,
+      },
+      options: data.options && typeof data.options === 'object' ? data.options : {},
+      asOf: {
+        priceDate: asOf.priceDate || null,
+        brokerFrom: asOf.brokerFrom || null,
+        brokerTo: asOf.brokerTo || null,
+        brokerSessions: Number.isFinite(asOf.brokerSessions) ? asOf.brokerSessions : 0,
+      },
+      coverage: {
+        evaluated: Number.isFinite(coverage.evaluated) ? coverage.evaluated : 0,
+        matched: Number.isFinite(coverage.matched) ? coverage.matched : 0,
+        returned: Number.isFinite(coverage.returned) ? coverage.returned : 0,
+      },
+      candidates: Array.isArray(data.candidates)
+        ? data.candidates.map(normalizeScoutCandidate).filter(Boolean)
+        : [],
+      disclosures: normalizeStringList(data.disclosures, 6),
+    },
+  };
+}
+
 function normalizeCaseMonitoring(raw) {
   const monitoring = raw && typeof raw === 'object' ? raw : {};
   const current = monitoring.current && typeof monitoring.current === 'object'

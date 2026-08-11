@@ -6,9 +6,10 @@ import Radar from './Radar.jsx';
 
 vi.mock('../../lib/api/client.js', () => ({
   getOpportunities: vi.fn(),
+  getRadarScout: vi.fn(),
 }));
 
-import { getOpportunities } from '../../lib/api/client.js';
+import { getOpportunities, getRadarScout } from '../../lib/api/client.js';
 
 const RUN = {
   id: 41,
@@ -185,5 +186,36 @@ describe('Radar', () => {
     renderRadar();
     expect(await screen.findByText('network down')).toBeInTheDocument();
     expect(screen.queryByText(/Loading the latest qualified scan/)).not.toBeInTheDocument();
+  });
+
+  it('runs deterministic Scout recipes and renders the returned evidence', async () => {
+    getOpportunities.mockResolvedValue({ success: true, data: { run: RUN, opportunities: [] } });
+    getRadarScout.mockResolvedValue({
+      success: true,
+      data: {
+        recipe: { id: 'quiet_accumulation', label: 'Quiet Accumulation Near Support' },
+        options: { brokerSessions: 7 },
+        asOf: { priceDate: '2026-08-10', brokerFrom: '2026-07-31', brokerTo: '2026-08-10', brokerSessions: 7 },
+        coverage: { evaluated: 900, matched: 1, returned: 1 },
+        candidates: [{
+          ticker: 'AHAP', name: 'Asuransi Harta Aman Pratama Tbk', board: 'Development', rank: 1, score: 88.4,
+          price: { lastPrice: 101, priceDate: '2026-08-10', support: 98, supportTouches: 4, distanceFromSupportPct: 3.06, consolidationRangePct: 7.1, recentAtrPct: 2, priorAtrPct: 3, volatilityContracting: true, averageValue: 1_100_000_000, zeroVolumeSessions: 0 },
+          broker: { observedSessions: 7, expectedSessions: 7, lead: { code: 'CC', netValue: 1_200_000_000, buySessions: 6, sellSessions: 1 }, second: { code: 'YP', netValue: 300_000_000 }, leadToSecondRatio: 4, leadSharePct: 58 },
+          reasons: ['CC accumulated Rp1200M, 4.0× YP, across 6/7 sessions.'],
+          risks: ['CC distributed in 1 observed session.'],
+        }],
+        disclosures: ['Observed flow is not a holdings ledger.'],
+      },
+    });
+
+    renderRadar();
+    fireEvent.click(screen.getByRole('tab', { name: 'Scout' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Run Scout' }));
+
+    expect(await screen.findByText('AHAP')).toBeInTheDocument();
+    expect(screen.getByText('CC accumulated Rp1200M, 4.0× YP, across 6/7 sessions.')).toBeInTheDocument();
+    expect(screen.getByText('CC distributed in 1 observed session.')).toBeInTheDocument();
+    expect(screen.getByText('1 matched / 900 evaluated')).toBeInTheDocument();
+    expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({ recipe: 'quiet_accumulation', brokerSessions: 7 }));
   });
 });

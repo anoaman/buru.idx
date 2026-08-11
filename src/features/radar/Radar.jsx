@@ -1,13 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { getOpportunities } from '../../lib/api/client.js';
-import { guardOpportunities } from '../../lib/api/contracts.js';
-import { formatPrice, formatRatio, formatRelativeDays } from '../../lib/format/market.js';
+import { getOpportunities, getRadarScout } from '../../lib/api/client.js';
+import { guardOpportunities, guardRadarScout } from '../../lib/api/contracts.js';
+import { formatIDR, formatPct, formatPrice, formatRatio, formatRelativeDays } from '../../lib/format/market.js';
 import EmptyState from '../../components/EmptyState.jsx';
 import ErrorState from '../../components/ErrorState.jsx';
 import InfoTip from '../../components/InfoTip.jsx';
 import { useAnalysisContext } from '../../components/AnalysisContext.jsx';
 
 const ALL_LANES = 'all';
+const RECIPES = [
+  ['quiet_accumulation', 'Quiet accumulation'],
+  ['dominant_broker', 'Dominant broker'],
+  ['support_compression', 'Support compression'],
+];
+const DEFAULT_SCOUT_FILTERS = Object.freeze({
+  recipe: 'quiet_accumulation', brokerSessions: 7, consolidationSessions: 10,
+  supportSessions: 20, maxPrice: 1000, minAverageValue: 500_000_000, limit: 10,
+});
 
 function ScanProvenance({ run, tally, candidateCount }) {
   if (!run) return null;
@@ -81,10 +90,76 @@ function CandidateRow({ row, onInvestigate, onActors }) {
   );
 }
 
+function ScoutCandidate({ row, onInvestigate, onActors }) {
+  return (
+    <article className="scout-card" role="listitem">
+      <div className="scout-card__identity">
+        <span className="scout-card__rank">{String(row.rank ?? '—').padStart(2, '0')}</span>
+        <div><strong>{row.ticker}</strong><span>{row.name} · {row.board || 'board unavailable'}</span></div>
+        <b>{Number.isFinite(row.score) ? row.score.toFixed(1) : '—'}</b>
+      </div>
+      <div className="scout-card__metrics">
+        <div><span>Lead broker</span><strong>{row.broker?.lead?.code || '—'}</strong><small>{formatIDR(row.broker?.lead?.netValue, true)}</small></div>
+        <div><span>Lead gap</span><strong>{formatRatio(row.broker?.leadToSecondRatio)}</strong><small>{row.broker?.second?.code ? `vs ${row.broker.second.code}` : 'no second buyer'}</small></div>
+        <div><span>Positive share</span><strong>{formatPct(row.broker?.leadSharePct, 0, false)}</strong><small>{row.broker?.lead ? `${row.broker.lead.buySessions}/${row.broker.expectedSessions} buy sessions` : 'unavailable'}</small></div>
+        <div><span>Support</span><strong>{formatPrice(row.price.support)}</strong><small>{formatPct(row.price.distanceFromSupportPct)} away · {row.price.supportTouches} touches</small></div>
+        <div><span>Compression</span><strong>{formatPct(row.price.consolidationRangePct, 1, false)}</strong><small>{row.price.volatilityContracting ? 'volatility contracting' : 'not contracting'}</small></div>
+        <div><span>Avg value</span><strong>{formatIDR(row.price.averageValue, true)}</strong><small>per session</small></div>
+      </div>
+      <div className="scout-card__evidence">
+        <div><span>Why it passed</span>{row.reasons.map((reason) => <p key={reason}>{reason}</p>)}</div>
+        <div className={row.risks.length ? 'has-risk' : ''}><span>Check manually</span>{row.risks.length ? row.risks.map((risk) => <p key={risk}>{risk}</p>) : <p>No additional warning triggered.</p>}</div>
+      </div>
+      <div className="radar-row__actions">
+        <button type="button" onClick={onInvestigate}>Investigate</button>
+        <button type="button" onClick={onActors}>Actors</button>
+      </div>
+    </article>
+  );
+}
+
+function Scout({ onInvestigate, onActors }) {
+  const [filters, setFilters] = useState(DEFAULT_SCOUT_FILTERS);
+  const [state, setState] = useState({ loading: false, error: null, data: null });
+  const update = (key) => (event) => {
+    const value = event.target.type === 'number' ? Number(event.target.value) : event.target.value;
+    setFilters((current) => ({ ...current, [key]: value }));
+  };
+  const run = (event) => {
+    event?.preventDefault();
+    setState((current) => ({ ...current, loading: true, error: null }));
+    getRadarScout(filters).then((raw) => {
+      const result = guardRadarScout(raw);
+      setState({ loading: false, error: result.ok ? null : result.error, data: result.data });
+    }).catch((error) => setState({ loading: false, error: error.message || 'Scout request failed', data: null }));
+  };
+  return (
+    <div className="scout-view">
+      <form className="scout-controls" onSubmit={run}>
+        <label>Recipe<select value={filters.recipe} onChange={update('recipe')}>{RECIPES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+        <label>Broker sessions<input type="number" min="3" max="20" value={filters.brokerSessions} onChange={update('brokerSessions')} /></label>
+        <label>Sideways candles<input type="number" min="5" max="20" value={filters.consolidationSessions} onChange={update('consolidationSessions')} /></label>
+        <label>Maximum price<input type="number" min="50" max="10000" step="10" value={filters.maxPrice} onChange={update('maxPrice')} /></label>
+        <label>Minimum avg value<input type="number" min="0" step="100000000" value={filters.minAverageValue} onChange={update('minAverageValue')} /></label>
+        <button type="submit" disabled={state.loading}>{state.loading ? 'Screening…' : 'Run Scout'}</button>
+      </form>
+      <p className="scout-method">No AI and no live fetch. Scout applies fixed, auditable rules to cached EOD prices and observed broker flow.</p>
+      {state.error && <ErrorState title="Scout unavailable" error={state.error} onRetry={run} />}
+      {!state.data && !state.loading && !state.error && <EmptyState title="Choose a recipe" message="Run Scout to screen the cached IDX universe. Nothing is ranked in the browser." />}
+      {state.data && <>
+        <div className="radar-run"><strong>{state.data.recipe.label}</strong><span>prices {state.data.asOf.priceDate || 'unavailable'}</span><span>brokers {state.data.asOf.brokerFrom || '—'} → {state.data.asOf.brokerTo || '—'} · {state.data.asOf.brokerSessions} sessions</span><span>{state.data.coverage.matched} matched / {state.data.coverage.evaluated} evaluated</span><span>showing {state.data.coverage.returned}</span></div>
+        {state.data.candidates.length === 0 ? <EmptyState title="No stocks passed this recipe" message="That is a valid screen result. Widen the price or liquidity boundary only if it matches your intended trade universe." /> : <div className="scout-list" role="list" aria-label="Scout candidates">{state.data.candidates.map((row) => <ScoutCandidate key={row.ticker} row={row} onInvestigate={() => onInvestigate(row.ticker)} onActors={() => onActors(row.ticker, filters.brokerSessions)} />)}</div>}
+        <div className="scout-disclosures">{state.data.disclosures.map((item) => <p key={item}>{item}</p>)}</div>
+      </>}
+    </div>
+  );
+}
+
 export default function Radar() {
   const { openInvestigation, openBrokerMap } = useAnalysisContext();
   const [state, setState] = useState({ loading: true, error: null, data: null });
   const [lane, setLane] = useState(ALL_LANES);
+  const [view, setView] = useState('scan');
 
   const load = useCallback(() => {
     let cancelled = false;
@@ -119,6 +194,15 @@ export default function Radar() {
         <div><span>MODULE 01 · DISCOVERY</span><h2 id="radar-title">Radar</h2></div>
         <p>Only structures worth questioning. No feed, no hype ticker carousel.</p>
       </header>
+
+      <div className="radar-view-tabs" role="tablist" aria-label="Radar views">
+        <button type="button" role="tab" aria-selected={view === 'scan'} className={view === 'scan' ? 'is-active' : ''} onClick={() => setView('scan')}>Qualified Scan</button>
+        <button type="button" role="tab" aria-selected={view === 'scout'} className={view === 'scout' ? 'is-active' : ''} onClick={() => setView('scout')}>Scout</button>
+      </div>
+
+      {view === 'scout' && <Scout onInvestigate={openInvestigation} onActors={openBrokerMap} />}
+
+      {view === 'scan' && <>
 
       {state.loading && <p className="text-tertiary">Loading the latest qualified scan…</p>}
 
@@ -190,6 +274,7 @@ export default function Radar() {
           )}
         </>
       )}
+      </>}
     </section>
   );
 }
