@@ -30,9 +30,34 @@ const RATE_LIMIT_MAX_REQUESTS = Number(process.env.STOCK_ANALYSIS_RATE_LIMIT || 
 export const UPSTREAM_TIMEOUT_MS = Number(process.env.STOCK_ANALYSIS_UPSTREAM_TIMEOUT_MS || 30_000);
 const rateBuckets = new Map();
 
+const RATE_LIMIT_MAX_BUCKETS = 5000;
+const RATE_LIMIT_SWEEP_INTERVAL_MS = 1_000;
+const nextSweepAt = new WeakMap();
+
+// Unbounded growth is its own denial of service. Sweep expired buckets while we
+// are already here rather than running a timer.
+//
+// This has to run on the path that *adds* keys. It used to sit on the increment
+// branch, which only ever runs for a caller that already has a bucket, so the
+// one traffic shape that grows the map without bound — a flood from many
+// distinct addresses — was also the one shape that never triggered the sweep.
+//
+// Rate-limited to one pass a second because the sweep is O(size): running it on
+// every arrival once the map is large turns a flood into quadratic work, which
+// is the same denial of service arriving through the defence.
+function sweepExpired(buckets, nowMs) {
+  if (buckets.size <= RATE_LIMIT_MAX_BUCKETS) return;
+  if (nowMs < (nextSweepAt.get(buckets) ?? 0)) return;
+  nextSweepAt.set(buckets, nowMs + RATE_LIMIT_SWEEP_INTERVAL_MS);
+  for (const [key, bucket] of buckets) {
+    if (nowMs >= bucket.resetAt) buckets.delete(key);
+  }
+}
+
 export function checkRateLimit(key, nowMs, buckets = rateBuckets) {
   const bucket = buckets.get(key);
   if (!bucket || nowMs >= bucket.resetAt) {
+    sweepExpired(buckets, nowMs);
     buckets.set(key, { count: 1, resetAt: nowMs + RATE_LIMIT_WINDOW_MS });
     return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS - 1, retryAfterSec: 0 };
   }
@@ -44,11 +69,6 @@ export function checkRateLimit(key, nowMs, buckets = rateBuckets) {
     };
   }
   bucket.count += 1;
-  // Unbounded growth is its own denial of service. Sweep expired buckets while
-  // we are already here rather than running a timer.
-  if (buckets.size > 5000) {
-    for (const [k, b] of buckets) if (nowMs >= b.resetAt) buckets.delete(k);
-  }
   return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS - bucket.count, retryAfterSec: 0 };
 }
 

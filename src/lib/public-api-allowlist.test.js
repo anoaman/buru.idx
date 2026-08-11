@@ -117,4 +117,26 @@ describe('rate limiting', () => {
     for (let i = 0; i < 130; i += 1) checkRateLimit('1.2.3.4', now, buckets);
     expect(checkRateLimit('1.2.3.4', now + 60_001, buckets).allowed).toBe(true);
   });
+
+  // The sweep used to sit on the increment branch, which only runs for a caller
+  // that already has a bucket. A flood from many distinct addresses — the only
+  // traffic shape that can grow this map without bound — never reached it.
+  it('does not grow without bound under traffic from many distinct callers', () => {
+    const buckets = new Map();
+    let now = 1_000_000;
+    for (let i = 0; i < 20_000; i += 1) {
+      now += 10;
+      checkRateLimit(`10.0.${Math.floor(i / 256) % 256}.${i % 256}`, now, buckets);
+    }
+    expect(buckets.size).toBeLessThan(20_000);
+  });
+
+  it('keeps live callers when it sweeps', () => {
+    const buckets = new Map();
+    const now = 1_000_000;
+    checkRateLimit('1.2.3.4', now, buckets);
+    for (let i = 0; i < 6000; i += 1) checkRateLimit(`9.9.${i >> 8}.${i & 255}`, now, buckets);
+    expect(buckets.has('1.2.3.4')).toBe(true);
+    expect(checkRateLimit('1.2.3.4', now, buckets).remaining).toBe(118);
+  });
 });

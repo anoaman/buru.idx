@@ -16,16 +16,29 @@ export function formatNumber(value, decimals = 0) {
   });
 }
 
+const COMPACT_UNITS = [[1e12, 'T'], [1e9, 'B'], [1e6, 'M'], [1e3, 'K']];
+
+function compactPrecision(scaled, decimals) {
+  return scaled >= 100 ? 0 : scaled >= 10 ? Math.min(decimals, 1) : decimals;
+}
+
 export function formatCompact(value, decimals = 1) {
   if (!finite(value)) return unavailable;
   const abs = Math.abs(value);
   const sign = value < 0 ? '-' : '';
-  const units = [[1e12, 'T'], [1e9, 'B'], [1e6, 'M'], [1e3, 'K']];
-  const unit = units.find(([threshold]) => abs >= threshold);
-  if (!unit) return formatNumber(value);
-  const scaled = abs / unit[0];
-  const precision = scaled >= 100 ? 0 : scaled >= 10 ? Math.min(decimals, 1) : decimals;
-  return `${sign}${scaled.toFixed(precision)}${unit[1]}`;
+  let index = COMPACT_UNITS.findIndex(([threshold]) => abs >= threshold);
+  if (index === -1) return formatNumber(value);
+  let scaled = abs / COMPACT_UNITS[index][0];
+  let precision = compactPrecision(scaled, decimals);
+  // Rounding can carry a value into the next unit. Without this, 999,999,999
+  // renders as "1000M" instead of "1.0B" — the same magnitude read wrong at a
+  // glance, which is the only way these are ever read.
+  if (Number(scaled.toFixed(precision)) >= 1000 && index > 0) {
+    index -= 1;
+    scaled = abs / COMPACT_UNITS[index][0];
+    precision = compactPrecision(scaled, decimals);
+  }
+  return `${sign}${scaled.toFixed(precision)}${COMPACT_UNITS[index][1]}`;
 }
 
 export function formatIDR(value, compact = false) {

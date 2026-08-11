@@ -94,15 +94,24 @@ function proxyApi(req, res) {
   upstream.end();
 }
 
-function resolveStaticPath(urlPath) {
-  const clean = normalize(decodeURIComponent(urlPath.split('?')[0])).replace(/^(\.\.(\/|\\|$))+/, '');
+export function resolveStaticPath(urlPath) {
+  let decoded;
+  try {
+    // decodeURIComponent throws on malformed percent-encoding. Unhandled, that
+    // throw escapes the request handler and takes the whole process down, so a
+    // single GET /% was enough to stop the workstation serving anything.
+    decoded = decodeURIComponent(urlPath.split('?')[0]);
+  } catch {
+    return null;
+  }
+  const clean = normalize(decoded).replace(/^(\.\.(\/|\\|$))+/, '');
   const candidate = join(ROOT, clean === '/' ? 'index.html' : clean);
   if (!candidate.startsWith(ROOT)) return null;
   if (existsSync(candidate) && statSync(candidate).isFile()) return candidate;
   return join(ROOT, 'index.html');
 }
 
-export const server = createServer((req, res) => {
+function handle(req, res) {
   if (req.url?.startsWith('/api/')) return proxyApi(req, res);
   const path = resolveStaticPath(req.url || '/');
   if (!path || !existsSync(path)) {
@@ -116,6 +125,19 @@ export const server = createServer((req, res) => {
     'x-frame-options': 'DENY',
   });
   createReadStream(path).pipe(res);
+}
+
+export const server = createServer((req, res) => {
+  // A throw from a request handler is an uncaught exception, and an uncaught
+  // exception ends the process. One malformed request should cost that request,
+  // not the workstation.
+  try {
+    handle(req, res);
+  } catch (error) {
+    console.error(`[server] ${req.method} ${req.url}: ${error.message}`);
+    if (res.headersSent) return res.destroy();
+    sendJson(res, 500, { success: false, error: 'Request failed.' });
+  }
 });
 
 // Importing this module for its allowlist must not open a socket.
