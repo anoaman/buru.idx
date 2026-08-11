@@ -182,7 +182,13 @@ function Scout({ onInvestigate, onActors }) {
             <label className="scout-condition__value">Rp average<input type="text" inputMode="numeric" disabled={!filters.useLiquidity} value={numericText(filters.minAverageValue)} onChange={update('minAverageValue')} /></label>
           </div>
         </fieldset>
-        <div className="scout-controls__footer"><span>No AI · cached EOD data · deterministic ranking</span><button type="submit" disabled={state.loading}>{state.loading ? 'Screening…' : 'Run Scout'}</button></div>
+        <div className="scout-controls__footer">
+          <span>No AI · cached EOD data · deterministic ranking</span>
+          <div className="scout-controls__actions">
+            <label>Return<select value={filters.limit} onChange={update('limit')}><option value="10">10 stocks</option><option value="25">25 stocks</option><option value="50">50 stocks</option><option value="100">100 stocks</option></select></label>
+            <button type="submit" disabled={state.loading}>{state.loading ? 'Screening…' : 'Run Scout'}</button>
+          </div>
+        </div>
       </form>
       {state.error && <ErrorState title="Scout unavailable" error={state.error} onRetry={run} />}
       {!state.data && !state.loading && !state.error && <EmptyState title="Choose a recipe" message="Run Scout to screen the cached IDX universe. Nothing is ranked in the browser." />}
