@@ -2505,26 +2505,11 @@
   transition: background var(--motion-fast) var(--ease-out);
 }
 .ui-row {
-  position: relative;
-  transition: background var(--motion-fast) var(--ease-out);
-}
-.ui-row::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  background: transparent;
   transition: background var(--motion-fast) var(--ease-out);
 }
 .ui-row:hover,
 .ui-table tbody tr:hover {
   background: var(--bg-hover);
-}
-.ui-row:hover::before,
-.ui-row.is-selected::before {
-  background: var(--color-accent);
 }
 .ui-table tbody tr:hover > td:first-child,
 .ui-table tbody tr.is-selected > td:first-child {

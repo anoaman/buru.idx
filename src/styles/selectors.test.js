@@ -89,4 +89,9 @@ describe('stylesheet selector groups', () => {
     expect(css).toMatch(/\.scout-layout__conditions \.scout-controls__intro,\s*\n\.scout-layout__conditions \.scout-conditions\s*\{/);
     expect(css).toMatch(/\.radar-cell-ticker,\s*\n\.radar-cell-levels,\s*\n\.radar-cell-metric,\s*\n\.radar-cell-why\s*\{/);
   });
+
+  it('does not add pseudo-elements directly to table rows', () => {
+    const css = stripBlockComments(readFileSync(STYLESHEETS[0], 'utf8'));
+    expect(css).not.toMatch(/(?:\btr|\.ui-row)[^,{]*::(?:before|after)\s*\{/);
+  });
 });
