@@ -12,5 +12,9 @@ Custom Screener split layout, **P1 merged signed broker ranking as default**.
 Still preserve chart scale rules, routes, API contracts, MA toggle, Screener
 new-tab handoffs, Scout limit ≤100, broker presets, and all enumerated UI states.
 
+**UX polish:** ship with the premium interaction layer in
+`ux-polish-premium.md` (P0 continuity + P1 hover/focus at minimum) so Graphite
+does not land feeling abrupt.
+
 **Do not start production UI work until Kibz explicitly approves an
 implementation pass** (this file records direction preference only).
