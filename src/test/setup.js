@@ -14,12 +14,16 @@ vi.mock('lightweight-charts', () => ({
     addSeries: () => ({
       setData: () => {},
       createPriceLine: () => {},
+      applyOptions: () => {},
     }),
     priceScale: () => ({
       applyOptions: () => {},
+      setAutoScale: () => {},
+      setVisibleRange: () => {},
     }),
     timeScale: () => ({
       fitContent: () => {},
+      setVisibleLogicalRange: () => {},
     }),
     applyOptions: () => {},
     remove: () => {},

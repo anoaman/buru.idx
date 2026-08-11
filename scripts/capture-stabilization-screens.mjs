@@ -33,12 +33,12 @@ const TYPES = {
 
 function candles(n = 60) {
   const rows = [];
-  let close = 4400;
+  let close = 4500;
   for (let i = 0; i < n; i += 1) {
     const open = close;
-    const high = open + 40 + (i % 7);
-    const low = open - 35 - (i % 5);
-    close = open + ((i % 3) - 1) * 18;
+    const high = open + 25 + (i % 5);
+    const low = open - 20 - (i % 4);
+    close = open + ((i % 5) - 2) * 8;
     const date = new Date(Date.UTC(2026, 4, 1 + i));
     rows.push({
       date: date.toISOString().slice(0, 10),
@@ -247,13 +247,12 @@ async function setTheme(page, theme) {
   await page.reload({ waitUntil: 'networkidle' });
 }
 
-async function shot(page, name) {
+async function shot(page, name, { fullPage = true } = {}) {
   const file = `${name}.png`;
   const path = join(OUT, file);
-  await page.screenshot({ path, fullPage: true });
+  await page.screenshot({ path, fullPage });
   const copy = join(ARTIFACTS, file);
-  readFileSync(path); // ensure written
-  await page.screenshot({ path: copy, fullPage: true });
+  await page.screenshot({ path: copy, fullPage });
   console.log('wrote', file);
 }
 
@@ -288,7 +287,39 @@ async function main() {
     await shot(page, '03-dark-custom-screener');
 
     await page.setViewportSize({ width: 1366, height: 768 });
-    await shot(page, '09-1366-custom-screener');
+    await page.locator('.scout-results').scrollIntoViewIfNeeded();
+    const tableWrap = page.locator('.scout-results .ui-table-wrap').first();
+    await tableWrap.evaluate((el) => {
+      el.scrollLeft = Math.max(0, el.scrollWidth - el.clientWidth);
+    });
+    await page.locator('.scout-results').getByRole('button', { name: /Open AHAP analysis/i }).first().waitFor({ state: 'visible' });
+    const metrics = await page.evaluate(() => {
+      const doc = document.documentElement;
+      const wrap = document.querySelector('.scout-results .ui-table-wrap');
+      const actions = document.querySelector('.scout-results .radar-row__actions');
+      const details = document.querySelector('.scout-results [aria-label="Show AHAP evidence"]');
+      const actionsBox = actions?.getBoundingClientRect();
+      const detailsBox = details?.getBoundingClientRect();
+      return {
+        docScrollWidth: doc.scrollWidth,
+        docClientWidth: doc.clientWidth,
+        pageOverflow: doc.scrollWidth > doc.clientWidth + 1,
+        wrapScrollWidth: wrap?.scrollWidth ?? null,
+        wrapClientWidth: wrap?.clientWidth ?? null,
+        actionsRight: actionsBox?.right ?? null,
+        detailsRight: detailsBox?.right ?? null,
+        viewportWidth: window.innerWidth,
+        actionsFullyVisible: !!detailsBox && detailsBox.right <= window.innerWidth - 8 && detailsBox.left >= 0,
+      };
+    });
+    console.log('1366 metrics', metrics);
+    if (metrics.pageOverflow) throw new Error('page-level horizontal overflow at 1366');
+    if (!metrics.actionsFullyVisible) throw new Error(`Actions not fully visible: ${JSON.stringify(metrics)}`);
+    await page.waitForTimeout(200);
+    await shot(page, '09-1366-custom-screener', { fullPage: false });
+    await page.locator('.scout-layout').screenshot({
+      path: join(ARTIFACTS, '09-1366-custom-screener-layout.png'),
+    });
     await page.setViewportSize({ width: 1440, height: 900 });
 
     await setTheme(page, 'dark');

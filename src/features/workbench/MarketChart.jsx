@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { createChart, CandlestickSeries, HistogramSeries, LineSeries } from 'lightweight-charts';
 import { formatDate, formatPrice } from '../../lib/format/market.js';
+import { applyCandleOnlyScale, computeCandleOnlyScale, isPriceInCandleWindow } from './chartScale.js';
+
+export { computeCandleOnlyScale, isPriceInCandleWindow } from './chartScale.js';
 
 const DEFAULT_CHART_HEIGHT = 480;
 
@@ -74,12 +77,16 @@ export default function MarketChart({ chart, geometry, ticker }) {
   useEffect(() => {
     if (!containerRef.current || !chart?.candles?.length) return undefined;
     const colors = readChartTheme(sectionRef.current || document.documentElement);
+    const candleScale = computeCandleOnlyScale(chart.candles);
     const instance = createChart(containerRef.current, {
       width: containerRef.current.clientWidth,
       height: containerRef.current.clientHeight || DEFAULT_CHART_HEIGHT,
       layout: { background: { color: colors.background }, textColor: colors.text, fontSize: 12 },
       grid: { vertLines: { color: colors.grid }, horzLines: { color: colors.grid } },
-      rightPriceScale: { borderColor: colors.border },
+      rightPriceScale: {
+        borderColor: colors.border,
+        autoScale: false,
+      },
       timeScale: { borderColor: colors.border, timeVisible: false },
       crosshair: {
         mode: 1,
@@ -91,6 +98,14 @@ export default function MarketChart({ chart, geometry, ticker }) {
     const candles = instance.addSeries(CandlestickSeries, {
       upColor: colors.up, downColor: colors.down, borderUpColor: colors.up,
       borderDownColor: colors.down, wickUpColor: colors.up, wickDownColor: colors.down,
+      autoscaleInfoProvider: candleScale
+        ? () => ({
+          priceRange: {
+            minValue: candleScale.price.from,
+            maxValue: candleScale.price.to,
+          },
+        })
+        : undefined,
     });
     candles.setData(chart.candles.map((row) => ({ time: row.date, open: row.open, high: row.high, low: row.low, close: row.close })));
 
@@ -111,34 +126,67 @@ export default function MarketChart({ chart, geometry, ticker }) {
         priceLineVisible: false,
         lastValueVisible: true,
         crosshairMarkerVisible: false,
+        autoscaleInfoProvider: () => null,
       });
       line.setData(data);
     });
 
-    (chart.levels?.supports || []).slice(0, 3).forEach((level) => candles.createPriceLine({ price: level.price, color: colors.support, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: `S ${formatPrice(level.price)}` }));
-    (chart.levels?.resistances || []).slice(0, 3).forEach((level) => candles.createPriceLine({ price: level.price, color: colors.resistance, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: `R ${formatPrice(level.price)}` }));
+    // Overlays live on a transparent series that never contributes to autoscaling.
+    // Price lines on the candle series itself can still widen the visible range
+    // even after setAutoScale(false) / setVisibleRange in some layout passes.
+    // Lines outside the candle-only window are omitted so LWC cannot clamp their
+    // axis labels to the chart edges (which looks like overlay-driven autoscaling).
+    const overlays = instance.addSeries(LineSeries, {
+      color: 'rgba(0,0,0,0)',
+      lineWidth: 0,
+      lastValueVisible: false,
+      priceLineVisible: false,
+      crosshairMarkerVisible: false,
+      autoscaleInfoProvider: () => null,
+    });
+    overlays.setData(chart.candles.map((row) => ({ time: row.date, value: row.close })));
+
+    const addOverlayLine = (price, options) => {
+      if (!isPriceInCandleWindow(price, candleScale)) return;
+      overlays.createPriceLine({ price, ...options });
+    };
+
+    (chart.levels?.supports || []).slice(0, 3).forEach((level) => addOverlayLine(level.price, { color: colors.support, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: `S ${formatPrice(level.price)}` }));
+    (chart.levels?.resistances || []).slice(0, 3).forEach((level) => addOverlayLine(level.price, { color: colors.resistance, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: `R ${formatPrice(level.price)}` }));
     if (!(chart.levels?.resistances || []).length && ticker?.high > ticker?.close) {
-      candles.createPriceLine({ price: ticker.high, color: colors.stop, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: `DAY HIGH · UNCONFIRMED ${formatPrice(ticker.high)}` });
+      addOverlayLine(ticker.high, { color: colors.stop, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: `DAY HIGH · UNCONFIRMED ${formatPrice(ticker.high)}` });
     }
     const best = geometry?.bestSetup;
     const tradeLines = [
       [best?.stop, colors.stop, 'SETUP FAILS BELOW'], [best?.target, colors.target, `TARGET · R:R ${(best?.netRR ?? best?.rr)?.toFixed(2) || '—'}`],
     ];
-    tradeLines.filter(([price]) => Number.isFinite(price)).forEach(([price, color, title]) => candles.createPriceLine({ price, color, lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title }));
+    tradeLines.forEach(([price, color, title]) => addOverlayLine(price, { color, lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title }));
 
-    const visibleCount = Math.min(60, chart.candles.length);
-    instance.timeScale().setVisibleLogicalRange?.({ from: chart.candles.length - visibleCount - 1, to: chart.candles.length + 2 });
-    const visibleCandles = chart.candles.slice(-visibleCount);
-    const visibleLow = Math.min(...visibleCandles.map((row) => row.low));
-    const visibleHigh = Math.max(...visibleCandles.map((row) => row.high));
-    const padding = Math.max((visibleHigh - visibleLow) * 0.08, visibleHigh * 0.01);
-    instance.priceScale('right').setVisibleRange?.({ from: visibleLow - padding, to: visibleHigh + padding });
-    instance.priceScale('right').setAutoScale?.(false);
+    const lockScale = () => applyCandleOnlyScale(instance, candles, candleScale);
+    lockScale();
+    requestAnimationFrame(() => {
+      if (chartRef.current === instance) lockScale();
+    });
+    // Layout/theme passes can briefly re-open autoscaling; re-assert candle-only bounds.
+    const relockTimers = [80, 250].map((ms) => setTimeout(() => {
+      if (chartRef.current === instance) lockScale();
+    }, ms));
+
     const observer = new ResizeObserver(([entry]) => {
-      if (entry?.contentRect.width) instance.applyOptions({ width: entry.contentRect.width, height: entry.contentRect.height || DEFAULT_CHART_HEIGHT });
+      if (!entry?.contentRect.width || !chartRef.current) return;
+      chartRef.current.applyOptions({
+        width: entry.contentRect.width,
+        height: entry.contentRect.height || DEFAULT_CHART_HEIGHT,
+      });
+      lockScale();
     });
     observer.observe(containerRef.current);
-    return () => { observer.disconnect(); chartRef.current = null; instance.remove(); };
+    return () => {
+      relockTimers.forEach(clearTimeout);
+      observer.disconnect();
+      chartRef.current = null;
+      instance.remove();
+    };
   }, [chart, geometry, ticker, showMovingAverages, themeVersion]);
 
   if (!chart?.candles?.length) return <div className="wb-market-chart wb-market-chart--empty">Chart history unavailable.</div>;

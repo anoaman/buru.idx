@@ -15,9 +15,18 @@ function readStoredTab(storageKey, tabItems) {
   return tabItems.some((tab) => tab.id === saved) ? saved : null;
 }
 
+function writeStoredTab(storageKey, tabId) {
+  if (!storageKey || typeof sessionStorage === 'undefined') return;
+  sessionStorage.setItem(storageKey, tabId);
+}
+
 /**
  * Accessible docked detail drawer for Stock Analysis.
  * Network-heavy panels should be supplied as render props and only created when selected.
+ *
+ * Selection is owned by React state. sessionStorage is a per-ticker preference:
+ * it is read once when `storageKey` changes and written synchronously on select.
+ * Unrelated parent rerenders and async child updates must not reset the active tab.
  */
 export default function DetailDrawer({
   tabs = DEFAULT_TABS,
@@ -27,29 +36,32 @@ export default function DetailDrawer({
   const baseId = useId();
   const tabItems = tabs;
   const tabRefs = useRef({});
+  const hydratedKeyRef = useRef(undefined);
   const [active, setActive] = useState(
     () => readStoredTab(storageKey, tabItems) || tabItems[0]?.id || 'levels',
   );
 
   useEffect(() => {
+    if (hydratedKeyRef.current === storageKey) return;
+    hydratedKeyRef.current = storageKey;
     const next = readStoredTab(storageKey, tabItems) || tabItems[0]?.id || 'levels';
     setActive(next);
   }, [storageKey, tabItems]);
 
-  useEffect(() => {
-    if (storageKey && typeof sessionStorage !== 'undefined') {
-      sessionStorage.setItem(storageKey, active);
+  const selectTab = useCallback((tabId, { focus = false } = {}) => {
+    if (!tabItems.some((tab) => tab.id === tabId)) return;
+    setActive(tabId);
+    writeStoredTab(storageKey, tabId);
+    if (focus) {
+      requestAnimationFrame(() => tabRefs.current[tabId]?.focus());
     }
-  }, [active, storageKey]);
+  }, [storageKey, tabItems]);
 
   const selectIndex = useCallback((index, { focus = false } = {}) => {
     const next = tabItems[(index + tabItems.length) % tabItems.length];
     if (!next) return;
-    setActive(next.id);
-    if (focus) {
-      requestAnimationFrame(() => tabRefs.current[next.id]?.focus());
-    }
-  }, [tabItems]);
+    selectTab(next.id, { focus });
+  }, [selectTab, tabItems]);
 
   const onKeyDown = (event) => {
     const index = tabItems.findIndex((tab) => tab.id === active);
@@ -91,7 +103,7 @@ export default function DetailDrawer({
               aria-selected={selected}
               aria-controls={`${baseId}-panel-${tab.id}`}
               tabIndex={selected ? 0 : -1}
-              onClick={() => setActive(tab.id)}
+              onClick={() => selectTab(tab.id)}
             >
               {tab.label}
             </button>

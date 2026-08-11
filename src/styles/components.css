@@ -173,8 +173,10 @@
 
 .app-shell__content {
   flex: 1;
+  overflow-x: auto;
   overflow-y: auto;
   padding: var(--space-6);
+  min-width: 0;
 }
 
 .analysis-command {
@@ -2663,9 +2665,8 @@
   grid-template-columns: 352px minmax(0, 1fr);
   gap: var(--space-4);
   align-items: start;
-}
-@media (max-width: 1100px) {
-  .scout-layout { grid-template-columns: 1fr; }
+  width: 100%;
+  min-width: 0;
 }
 .scout-layout__conditions {
   position: sticky;
@@ -2674,6 +2675,50 @@
   border-radius: var(--radius-md);
   background: var(--bg-elevated);
   padding: var(--space-4);
+}
+.scout-results {
+  min-width: 0;
+  max-width: 100%;
+}
+.scout-results .ui-table-wrap {
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+/* Contained horizontal scroll keeps every column reachable without page-level
+   overflow. Actions stay in-flow so they never cover neighboring cells. */
+.scout-results .ui-table {
+  width: max-content;
+  min-width: max(100%, 920px);
+}
+.scout-results .radar-row__actions {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  white-space: nowrap;
+}
+@media (max-width: 1500px) {
+  /* Prefer a real condition column when the results pane still has room. */
+  .scout-layout {
+    grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
+  }
+}
+/* 1366×768: stack so the results table gets the full content width and Actions
+   stay reachable without page-level clipping. Media overrides must follow the
+   sticky base rule so position:static actually wins. */
+@media (max-width: 1400px) {
+  .scout-layout {
+    grid-template-columns: 1fr;
+  }
+  .scout-layout__conditions {
+    position: static;
+    max-width: 352px;
+  }
+}
+@media (max-width: 1100px) {
+  .scout-layout { grid-template-columns: 1fr; }
+  .scout-layout__conditions { position: static; max-width: none; }
 }
 .scout-near-miss {
   margin-top: var(--space-4);
