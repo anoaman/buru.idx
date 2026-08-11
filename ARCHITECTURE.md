@@ -36,7 +36,8 @@ case tracking from the retiring cockpit without duplicating backend engines.
   the alias, so no component can render it under the wrong label.
 - Radar's Scout sub-view reads deterministic `/api/radar/scout` results. The
   backend owns recipes, thresholds, measurements, qualification and ranking;
-  React only submits bounded filters and renders the returned evidence.
+  React only submits bounded filters and renders the returned evidence,
+  component score breakdown, evidence band, and separately labelled near misses.
 
 The frontend performs no analysis, ranking, broker inventory, or coverage
 calculation. Those remain backend responsibilities.

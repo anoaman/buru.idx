@@ -343,6 +343,11 @@ function normalizeOpportunityRow(row) {
     lane: row.lane || null,
     rank: Number.isFinite(row.rank) ? row.rank : null,
     score: preserveFiniteOrNull(row.score),
+    evidenceBand: ['high', 'medium', 'low'].includes(row.evidenceBand) ? row.evidenceBand : 'low',
+    failedCondition: typeof row.failedCondition === 'string' ? row.failedCondition : null,
+    scoreBreakdown: row.scoreBreakdown && typeof row.scoreBreakdown === 'object'
+      ? Object.fromEntries(Object.entries(row.scoreBreakdown).map(([key, value]) => [key, preserveFiniteOrNull(value)]))
+      : {},
     dataQuality: normalizeDataQuality(row.dataQuality ?? row.confidence),
     // Absent is not the same as false. The default scan query only returns
     // eligible rows, so only an explicit false may be shown as a gate failure.
@@ -420,6 +425,10 @@ function normalizeScoutCandidate(row) {
       priorAtrPct: preserveFiniteOrNull(price.priorAtrPct),
       volatilityContracting: price.volatilityContracting === true,
       averageValue: preserveFiniteOrNull(price.averageValue),
+      ma20: preserveFiniteOrNull(price.ma20),
+      aboveMa20: price.aboveMa20 === true,
+      ma20SlopePct: preserveFiniteOrNull(price.ma20SlopePct),
+      volumeContracting: price.volumeContracting === true,
       zeroVolumeSessions: Number.isFinite(price.zeroVolumeSessions) ? price.zeroVolumeSessions : 0,
       distinctCloses: Number.isFinite(price.distinctCloses) ? price.distinctCloses : 0,
     },
@@ -478,9 +487,14 @@ export function guardRadarScout(raw) {
         evaluated: Number.isFinite(coverage.evaluated) ? coverage.evaluated : 0,
         matched: Number.isFinite(coverage.matched) ? coverage.matched : 0,
         returned: Number.isFinite(coverage.returned) ? coverage.returned : 0,
+        nearMisses: Number.isFinite(coverage.nearMisses) ? coverage.nearMisses : 0,
+        insufficientHistorySkipped: Number.isFinite(coverage.insufficientHistorySkipped) ? coverage.insufficientHistorySkipped : 0,
       },
       candidates: Array.isArray(data.candidates)
         ? data.candidates.map(normalizeScoutCandidate).filter(Boolean)
+        : [],
+      nearMisses: Array.isArray(data.nearMisses)
+        ? data.nearMisses.map(normalizeScoutCandidate).filter(Boolean)
         : [],
       disclosures: normalizeStringList(data.disclosures, 6),
     },

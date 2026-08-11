@@ -9,7 +9,7 @@ import { useAnalysisContext } from '../../components/AnalysisContext.jsx';
 
 const ALL_LANES = 'all';
 const RECIPES = [
-  { id: 'quiet_accumulation', label: 'Quiet accumulation', description: 'Combines persistent broker concentration with repeated support and a narrow recent trading range.' },
+  { id: 'quiet_accumulation', label: 'Quiet accumulation', description: 'Looks for moderate, persistent buying—not extreme broker dominance—near independently confirmed support.' },
   { id: 'dominant_broker', label: 'Dominant broker', description: 'Prioritizes stocks where one broker accumulated materially more than the second-largest positive buyer.' },
   { id: 'support_compression', label: 'Support compression', description: 'Looks for repeated one-month support while recent candles remain inside a controlled sideways range.' },
 ];
@@ -101,13 +101,15 @@ function CandidateRow({ row, onInvestigate, onActors }) {
 }
 
 function ScoutCandidate({ row, onInvestigate, onActors }) {
+  const breakdown = Object.entries(row.scoreBreakdown || {});
   return (
     <article className="scout-card" role="listitem">
       <div className="scout-card__identity">
         <span className="scout-card__rank">{String(row.rank ?? '—').padStart(2, '0')}</span>
         <div><strong>{row.ticker}</strong><span>{row.name} · {row.board || 'board unavailable'}</span></div>
-        <b>{Number.isFinite(row.score) ? row.score.toFixed(1) : '—'}</b>
+        <b>{Number.isFinite(row.score) ? row.score.toFixed(1) : '—'} <small>{row.evidenceBand} evidence</small></b>
       </div>
+      {breakdown.length > 0 && <div className="scout-card__breakdown" aria-label="Score breakdown">{breakdown.map(([key, value]) => <span key={key}>{key.replace(/([A-Z])/g, ' $1')} <strong>{Number.isFinite(value) ? value.toFixed(0) : '—'}</strong></span>)}</div>}
       <div className="scout-card__metrics">
         <div><span>Lead broker</span><strong>{row.broker?.lead?.code || '—'}</strong><small>{formatIDR(row.broker?.lead?.netValue, true)}</small></div>
         <div><span>Lead gap</span><strong>{formatRatio(row.broker?.leadToSecondRatio)}</strong><small>{row.broker?.second?.code ? `vs ${row.broker.second.code}` : 'no second buyer'}</small></div>
@@ -193,8 +195,9 @@ function Scout({ onInvestigate, onActors }) {
       {state.error && <ErrorState title="Scout unavailable" error={state.error} onRetry={run} />}
       {!state.data && !state.loading && !state.error && <EmptyState title="Choose a recipe" message="Run Scout to screen the cached IDX universe. Nothing is ranked in the browser." />}
       {state.data && <>
-        <div className="radar-run"><strong>{state.data.recipe.label}</strong><span>prices {state.data.asOf.priceDate || 'unavailable'}</span><span>brokers {state.data.asOf.brokerFrom || '—'} → {state.data.asOf.brokerTo || '—'} · {state.data.asOf.brokerSessions} sessions</span><span>{state.data.coverage.matched} matched / {state.data.coverage.evaluated} evaluated</span><span>showing {state.data.coverage.returned}</span></div>
+        <div className="radar-run"><strong>{state.data.recipe.label}</strong><span>prices {state.data.asOf.priceDate || 'unavailable'}</span><span>brokers {state.data.asOf.brokerFrom || '—'} → {state.data.asOf.brokerTo || '—'} · {state.data.asOf.brokerSessions} sessions</span><span>{state.data.coverage.matched} matched / {state.data.coverage.evaluated} evaluated</span><span>{state.data.coverage.insufficientHistorySkipped} insufficient-history skipped</span><span>showing {state.data.coverage.returned}</span></div>
         {state.data.candidates.length === 0 ? <EmptyState title="No stocks passed this recipe" message="That is a valid screen result. Widen the price or liquidity boundary only if it matches your intended trade universe." /> : <div className="scout-list" role="list" aria-label="Scout candidates">{state.data.candidates.map((row) => <ScoutCandidate key={row.ticker} row={row} onInvestigate={() => onInvestigate(row.ticker)} onActors={() => onActors(row.ticker, filters.brokerSessions)} />)}</div>}
+        {state.data.nearMisses.length > 0 && <section className="scout-near-misses"><h3>Near misses</h3><p>Failed exactly one enabled condition. Useful boundary cases, not qualified results.</p><div className="scout-list" role="list" aria-label="Scout near misses">{state.data.nearMisses.map((row) => <div key={row.ticker} className="scout-near-miss"><span>Failed: {row.failedCondition}</span><ScoutCandidate row={row} onInvestigate={() => onInvestigate(row.ticker)} onActors={() => onActors(row.ticker, filters.brokerSessions)} /></div>)}</div></section>}
         <div className="scout-disclosures">{state.data.disclosures.map((item) => <p key={item}>{item}</p>)}</div>
       </>}
     </div>

@@ -210,7 +210,7 @@ describe('Radar', () => {
 
     renderRadar();
     fireEvent.click(screen.getByRole('tab', { name: 'Scout' }));
-    expect(screen.getByText(/Combines persistent broker concentration/)).toBeInTheDocument();
+    expect(screen.getByText(/moderate, persistent buying/i)).toBeInTheDocument();
     expect(screen.getByLabelText('Rp')).toHaveValue('1,000');
     expect(screen.getByLabelText('Rp average')).toHaveValue('500,000,000');
     fireEvent.click(screen.getByLabelText(/Broker concentration/));
