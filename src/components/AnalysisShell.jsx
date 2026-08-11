@@ -3,22 +3,22 @@ import { NavLink, useLocation } from 'react-router';
 import { useAnalysisContext } from './AnalysisContext.jsx';
 
 const NAV = [
-  { path: '/radar', label: 'Radar', index: '01' },
-  { path: '/workbench', label: 'Investigation', index: '02' },
-  { path: '/broker-intelligence', label: 'Broker Map', index: '03' },
-  { path: '/cases', label: 'Cases', index: '04' },
+  { path: '/radar', label: 'Screener' },
+  { path: '/workbench', label: 'Stock Analysis' },
+  { path: '/broker-intelligence', label: 'Broker Flow' },
+  { path: '/cases', label: 'Watchlist' },
 ];
 
 function CommandBar() {
   const location = useLocation();
-  const { ticker, days, allowedWindows, openInvestigation, updateWindow } = useAnalysisContext();
+  const { ticker, days, allowedWindows, openTicker, updateWindow } = useAnalysisContext();
   const [query, setQuery] = useState(ticker);
 
   useEffect(() => setQuery(ticker), [ticker]);
 
   const submit = (event) => {
     event.preventDefault();
-    openInvestigation(query);
+    openTicker(query);
   };
 
   return (
@@ -36,7 +36,7 @@ function CommandBar() {
         />
         <button type="submit" disabled={!/^[A-Z]{4}$/.test(query)}>OPEN</button>
       </form>
-      <div className="analysis-command__context" aria-label="Investigation context">
+      <div className="analysis-command__context" aria-label="Selected ticker">
         <span className="analysis-command__identity">{ticker}</span>
       </div>
       <div className="analysis-command__windows" aria-label="Broker window">
@@ -63,6 +63,12 @@ export default function AnalysisShell({ children }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const current = NAV.find((item) => location.pathname.startsWith(item.path)) || NAV[1];
+  const { investigationUrl, brokerFlowUrl } = useAnalysisContext();
+  const navTarget = (item) => item.path === '/workbench'
+    ? investigationUrl()
+    : item.path === '/broker-intelligence'
+      ? brokerFlowUrl()
+      : item.path;
 
   return (
     <div className={`app-shell ${mobileOpen ? 'app-shell--mobile-open' : ''}`}>
@@ -71,27 +77,25 @@ export default function AnalysisShell({ children }) {
           <span className="app-shell__logo">N</span>
           <div>
             <span className="app-shell__name">NALAR</span>
-            <span className="app-shell__edition">PRIVATE IDX LAB</span>
+            <span className="app-shell__edition">IDX ANALYSIS</span>
           </div>
         </div>
         <nav className="app-shell__nav" aria-label="Primary">
           {NAV.map((item) => (
             <NavLink
               key={item.path}
-              to={item.path}
+              to={navTarget(item)}
               className={({ isActive }) =>
                 `app-shell__nav-item ${isActive ? 'app-shell__nav-item--active' : ''}`
               }
               onClick={() => setMobileOpen(false)}
             >
-              <span className="app-shell__nav-index">{item.index}</span>
               <span className="app-shell__nav-label">{item.label}</span>
             </NavLink>
           ))}
         </nav>
         <div className="app-shell__footer">
           <span className="app-shell__delay-label">PRIVATE · DELAYED DATA</span>
-          <span className="app-shell__delay-copy">Investigation, not execution.</span>
         </div>
       </aside>
 
@@ -106,7 +110,6 @@ export default function AnalysisShell({ children }) {
             ☰
           </button>
           <div className="app-shell__section-id">
-            <span>{current.index}</span>
             <h1 className="app-shell__title">{current.label}</h1>
           </div>
           <CommandBar />

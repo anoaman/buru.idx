@@ -60,7 +60,7 @@ export default function InventoryCurve({ points = [], identityLabel = '' }) {
   };
 
   const endClass = end > 0 ? 'text-positive' : end < 0 ? 'text-negative' : 'text-secondary';
-  const summary = `Estimated inventory changed from ${signedLots(start)} to ${signedLots(end)} lots across ${series.length} trading sessions.`;
+  const summary = `Estimated inventory changed from ${signedLots(start)} to ${signedLots(end)} lots across ${series.length} trading days.`;
 
   return (
     <div className="bi-curve">

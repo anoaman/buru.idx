@@ -179,8 +179,8 @@ describe('Workbench', () => {
 
     expect(screen.getByText('NALAR Market Chart')).toBeInTheDocument();
 
-    // Technical Evidence
-    expect(screen.getByText(/Technical Evidence/i)).toBeInTheDocument();
+    // Technical indicators
+    expect(screen.getByText(/Technical indicators/i)).toBeInTheDocument();
     // Exact match: the evidence-grade tooltip also names RSI14 when describing the method.
     expect(screen.getByText('RSI14')).toBeInTheDocument();
 
@@ -188,12 +188,13 @@ describe('Workbench', () => {
     expect(screen.getByText(/Invalidation simulator/i)).toBeInTheDocument();
     expect(screen.getAllByText('Support').length).toBeGreaterThan(0);
 
-    // Broker Evidence
-    expect(screen.getByText(/Broker Evidence/i)).toBeInTheDocument();
+    // Broker Flow
+    expect(screen.getByText(/^Broker Flow$/i)).toBeInTheDocument();
 
     // Redundant debate, scorecard, and quality panels are replaced by one compact summary.
     expect(screen.getAllByText('Regime').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Data').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Pattern').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Data')).not.toBeInTheDocument();
     expect(screen.queryByText(/What supports or challenges the setup/i)).not.toBeInTheDocument();
   });
 
@@ -257,7 +258,7 @@ describe('Workbench', () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText(/Broker Evidence/i)).toBeInTheDocument();
+    expect(await screen.findByText(/^Broker Flow$/i)).toBeInTheDocument();
     expect(screen.getAllByText('Local').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Foreign')).toBeInTheDocument();
     expect(screen.queryByText('Pemerintah')).not.toBeInTheDocument();
@@ -297,11 +298,11 @@ describe('Workbench', () => {
         <Workbench />
       </MemoryRouter>
     );
-    expect(await screen.findByText(/Broker Evidence/i)).toBeInTheDocument();
+    expect(await screen.findByText(/^Broker Flow$/i)).toBeInTheDocument();
     expect((await screen.findAllByText('NI')).length).toBeGreaterThan(0);
   });
 
-  it('links Broker Evidence to Broker Intelligence with encoded ticker', async () => {
+  it('links Broker Flow to the full broker page with encoded ticker', async () => {
     analyzeTicker.mockResolvedValue({ success: true, data: mockData });
     render(
       <MemoryRouter initialEntries={['/?ticker=BBRI']}>
@@ -309,7 +310,7 @@ describe('Workbench', () => {
       </MemoryRouter>
     );
 
-    const link = await screen.findByRole('link', { name: /Open full Broker Map/i });
+    const link = await screen.findByRole('link', { name: /Open Broker Flow/i });
     expect(link).toHaveAttribute(
       'href',
       '/broker-intelligence?lens=stock&ticker=BBRI&days=1',
@@ -330,8 +331,8 @@ describe('Workbench', () => {
         <Workbench />
       </MemoryRouter>
     );
-    expect(await screen.findByText(/Broker Evidence/i)).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /Open full Broker Map/i })).not.toBeInTheDocument();
+    expect(await screen.findByText(/^Broker Flow$/i)).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Open Broker Flow/i })).not.toBeInTheDocument();
   });
 
   it('handles search form submission', async () => {
@@ -461,7 +462,7 @@ describe('Workbench', () => {
     expect(screen.queryByText(/Bank Rakyat Indonesia/i)).not.toBeInTheDocument();
   });
 
-  it('reports the observed trading-session count for the broker range', async () => {
+  it('reports the observed trading-day count for the broker range', async () => {
     analyzeTicker.mockResolvedValue({ success: true, data: mockData });
     render(
       <MemoryRouter initialEntries={['/?ticker=BBRI']}>
@@ -469,10 +470,10 @@ describe('Workbench', () => {
       </MemoryRouter>
     );
 
-    await screen.findByText(/Broker Evidence/i);
+    await screen.findByText(/^Broker Flow$/i);
     await waitFor(() => {
       const meta = document.querySelector('.wb-broker__meta');
-      expect(meta?.textContent).toMatch(/· 1 trading session\b/);
+      expect(meta?.textContent).toMatch(/· 1 trading day\b/);
     });
     expect(document.querySelector('.wb-broker__meta').textContent).not.toMatch(/undefined/);
   });

@@ -49,7 +49,7 @@ export default function TradeGeometry({ geometry }) {
       {hasSetup && (
         <div className="wb-geometry__setup">
           <div className="wb-geometry__item">
-            <span className="wb-geometry__label text-tertiary">Invalidation</span>
+            <span className="wb-geometry__label text-tertiary">Setup fails below</span>
             <span className="wb-geometry__value tabular text-negative">
               {formatPrice(best.stop)}
             </span>
@@ -61,7 +61,7 @@ export default function TradeGeometry({ geometry }) {
             </span>
           </div>
           <div className="wb-geometry__item">
-            <span className="wb-geometry__label text-tertiary">Net R:R after costs</span>
+            <span className="wb-geometry__label text-tertiary">Reward / risk after costs</span>
             <span className={`wb-geometry__value tabular ${(best.netRR ?? best.rr) >= 2 ? 'text-positive' : (best.netRR ?? best.rr) >= 1 ? 'text-warning' : 'text-negative'}`}>
               {(best.netRR ?? best.rr)?.toFixed(2)}
             </span>

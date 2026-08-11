@@ -13,13 +13,14 @@ import {
   guardStockBrokerIntelligence,
   guardBrokerStockIntelligence,
 } from '../../lib/api/contracts.js';
-import { formatIDR, formatNumber, formatPrice } from '../../lib/format/market.js';
+import { formatDate, formatIDR, formatNumber, formatPrice } from '../../lib/format/market.js';
 import EmptyState from '../../components/EmptyState.jsx';
 import ErrorState from '../../components/ErrorState.jsx';
 import InventoryCurve from './InventoryCurve.jsx';
 import ActorMap from './ActorMap.jsx';
 
 const ALLOWED_DAYS = [1, 7, 14, 30, 60];
+const RANGE_PRESETS = [['latest', 'Latest'], ['previous', 'Previous'], ['7d', '7D'], ['14d', '14D'], ['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['1y', '1Y'], ['ytd', 'YTD'], ['custom', 'Custom']];
 const DEFAULT_TICKER = 'BBCA';
 const DEFAULT_DAYS = 1;
 
@@ -64,13 +65,7 @@ function coveragePct(coverage) {
 }
 
 function ArchiveHealthStrip({ health, loading, error, onRetry }) {
-  if (loading) {
-    return (
-      <div className="bi-health bi-health--loading" aria-live="polite">
-        Loading archive health…
-      </div>
-    );
-  }
+  if (loading) return null;
 
   if (error || !health?.ok) {
     return (
@@ -109,13 +104,21 @@ function ArchiveHealthStrip({ health, loading, error, onRetry }) {
       ? 'Complete'
       : 'Partial';
 
+  const healthy = latest?.complete
+    && calendar?.status !== 'degraded'
+    && !data.completedCoverageStalled
+    && data.serving?.servingStatus !== 'stale'
+    && data.serving?.servingAvailable !== false
+    && !data.serving?.lastFailure;
+  if (healthy) return null;
+
   return (
     <details
       className={`bi-health ${calendar?.status === 'degraded' ? 'bi-health--degraded' : ''} ${latest && !latest.complete ? 'bi-health--partial' : ''}`}
     >
       <summary>
         <span>Archive</span>
-        <strong className={latest?.complete ? 'text-positive' : 'text-warning'}>{latest?.date || 'Unavailable'} · {latestStatus}</strong>
+        <strong className={latest?.complete ? 'text-positive' : 'text-warning'}>{formatDate(latest?.date)} · {latestStatus}</strong>
         <small>{coveragePct(data.coverage)} coverage</small>
       </summary>
       <div className="bi-health__details">
@@ -131,7 +134,7 @@ function ArchiveHealthStrip({ health, loading, error, onRetry }) {
         </span>
         {data.completedCoverageStalled && data.completedLagSessions > 0 && (
           <span className="bi-health__note text-tertiary">
-            stalled · {data.completedLagSessions} sessions of partial data since
+            stalled · {data.completedLagSessions} trading days of partial data since
           </span>
         )}
       </div>
@@ -260,7 +263,7 @@ function SelectedDetail({ lens, row }) {
           className="bi-detail__link"
           to={`/broker-intelligence?lens=broker&code=${encodeURIComponent(row.code)}&days=${encodeURIComponent(String(row._days || DEFAULT_DAYS))}`}
         >
-          Open Broker Lens
+          Open broker view
         </Link>
       </div>
     );
@@ -277,7 +280,7 @@ function SelectedDetail({ lens, row }) {
           </span>
         </div>
         <div>
-          <span className="text-tertiary">Observed sessions</span>
+          <span className="text-tertiary">Observed trading days</span>
           <span className="tabular">{formatNumber(row.observedSessions)}</span>
         </div>
         <div>
@@ -327,6 +330,10 @@ export default function BrokerIntelligence() {
   const date = /^\d{4}-\d{2}-\d{2}$/.test(searchParams.get('date') || '')
     ? searchParams.get('date')
     : '';
+  const presetParam = RANGE_PRESETS.some(([value]) => value === searchParams.get('preset')) ? searchParams.get('preset') : '';
+  const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
+  const from = /^\d{4}-\d{2}-\d{2}$/.test(searchParams.get('from') || '') ? searchParams.get('from') : '';
+  const to = /^\d{4}-\d{2}-\d{2}$/.test(searchParams.get('to') || '') ? searchParams.get('to') : '';
   const ticker = (searchParams.get('ticker') || DEFAULT_TICKER).toUpperCase();
   const code = (searchParams.get('code') || '').toUpperCase();
 
@@ -404,9 +411,14 @@ export default function BrokerIntelligence() {
       };
     });
 
+    const range = date ? { date } : presetParam === 'custom' ? { from, to } : presetParam ? { preset: presetParam } : {};
+    if (preset === 'custom' && (!from || !to)) {
+      setLensState({ loading: false, refreshing: false, result: null, error: null });
+      return undefined;
+    }
     const request = lens === 'stock'
-      ? getStockBrokerIntelligence({ ticker, days, ...(date ? { date } : {}) })
-      : getBrokerStockIntelligence({ code, days, ...(date ? { date } : {}), limit: 25 });
+      ? getStockBrokerIntelligence({ ticker, days, ...range })
+      : getBrokerStockIntelligence({ code, days, ...range, limit: 25 });
 
     request
       .then((raw) => {
@@ -436,11 +448,11 @@ export default function BrokerIntelligence() {
       });
 
     return () => { cancelled = true; };
-  }, [lens, ticker, code, days, date, lensRetry]);
+  }, [lens, ticker, code, days, date, preset, presetParam, from, to, lensRetry]);
 
   // Prefetch other windows after first successful identity load
   useEffect(() => {
-    if (lensState.loading || lensState.error || !lensState.result || date) return;
+    if (lensState.loading || lensState.error || !lensState.result || preset !== 'latest') return;
     const timer = setTimeout(() => {
       const others = ALLOWED_DAYS.filter((d) => d !== days);
       for (const d of others) {
@@ -459,7 +471,7 @@ export default function BrokerIntelligence() {
       }
     }, 300);
     return () => clearTimeout(timer);
-  }, [lensState.loading, lensState.error, lensState.result, lens, ticker, code, days, date]);
+  }, [lensState.loading, lensState.error, lensState.result, lens, ticker, code, days, preset]);
 
   const updateParams = useCallback((next) => {
     const params = new URLSearchParams();
@@ -469,13 +481,19 @@ export default function BrokerIntelligence() {
     params.set('days', String(nextDays));
     const nextDate = next.date === undefined ? date : next.date;
     if (nextDate) params.set('date', nextDate);
+    const nextPreset = next.preset === undefined ? presetParam : next.preset;
+    if (nextPreset) params.set('preset', nextPreset);
+    const nextFrom = next.from === undefined ? from : next.from;
+    const nextTo = next.to === undefined ? to : next.to;
+    if (nextPreset === 'custom' && nextFrom) params.set('from', nextFrom);
+    if (nextPreset === 'custom' && nextTo) params.set('to', nextTo);
     if (nextLens === 'stock') {
       params.set('ticker', String(next.ticker ?? ticker).toUpperCase());
     } else {
       params.set('code', String(next.code ?? code).toUpperCase());
     }
     setSearchParams(params);
-  }, [lens, days, date, ticker, code, setSearchParams]);
+  }, [lens, days, date, presetParam, from, to, ticker, code, setSearchParams]);
 
   const handleLensChange = (nextLens) => {
     if (nextLens === lens) return;
@@ -486,9 +504,7 @@ export default function BrokerIntelligence() {
     }
   };
 
-  const handleDaysChange = (nextDays) => {
-    updateParams({ days: nextDays });
-  };
+  const handlePresetChange = (nextPreset) => updateParams({ preset: nextPreset, date: '', from: '', to: '' });
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -553,12 +569,8 @@ export default function BrokerIntelligence() {
     <div className="bi-page">
       <header className="bi-intro">
         <div>
-          <h2 className="bi-intro__title">Broker Intelligence</h2>
-          <p className="bi-intro__subtitle text-secondary">
-            Observed broker flow across NALAR&apos;s historical IDX archive.
-          </p>
+          <h2 className="bi-intro__title">Broker Flow</h2>
         </div>
-        <span className="bi-intro__method">Top-25 observed flow · estimates start at window zero</span>
       </header>
 
       <ArchiveHealthStrip
@@ -576,7 +588,7 @@ export default function BrokerIntelligence() {
             aria-pressed={lens === 'stock'}
             onClick={() => handleLensChange('stock')}
           >
-            Stock Lens
+            By stock
           </button>
           <button
             type="button"
@@ -584,7 +596,7 @@ export default function BrokerIntelligence() {
             aria-pressed={lens === 'broker'}
             onClick={() => handleLensChange('broker')}
           >
-            Broker Lens · Across Market
+            By broker · Across market
           </button>
         </div>
 
@@ -618,22 +630,21 @@ export default function BrokerIntelligence() {
         </form>
 
         <div className="bi-window">
-          <div className="bi-window__buttons" role="group" aria-label="Calendar-day window">
-            {ALLOWED_DAYS.map((d) => (
+          <div className="bi-window__buttons" role="group" aria-label="Broker date range">
+            {RANGE_PRESETS.map(([value, label]) => (
               <button
-                key={d}
+                key={value}
                 type="button"
-                className={`bi-window__btn ${days === d ? 'is-active' : ''}`}
-                aria-pressed={days === d}
-                onClick={() => handleDaysChange(d)}
+                className={`bi-window__btn ${preset === value ? 'is-active' : ''}`}
+                aria-pressed={preset === value}
+                onClick={() => handlePresetChange(value)}
               >
-                {d}D
+                {label}
               </button>
             ))}
           </div>
-          <p className="bi-window__note text-tertiary">
-            Calendar days; weekends and verified IDX holidays excluded.
-          </p>
+          {preset === 'custom' && <div className="wb-broker__custom"><label>From<input type="date" value={from} onChange={(event) => updateParams({ preset: 'custom', from: event.target.value })} /></label><label>To<input type="date" value={to} onChange={(event) => updateParams({ preset: 'custom', to: event.target.value })} /></label></div>}
+          {preset === 'custom' && (!from || !to) && <p className="bi-window__note text-warning">Select both dates.</p>}
         </div>
       </div>
 
@@ -666,19 +677,14 @@ export default function BrokerIntelligence() {
                 <strong>{stockData.ticker}</strong>
                 <span className="text-secondary">{stockData.name}</span>
                 <span className="text-tertiary">
-                  {stockData.window.from} → {stockData.window.to}
+                  {formatDate(stockData.window.from)}–{formatDate(stockData.window.to)}
                 </span>
-                <span className="text-tertiary">
-                  {formatNumber(stockData.window.tradingSessions)} sessions
-                </span>
-                <span className="text-tertiary">
-                  Populated {formatNumber(stockData.window.populatedSessions)}
-                  {' · '}Gap {formatNumber(stockData.window.gapSessions)}
-                  {' · '}Missing {formatNumber(stockData.window.missingSessions)}
-                </span>
-                <span className={`badge ${stockData.window.complete ? 'badge-positive' : 'badge-warning'}`}>
-                  {stockData.window.complete ? 'Complete' : 'Degraded'}
-                </span>
+                {!stockData.window.complete && <span className="badge badge-warning">Broker data incomplete</span>}
+                {(stockData.window.gapSessions > 0 || stockData.window.missingSessions > 0) && (
+                  <span className="text-warning">
+                    Missing {formatNumber((stockData.window.gapSessions || 0) + (stockData.window.missingSessions || 0))} trading days
+                  </span>
+                )}
                 {meta?.archive?.calendarCoverage?.status === 'degraded' && (
                   <span className="badge badge-warning">Calendar degraded</span>
                 )}
@@ -719,10 +725,7 @@ export default function BrokerIntelligence() {
                   {(brokerData.broker.sourceTypes || []).join(' / ') || '—'}
                 </span>
                 <span className="text-tertiary">
-                  {brokerData.window.from} → {brokerData.window.to}
-                </span>
-                <span className="text-tertiary">
-                  {formatNumber(brokerData.window.tradingSessions)} sessions
+                  {formatDate(brokerData.window.from)}–{formatDate(brokerData.window.to)}
                 </span>
                 <span className="text-tertiary">
                   Observed stocks {formatNumber(brokerData.summary.observedStocks)}

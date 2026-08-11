@@ -72,8 +72,8 @@ export default function DynamicLevels({ dynamicLevels }) {
         <InfoTip title="Dynamic levels">
           MA5, MA10, MA20, MA50 and MA200 of the daily close, shown as support when they sit below price
           and resistance when they sit above it. Distance is the gap to the last close.
-          Slope is the average change per session over the last 5 sessions; under 0.05% per
-          session it reads flat. &quot;Closing&quot; means the average is travelling toward
+          Slope is the average daily change over the last 5 trading days; under 0.05% per
+          day it reads flat. &quot;Closing&quot; means the average is travelling toward
           price (a rising support or a falling resistance), so the gap narrows even on a flat
           day. &quot;Confluence&quot; marks an average sitting within 1.5% of a static pivot
           from the level map. These are kept separate from pivot levels because they move:

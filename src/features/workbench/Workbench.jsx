@@ -60,13 +60,13 @@ function EvidenceSummary({ grade, stance, scorecard, dataQuality }) {
       <div className="wb-evidence-summary">
         <div><span>Grade <InfoTip title="Grade">Weighted broker-flow, momentum, structure and risk score. A ≥82%, B ≥68%, C ≥54%, D ≥40%.</InfoTip></span><strong>{grade?.grade || '—'}</strong></div>
         <div><span>Regime <InfoTip title="Regime">Trending when MA separation, returns and distance from MA20 produce strength ≥7; otherwise rangebound.</InfoTip></span><strong>{grade?.regime || 'Unknown'}</strong></div>
-        <div><span>Phase <InfoTip title="Phase">Uses 60-session range position, return, volume trend and MA alignment.</InfoTip></span><strong>{grade?.structurePhase || 'Unknown'}</strong></div>
-        <div><span>Lean <InfoTip title="Lean">Constructive needs bullish edge ≥2, grade A/B and net R:R ≥1.2. Defensive needs bearish edge ≥2 or bearish evidence with grade D/F.</InfoTip></span><strong>{stance?.stance ? stance.stance.replace('_', ' ').toLowerCase() : 'neutral'}</strong></div>
-        <div><span>Data <InfoTip title="Data quality">Complete means daily history passed availability and range-dislocation checks.</InfoTip></span><strong className={warnings.length ? 'text-warning' : 'text-positive'}>{warnings.length ? 'Degraded' : 'Complete'}</strong></div>
+        <div><span>Pattern <InfoTip title="Pattern">Uses the 60-day range, returns, volume trend, and moving-average alignment.</InfoTip></span><strong>{grade?.structurePhase || 'Unknown'}</strong></div>
+        <div><span>Bias <InfoTip title="Bias">Summarizes whether the current setup leans constructive, defensive, or neutral.</InfoTip></span><strong>{stance?.stance ? stance.stance.replace('_', ' ').toLowerCase() : 'neutral'}</strong></div>
+        {warnings.length > 0 && <div><span>Data warning</span><strong className="text-warning">Check data</strong></div>}
         {warnings.map((warning) => <p key={warning} className="text-warning">⚠ {warning}</p>)}
       </div>
       <details className="wb-method__details">
-        <summary>Full methodology</summary>
+        <summary>How this score was calculated</summary>
         <div className="wb-method__lenses">
           {Object.values(grade?.lenses || {}).map((lens) => (
             <div key={lens.name}>
@@ -193,8 +193,8 @@ export default function Workbench() {
           <details className="inv-ledger">
             <summary>
               <span>04</span>
-              <strong>Evidence ledger</strong>
-              <small>Full deterministic inputs, geometry, scorecard, and provenance</small>
+              <strong>Full details</strong>
+              <small>Indicators, levels, broker flow, and scoring details</small>
             </summary>
             <div className="inv-ledger__body">
               <EvidenceSummary grade={state.data.grade} stance={state.data.stance} scorecard={state.data.scorecard} dataQuality={state.data.dataQuality} />
@@ -219,7 +219,7 @@ export default function Workbench() {
       {!state.data && !state.loading && !state.error && !tickerParam && (
         <EmptyState
           title="Enter a ticker to analyze"
-          message="Type a four-letter IDX symbol above to load the full evidence, grade, and trade geometry."
+          message="Type a four-letter IDX symbol above to open its chart, levels, and broker flow."
         />
       )}
     </div>

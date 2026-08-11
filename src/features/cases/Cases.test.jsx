@@ -98,7 +98,7 @@ describe('Cases', () => {
 
     expect(await screen.findByText('Changed since freeze')).toBeInTheDocument();
     expect(screen.getByText('-13.0')).toBeInTheDocument();
-    expect(screen.getByText('Frozen evidence is stale · 6.4d old')).toBeInTheDocument();
+    expect(screen.getByText('Analysis is stale · 6.4d old')).toBeInTheDocument();
     expect(screen.getByText('1 changed since freeze')).toBeInTheDocument();
     expect(screen.getByText('1 on stale evidence')).toBeInTheDocument();
   });
@@ -122,7 +122,7 @@ describe('Cases', () => {
     renderCases();
 
     expect(await screen.findByText('Not in latest scan')).toBeInTheDocument();
-    expect(screen.getByText('Frozen evidence carries no price date')).toBeInTheDocument();
+    expect(screen.getByText('Analysis date unavailable')).toBeInTheDocument();
   });
 
   it('falls back to the frozen reason when no thesis was recorded', async () => {
@@ -139,7 +139,7 @@ describe('Cases', () => {
   it('renders an empty state when nothing is being tracked', async () => {
     getCases.mockResolvedValue({ success: true, data: { items: [] } });
     renderCases();
-    expect(await screen.findByText('No open cases')).toBeInTheDocument();
+    expect(await screen.findByText('Your watchlist is empty')).toBeInTheDocument();
   });
 
   it('reports a failed read and retries on demand', async () => {

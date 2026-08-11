@@ -49,9 +49,9 @@ describe('AnalysisShell', () => {
 
   it('exposes all four private workstation destinations', () => {
     renderShell('/radar');
-    expect(screen.getByRole('link', { name: /Radar/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Investigation/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Broker Map/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Cases/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Screener/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Stock Analysis/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Broker Flow/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Watchlist/i })).toBeInTheDocument();
   });
 });

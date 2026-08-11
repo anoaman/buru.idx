@@ -276,12 +276,12 @@ describe('BrokerIntelligence', () => {
     getBrokerStockIntelligence.mockResolvedValue(BROKER_OK);
   });
 
-  it('defaults to stock lens BBCA for one calendar day', async () => {
+  it('defaults to stock lens BBCA on the latest trading date', async () => {
     renderAt('/broker-intelligence');
     await screen.findByText('Bank Central Asia');
     expect(getStockBrokerIntelligence).toHaveBeenCalledWith({ ticker: 'BBCA', days: 1 });
-    expect(screen.getByRole('button', { name: /Stock Lens/i })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('button', { name: /^1D$/i })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: /By stock/i })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: /^Latest$/i })).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('loads health and lens independently', async () => {
@@ -289,17 +289,17 @@ describe('BrokerIntelligence', () => {
     getBrokerArchiveHealth.mockReturnValue(new Promise((resolve) => { resolveHealth = resolve; }));
     renderAt('/broker-intelligence?lens=stock&ticker=BBCA&days=30');
     expect(await screen.findByText('Bank Central Asia')).toBeInTheDocument();
-    expect(screen.getByText(/Loading archive health/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Loading archive health/i)).not.toBeInTheDocument();
     await act(async () => { resolveHealth(HEALTH_OK); });
     await waitFor(() => {
-      expect(screen.getByText(/Full-universe complete/i)).toBeInTheDocument();
+      expect(screen.queryByText(/Full-universe complete/i)).not.toBeInTheDocument();
     });
   });
 
   it('switches between stock and broker lenses', async () => {
     renderAt('/broker-intelligence?lens=stock&ticker=BBCA&days=30');
     await screen.findByText('Bank Central Asia');
-    fireEvent.click(screen.getByRole('button', { name: /Broker Lens/i }));
+    fireEvent.click(screen.getByRole('button', { name: /By broker/i }));
     await waitFor(() => {
       expect(getBrokerStockIntelligence).toHaveBeenCalled();
     });
@@ -328,13 +328,13 @@ describe('BrokerIntelligence', () => {
     });
   });
 
-  it('supports 1/7/14/30/60 day controls', async () => {
+  it('supports practical broker date presets', async () => {
     renderAt('/broker-intelligence?lens=stock&ticker=BBCA&days=30');
     await screen.findByText('Bank Central Asia');
-    for (const d of [1, 7, 14, 60]) {
-      fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${d}D$`) }));
+    for (const [label, preset] of [['Latest', 'latest'], ['7D', '7d'], ['14D', '14d'], ['1M', '1m'], ['3M', '3m']]) {
+      fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${label}$`) }));
       await waitFor(() => {
-        expect(getStockBrokerIntelligence).toHaveBeenCalledWith({ ticker: 'BBCA', days: d });
+        expect(getStockBrokerIntelligence).toHaveBeenCalledWith({ ticker: 'BBCA', days: 30, preset });
       });
     }
   });
@@ -357,10 +357,9 @@ describe('BrokerIntelligence', () => {
   it('shows stock summary with exact coverage counts', async () => {
     renderAt('/broker-intelligence?lens=stock&ticker=BBCA&days=30');
     await screen.findByText('Bank Central Asia');
-    expect(screen.getByText(/Populated 18/i)).toBeInTheDocument();
-    expect(screen.getByText(/Gap 1/i)).toBeInTheDocument();
-    expect(screen.getByText(/Missing 1/i)).toBeInTheDocument();
-    expect(screen.getByText(/Degraded/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Populated 18/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Missing 2 trading days/i)).toBeInTheDocument();
+    expect(screen.getByText(/Broker data incomplete/i)).toBeInTheDocument();
   });
 
   it('shows broker summary and observed stock counts', async () => {
@@ -391,7 +390,7 @@ describe('BrokerIntelligence', () => {
   it('deep-links selected broker into broker lens', async () => {
     renderAt('/broker-intelligence?lens=stock&ticker=BBCA&days=30');
     await screen.findByText('Bank Central Asia');
-    const link = screen.getByRole('link', { name: /Open Broker Lens/i });
+    const link = screen.getByRole('link', { name: /Open broker view/i });
     expect(link).toHaveAttribute('href', '/broker-intelligence?lens=broker&code=YP&days=30');
   });
 
@@ -563,13 +562,11 @@ describe('BrokerIntelligence', () => {
     expect(await screen.findByText(/No estimated inventory curve/i)).toBeInTheDocument();
   });
 
-  it('shows serving layer status in archive health strip', async () => {
+  it('hides archive internals when broker data is healthy', async () => {
     renderAt('/broker-intelligence?lens=stock&ticker=BBCA&days=30');
     await screen.findByText('Bank Central Asia');
-    expect(screen.getByText(/Serving layer/i)).toBeInTheDocument();
-    // ready · 8.800 rows (Indonesian locale uses '.' as thousands sep)
-    expect(screen.getByText(/ready.*rows/i)).toBeInTheDocument();
-    expect(screen.getByText(/materialized 2026-07-21/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Serving layer/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/materialized/i)).not.toBeInTheDocument();
   });
 
   it('shows last failure in serving layer health strip', async () => {

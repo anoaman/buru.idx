@@ -65,9 +65,10 @@ describe('Radar', () => {
     renderRadar();
 
     expect(await screen.findByText('BBRI')).toBeInTheDocument();
-    expect(screen.getByText('Scan #41')).toBeInTheDocument();
-    expect(screen.getByText('2026-08-07')).toBeInTheDocument();
-    expect(screen.getByText('2 shortlisted / 96 eligible / 812 seen')).toBeInTheDocument();
+    expect(screen.getByText('07 Agu 2026')).toBeInTheDocument();
+    expect(screen.getByText('1 stocks')).toBeInTheDocument();
+    expect(screen.getByText('How stocks qualify')).toBeInTheDocument();
+    expect(screen.queryByText(/Scan #41/)).not.toBeInTheDocument();
     expect(screen.getByText('74.3')).toBeInTheDocument();
     // Risks are the falsifying half of the evidence and must be visible on the row.
     expect(screen.getByText('Against: thin traded value raises exit risk')).toBeInTheDocument();
@@ -209,18 +210,18 @@ describe('Radar', () => {
     });
 
     renderRadar();
-    fireEvent.click(screen.getByRole('tab', { name: 'Scout' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
     expect(screen.getByText(/moderate, persistent buying/i)).toBeInTheDocument();
     expect(screen.getByLabelText('Rp')).toHaveValue('1,000');
     expect(screen.getByLabelText('Rp average')).toHaveValue('500,000,000');
     fireEvent.click(screen.getByLabelText(/Broker concentration/));
-    expect(screen.getAllByLabelText('Sessions')[0]).toBeDisabled();
-    fireEvent.click(screen.getByRole('button', { name: 'Run Scout' }));
+    expect(screen.getByLabelText('Date range')).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
     expect(await screen.findByText('AHAP')).toBeInTheDocument();
     expect(screen.getByText('CC accumulated Rp1200M, 4.0× YP, across 6/7 sessions.')).toBeInTheDocument();
     expect(screen.getByText('CC distributed in 1 observed session.')).toBeInTheDocument();
-    expect(screen.getByText('1 matched / 900 evaluated')).toBeInTheDocument();
-    expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({ recipe: 'quiet_accumulation', brokerSessions: 7, useBroker: false }));
+    expect(screen.getByText('1 matched')).toBeInTheDocument();
+    expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({ recipe: 'quiet_accumulation', brokerPreset: '7d', useBroker: false }));
   });
 });

@@ -22,12 +22,12 @@ const MONITORING_CLASS = {
 function SnapshotAge({ monitoring }) {
   const { snapshotStale, snapshotAgeDays } = monitoring;
   if (snapshotStale === null) {
-    return <span className="case-card__age text-tertiary">Frozen evidence carries no price date</span>;
+    return <span className="case-card__age text-warning">Analysis date unavailable</span>;
   }
   const age = snapshotAgeDays === null ? 'unknown age' : `${snapshotAgeDays}d old`;
   return (
     <span className={`case-card__age ${snapshotStale ? 'text-warning' : 'text-tertiary'}`}>
-      {snapshotStale ? `Frozen evidence is stale · ${age}` : `Frozen evidence ${age}`}
+      {snapshotStale ? `Analysis is stale · ${age}` : `Analyzed ${age}`}
     </span>
   );
 }
@@ -50,15 +50,15 @@ function CaseCard({ item, onReopen, onActors }) {
 
       <dl className="case-card__levels">
         <div>
-          <dt>Trigger</dt>
+          <dt>Breakout above</dt>
           <dd>{formatPrice(item.triggerPrice ?? snapshot.levels.trigger)}</dd>
         </div>
         <div>
-          <dt>Invalidation</dt>
+          <dt>Setup fails below</dt>
           <dd>{formatPrice(item.invalidationPrice ?? snapshot.levels.invalidation)}</dd>
         </div>
         <div>
-          <dt>Frozen score</dt>
+          <dt>Saved score</dt>
           <dd>
             {Number.isFinite(snapshot.score) ? snapshot.score.toFixed(1) : '—'}
             {Number.isFinite(delta) && delta !== 0 && (
@@ -87,10 +87,10 @@ function CaseCard({ item, onReopen, onActors }) {
 
       <div className="case-card__actions">
         <button type="button" aria-label={`Re-open ${item.ticker} evidence`} onClick={onReopen}>
-          Re-open evidence
+          Open Analysis
         </button>
         <button type="button" aria-label={`Open ${item.ticker} actor map`} onClick={onActors}>
-          Actor map
+          Broker Flow
         </button>
       </div>
     </article>
@@ -124,14 +124,14 @@ export default function Cases() {
   return (
     <section className="cases-page" aria-labelledby="cases-title">
       <header className="module-heading">
-        <div><span>MODULE 04 · MEMORY</span><h2 id="cases-title">Cases</h2></div>
-        <p>Saved investigations retain the evidence and invalidation that existed when the case was opened.</p>
+        <div><h2 id="cases-title">Watchlist</h2></div>
+        <p>Saved setups and what has changed since you added them.</p>
       </header>
 
-      {state.loading && <p className="text-tertiary">Loading cases…</p>}
+      {state.loading && <p className="text-tertiary">Loading watchlist…</p>}
 
       {state.error && !state.loading && (
-        <ErrorState title="Cases unavailable" error={state.error} onRetry={load} />
+        <ErrorState title="Watchlist unavailable" error={state.error} onRetry={load} />
       )}
 
       {!state.loading && !state.error && items.length > 0 && (
@@ -153,8 +153,8 @@ export default function Cases() {
 
       {!state.loading && !state.error && items.length === 0 && (
         <EmptyState
-          title="No open cases"
-          message="Radar finds candidates; Workbench turns one into a decision case."
+          title="Your watchlist is empty"
+          message="Add a stock from the screener or stock analysis page."
         />
       )}
 

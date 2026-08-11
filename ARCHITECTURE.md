@@ -38,6 +38,14 @@ case tracking from the retiring cockpit without duplicating backend engines.
   backend owns recipes, thresholds, measurements, qualification and ranking;
   React only submits bounded filters and renders the returned evidence,
   component score breakdown, evidence band, and separately labelled near misses.
+- Trader-facing labels use Screener / Market Shortlist / Custom Screener / Stock
+  Analysis / Broker Flow / Watchlist. Internal route names remain stable. The
+  global ticker selection is shared by Stock Analysis and Broker Flow; Screener
+  handoffs open in new tabs so the originating result set is preserved.
+- Broker Flow and Custom Screener expose named and custom calendar ranges while
+  reporting the actual observed trading-day count. Chart defaults show the
+  latest 60 trading days, exclude overlays from the initial price range, keep
+  manual scale control, and allow moving-average lines to be hidden.
 
 The frontend performs no analysis, ranking, broker inventory, or coverage
 calculation. Those remain backend responsibilities.

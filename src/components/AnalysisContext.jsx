@@ -20,6 +20,7 @@ export function AnalysisProvider({ children }) {
   const [ticker, setTicker] = useState('BBCA');
   const [days, setDays] = useState(1);
   const [asOf, setAsOf] = useState(null);
+  const [brokerRange, setBrokerRange] = useState('preset=latest');
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -31,13 +32,57 @@ export function AnalysisProvider({ children }) {
     if (nextTicker) setTicker(nextTicker);
     if (nextDays) setDays(nextDays);
     setAsOf(nextAsOf);
-  }, [location.search]);
+    if (location.pathname.startsWith('/broker-intelligence')) {
+      const range = new URLSearchParams();
+      for (const key of ['preset', 'from', 'to', 'days', 'date']) {
+        const value = params.get(key);
+        if (value) range.set(key, value);
+      }
+      setBrokerRange(range.toString() || 'preset=latest');
+    }
+  }, [location.pathname, location.search]);
+
+  const investigationUrl = (value = ticker) => {
+    const nextTicker = validTicker(value);
+    return nextTicker ? `/workbench?ticker=${encodeURIComponent(nextTicker)}` : null;
+  };
+
+  const brokerFlowUrl = (value = ticker) => {
+    const nextTicker = validTicker(value);
+    if (!nextTicker) return null;
+    const params = new URLSearchParams(brokerRange);
+    params.set('lens', 'stock');
+    params.set('ticker', nextTicker);
+    return `/broker-intelligence?${params.toString()}`;
+  };
 
   const openInvestigation = (value = ticker) => {
     const nextTicker = validTicker(value);
     if (!nextTicker) return false;
     setTicker(nextTicker);
-    navigate(`/workbench?ticker=${encodeURIComponent(nextTicker)}`);
+    navigate(investigationUrl(nextTicker));
+    return true;
+  };
+
+  const openTicker = (value = ticker) => {
+    const nextTicker = validTicker(value);
+    if (!nextTicker) return false;
+    setTicker(nextTicker);
+    navigate(location.pathname.startsWith('/broker-intelligence') ? brokerFlowUrl(nextTicker) : investigationUrl(nextTicker));
+    return true;
+  };
+
+  const openInvestigationTab = (value = ticker) => {
+    const url = investigationUrl(value);
+    if (!url) return false;
+    window.open(url, '_blank', 'noopener,noreferrer');
+    return true;
+  };
+
+  const openBrokerFlowTab = (value = ticker) => {
+    const url = brokerFlowUrl(value);
+    if (!url) return false;
+    window.open(url, '_blank', 'noopener,noreferrer');
     return true;
   };
 
@@ -76,8 +121,13 @@ export function AnalysisProvider({ children }) {
     allowedWindows: ALLOWED_WINDOWS,
     openInvestigation,
     openBrokerMap,
+    openTicker,
+    openInvestigationTab,
+    openBrokerFlowTab,
+    investigationUrl,
+    brokerFlowUrl,
     updateWindow,
-  }), [ticker, days, asOf, location.pathname, location.search]);
+  }), [ticker, days, asOf, brokerRange, location.pathname, location.search]);
 
   return <AnalysisContext.Provider value={value}>{children}</AnalysisContext.Provider>;
 }
