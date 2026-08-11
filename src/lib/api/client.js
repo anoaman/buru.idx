@@ -19,7 +19,7 @@ function cacheKey(path, options = {}) {
 
 function isCacheable(path, options = {}) {
   return (options.method || 'GET') === 'GET'
-    && path.startsWith('/api/broker-intelligence/');
+    && (path.startsWith('/api/broker-intelligence/') || path.startsWith('/api/analyze?'));
 }
 
 function pruneCache() {

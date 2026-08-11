@@ -54,7 +54,7 @@ export default function RiskSimulator({ ticker, geometry }) {
       <div className="inv-section-head">
         <span>03</span>
         <div>
-          <h3 id="simulator-title">Invalidation simulator</h3>
+          <h3 id="simulator-title">Risk Simulator</h3>
           <p>Server-calculated position size using IDX ticks, fees, capital, and maximum risk.</p>
         </div>
       </div>

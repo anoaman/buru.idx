@@ -1,5 +1,5 @@
 import { beforeEach, describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, useSearchParams } from 'react-router';
 import Workbench from './Workbench.jsx';
 import RiskSimulator from './RiskSimulator.jsx';
@@ -10,6 +10,18 @@ function ClearTicker() {
   const [, setSearchParams] = useSearchParams();
   return (
     <button type="button" onClick={() => setSearchParams({})}>clear ticker</button>
+  );
+}
+
+function SetTicker({ ticker }) {
+  const [, setSearchParams] = useSearchParams();
+  return (
+    <button
+      type="button"
+      onClick={() => setSearchParams(ticker ? { ticker } : {})}
+    >
+      open {ticker || 'none'}
+    </button>
   );
 }
 
@@ -101,6 +113,7 @@ describe('Workbench', () => {
     },
     broker: {
       available: true,
+      symbol: 'BBRI',
       from: '2026-07-17',
       bandar: { signal: 'accumulating', top5: { percent: 42.3 } },
       multiDay: {
@@ -130,6 +143,7 @@ describe('Workbench', () => {
   };
 
   beforeEach(() => {
+    sessionStorage.clear();
     getStockBrokerIntelligence.mockResolvedValue({
       success: true,
       data: {
@@ -150,6 +164,7 @@ describe('Workbench', () => {
       </MemoryRouter>
     );
     expect(screen.getByText(/Enter a ticker to analyze/i)).toBeInTheDocument();
+    expect(screen.getByText(/command bar/i)).toBeInTheDocument();
   });
 
   it('renders loading state', () => {
@@ -159,7 +174,7 @@ describe('Workbench', () => {
         <Workbench />
       </MemoryRouter>
     );
-    expect(screen.getByText(/Analyzing BBRI/i)).toBeInTheDocument();
+    expect(screen.getByText(/Loading BBRI/i)).toBeInTheDocument();
   });
 
   it('renders full analysis result with all sub-components', async () => {
@@ -170,32 +185,61 @@ describe('Workbench', () => {
       </MemoryRouter>
     );
 
-    // Header
     expect(await screen.findByText('BBRI')).toBeInTheDocument();
     expect(screen.getByText(/Bank Rakyat Indonesia/i)).toBeInTheDocument();
+    expect(screen.getByText('Price & volume')).toBeInTheDocument();
+    expect(screen.getByText(/Cost drag/i)).toBeInTheDocument();
 
-    // Grade
+    fireEvent.click(screen.getByRole('tab', { name: /Indicators/i }));
+    expect(screen.getByText(/Technical indicators/i)).toBeInTheDocument();
+    expect(screen.getByText('RSI14')).toBeInTheDocument();
     expect(screen.getByText('B+')).toBeInTheDocument();
 
-    expect(screen.getByText('Price & volume')).toBeInTheDocument();
-
-    // Technical indicators
-    expect(screen.getByText(/Technical indicators/i)).toBeInTheDocument();
-    // Exact match: the evidence-grade tooltip also names RSI14 when describing the method.
-    expect(screen.getByText('RSI14')).toBeInTheDocument();
-
-    // Risk geometry is consolidated into the simulator.
-    expect(screen.getByText(/Invalidation simulator/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: /Risk Simulator/i }));
+    expect(screen.getByRole('heading', { name: /Risk Simulator/i })).toBeInTheDocument();
     expect(screen.getAllByText('Support').length).toBeGreaterThan(0);
 
-    // Broker Flow
-    expect(screen.getByText(/^Broker Flow$/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: /^Broker Flow$/i }));
+    expect(await screen.findByRole('heading', { name: /^Broker Flow$/i })).toBeInTheDocument();
 
-    // Redundant debate, scorecard, and quality panels are replaced by one compact summary.
+    fireEvent.click(screen.getByRole('tab', { name: /Methodology/i }));
     expect(screen.getAllByText('Regime').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Pattern').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('B+').length).toBeGreaterThan(0);
     expect(screen.queryByText('Data')).not.toBeInTheDocument();
-    expect(screen.queryByText(/What supports or challenges the setup/i)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('tab', { name: /What Changed/i }));
+    expect(screen.getByText(/What supports or challenges the setup/i)).toBeInTheDocument();
+  });
+
+  it('exposes analysis detail tabs', async () => {
+    analyzeTicker.mockResolvedValue({ success: true, data: mockData });
+    render(
+      <MemoryRouter initialEntries={['/?ticker=BBRI']}>
+        <Workbench />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText('Price & volume')).toBeInTheDocument();
+    const tablist = screen.getByRole('tablist', { name: /Analysis detail sections/i });
+    expect(within(tablist).getByRole('tab', { name: /^Levels$/i })).toBeInTheDocument();
+    expect(within(tablist).getByRole('tab', { name: /^Indicators$/i })).toBeInTheDocument();
+    expect(within(tablist).getByRole('tab', { name: /^Broker Flow$/i })).toBeInTheDocument();
+    expect(within(tablist).getByRole('tab', { name: /^What Changed$/i })).toBeInTheDocument();
+    expect(within(tablist).getByRole('tab', { name: /^Risk Simulator$/i })).toBeInTheDocument();
+    expect(within(tablist).getByRole('tab', { name: /^Methodology$/i })).toBeInTheDocument();
+  });
+
+  it('shows cost drag on the Levels tab', async () => {
+    analyzeTicker.mockResolvedValue({ success: true, data: mockData });
+    render(
+      <MemoryRouter initialEntries={['/?ticker=BBRI']}>
+        <Workbench />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText(/Cost drag/i)).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /^Levels$/i })).toHaveAttribute('aria-selected', 'true');
   });
 
   it('uses one TradingView-powered NALAR market chart', async () => {
@@ -210,7 +254,6 @@ describe('Workbench', () => {
     expect(screen.getAllByText('MA5').length).toBeGreaterThan(0);
     expect(screen.getAllByText('MA200').length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'Full screen' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '1W' })).toHaveClass('is-active');
     expect(screen.queryByRole('button', { name: /NALAR Analysis/i })).not.toBeInTheDocument();
   });
 
@@ -218,21 +261,21 @@ describe('Workbench', () => {
     analyzeTicker.mockResolvedValue({ success: true, data: mockData });
     render(
       <MemoryRouter initialEntries={['/?ticker=BBRI']}>
+        <SetTicker ticker="TLKM" />
         <Workbench />
       </MemoryRouter>
     );
 
     expect(await screen.findByText('Price & volume')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Open full TradingView/i }).getAttribute('href')).toContain('IDX%3ABBRI');
 
     const tlkmData = {
       ...mockData,
       ticker: { ...mockData.ticker, symbol: 'TLKM', name: 'Telkom Indonesia' },
+      broker: { ...mockData.broker, symbol: 'TLKM' },
     };
     analyzeTicker.mockResolvedValue({ success: true, data: tlkmData });
-
-    const input = screen.getByPlaceholderText(/Enter ticker/i);
-    fireEvent.change(input, { target: { value: 'TLKM' } });
-    fireEvent.click(screen.getByRole('button', { name: /Analyze/i }));
+    fireEvent.click(screen.getByRole('button', { name: /open TLKM/i }));
 
     expect(await screen.findByText('TLKM')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Open full TradingView/i }).getAttribute('href')).toContain('IDX%3ATLKM');
@@ -258,9 +301,11 @@ describe('Workbench', () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText(/^Broker Flow$/i)).toBeInTheDocument();
-    expect(screen.getAllByText('Local').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText('Foreign')).toBeInTheDocument();
+    expect(await screen.findByText('Price & volume')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: /^Broker Flow$/i }));
+
+    expect((await screen.findAllByText('Local')).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Foreign').length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByText('Pemerintah')).not.toBeInTheDocument();
     expect(screen.queryByText('Lokal')).not.toBeInTheDocument();
     expect(screen.queryByText('Asing')).not.toBeInTheDocument();
@@ -287,18 +332,26 @@ describe('Workbench', () => {
         <Workbench />
       </MemoryRouter>
     );
+
+    expect(await screen.findByText('Price & volume')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: /Indicators/i }));
     expect(await screen.findByText(/daily history unavailable/i)).toBeInTheDocument();
   });
 
   it('loads archived broker evidence when the analysis snapshot is unavailable', async () => {
-    const noBroker = { ...mockData, broker: { available: false, note: 'No broker data' } };
+    const noBroker = {
+      ...mockData,
+      broker: { available: false, note: 'No broker data', symbol: 'BBRI' },
+    };
     analyzeTicker.mockResolvedValue({ success: true, data: noBroker });
     render(
       <MemoryRouter initialEntries={['/?ticker=BBRI']}>
         <Workbench />
       </MemoryRouter>
     );
-    expect(await screen.findByText(/^Broker Flow$/i)).toBeInTheDocument();
+
+    expect(await screen.findByText('Price & volume')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: /^Broker Flow$/i }));
     expect((await screen.findAllByText('NI')).length).toBeGreaterThan(0);
   });
 
@@ -310,10 +363,12 @@ describe('Workbench', () => {
       </MemoryRouter>
     );
 
+    expect(await screen.findByText('Price & volume')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: /^Broker Flow$/i }));
+
     const link = await screen.findByRole('link', { name: /Open Broker Flow/i });
-    expect(link).toHaveAttribute(
-      'href',
-      '/broker-intelligence?lens=stock&ticker=BBRI&days=1',
+    expect(link.getAttribute('href')).toMatch(
+      /^\/broker-intelligence\?lens=stock&ticker=BBRI&days=1(?:&date=2026-07-17)?$/,
     );
   });
 
@@ -323,7 +378,7 @@ describe('Workbench', () => {
       data: {
         ...mockData,
         ticker: { ...mockData.ticker, symbol: '' },
-        broker: { ...mockData.broker },
+        broker: { ...mockData.broker, symbol: '' },
       },
     });
     render(
@@ -331,38 +386,37 @@ describe('Workbench', () => {
         <Workbench />
       </MemoryRouter>
     );
-    expect(await screen.findByText(/^Broker Flow$/i)).toBeInTheDocument();
+
+    expect(await screen.findByText('Price & volume')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: /^Broker Flow$/i }));
+    expect(await screen.findByRole('heading', { name: /^Broker Flow$/i })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /Open Broker Flow/i })).not.toBeInTheDocument();
   });
 
-  it('handles search form submission', async () => {
+  it('loads analysis from the URL ticker param', async () => {
     analyzeTicker.mockResolvedValue({ success: true, data: mockData });
     render(
       <MemoryRouter>
+        <SetTicker ticker="BBRI" />
         <Workbench />
       </MemoryRouter>
     );
 
-    const input = screen.getByPlaceholderText(/Enter ticker/i);
-    fireEvent.change(input, { target: { value: 'TLKM' } });
-    fireEvent.click(screen.getByRole('button', { name: /Analyze/i }));
-
-    // Analysis result renders (mock data is BBRI, but form submission works)
+    fireEvent.click(screen.getByRole('button', { name: /open BBRI/i }));
     expect(await screen.findByText('Price & volume')).toBeInTheDocument();
+    expect(analyzeTicker).toHaveBeenCalledWith('BBRI');
   });
 
-  it('shows error for invalid ticker format', () => {
+  it('shows error for invalid ticker format', async () => {
     render(
       <MemoryRouter>
+        <SetTicker ticker="ABC" />
         <Workbench />
       </MemoryRouter>
     );
 
-    const input = screen.getByPlaceholderText(/Enter ticker/i);
-    fireEvent.change(input, { target: { value: 'INVALID' } });
-    fireEvent.click(screen.getByRole('button', { name: /Analyze/i }));
-
-    expect(screen.getByText(/Enter a four-letter ticker/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /open ABC/i }));
+    expect(await screen.findByText(/Enter a four-letter ticker/i)).toBeInTheDocument();
   });
 
   it('shows analysis error state', async () => {
@@ -376,15 +430,6 @@ describe('Workbench', () => {
     expect(screen.getByText(/upstream unavailable/i)).toBeInTheDocument();
   });
 
-  it('gives the ticker search box an accessible name', () => {
-    render(
-      <MemoryRouter>
-        <Workbench />
-      </MemoryRouter>
-    );
-    expect(screen.getByLabelText(/IDX ticker/i)).toBeInTheDocument();
-  });
-
   it('discards an older analysis that resolves after a newer ticker search', async () => {
     let resolveFirst;
     let resolveSecond;
@@ -394,17 +439,19 @@ describe('Workbench', () => {
 
     render(
       <MemoryRouter initialEntries={['/?ticker=BBRI']}>
+        <SetTicker ticker="TLKM" />
         <Workbench />
       </MemoryRouter>
     );
 
-    const input = screen.getByPlaceholderText(/Enter ticker/i);
-    fireEvent.change(input, { target: { value: 'TLKM' } });
-    fireEvent.click(screen.getByRole('button', { name: /Analyze/i }));
+    expect(screen.getByText(/Loading BBRI/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /open TLKM/i }));
+    expect(screen.getByText(/Loading TLKM/i)).toBeInTheDocument();
 
     const tlkm = {
       ...mockData,
       ticker: { ...mockData.ticker, symbol: 'TLKM', name: 'Telkom Indonesia' },
+      broker: { ...mockData.broker, symbol: 'TLKM' },
     };
     await act(async () => { resolveSecond({ success: true, data: tlkm }); });
     expect(await screen.findByText('Telkom Indonesia')).toBeInTheDocument();
@@ -414,21 +461,28 @@ describe('Workbench', () => {
     expect(screen.getByText('Telkom Indonesia')).toBeInTheDocument();
   });
 
-  it('names the in-flight ticker while the search box moves on', async () => {
-    analyzeTicker.mockReturnValue(new Promise(() => {}));
+  it('keeps previous result dimmed while a warm ticker switch loads', async () => {
+    analyzeTicker.mockResolvedValue({ success: true, data: mockData });
     render(
       <MemoryRouter initialEntries={['/?ticker=BBRI']}>
+        <SetTicker ticker="TLKM" />
         <Workbench />
       </MemoryRouter>
     );
 
-    expect(screen.getByText(/Analyzing BBRI/i)).toBeInTheDocument();
-    fireEvent.change(screen.getByPlaceholderText(/Enter ticker/i), { target: { value: 'TLKM' } });
-    expect(screen.getByText(/Analyzing BBRI/i)).toBeInTheDocument();
-    expect(screen.queryByText(/Analyzing TLKM/i)).not.toBeInTheDocument();
+    expect(await screen.findByText(/Bank Rakyat Indonesia/i)).toBeInTheDocument();
+    expect(document.querySelector('[data-displayed-ticker="BBRI"]')).toBeInTheDocument();
+
+    analyzeTicker.mockReturnValue(new Promise(() => {}));
+    fireEvent.click(screen.getByRole('button', { name: /open TLKM/i }));
+
+    expect(await screen.findByText(/Loading TLKM/i)).toBeInTheDocument();
+    expect(screen.getByText(/Bank Rakyat Indonesia/i)).toBeInTheDocument();
+    expect(document.querySelector('[data-displayed-ticker="BBRI"]')).toBeInTheDocument();
+    expect(document.querySelector('.wb-analysis-frame.is-stale')).toBeInTheDocument();
   });
 
-  it('retries the ticker that failed, not the current search text', async () => {
+  it('retries the ticker that failed', async () => {
     analyzeTicker.mockRejectedValue(new Error('upstream unavailable'));
     render(
       <MemoryRouter initialEntries={['/?ticker=BBRI']}>
@@ -437,14 +491,13 @@ describe('Workbench', () => {
     );
 
     expect(await screen.findByText(/Analysis failed for BBRI/i)).toBeInTheDocument();
-    fireEvent.change(screen.getByPlaceholderText(/Enter ticker/i), { target: { value: 'TLKM' } });
 
     analyzeTicker.mockClear();
     analyzeTicker.mockResolvedValue({ success: true, data: mockData });
     fireEvent.click(screen.getByRole('button', { name: /Retry/i }));
 
     await waitFor(() => expect(analyzeTicker).toHaveBeenCalledWith('BBRI'));
-    expect(analyzeTicker).not.toHaveBeenCalledWith('TLKM');
+    expect(await screen.findByText(/Bank Rakyat Indonesia/i)).toBeInTheDocument();
   });
 
   it('drops the analysis when the ticker leaves the URL', async () => {
@@ -470,7 +523,9 @@ describe('Workbench', () => {
       </MemoryRouter>
     );
 
-    await screen.findByText(/^Broker Flow$/i);
+    expect(await screen.findByText('Price & volume')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: /^Broker Flow$/i }));
+
     await waitFor(() => {
       const meta = document.querySelector('.wb-broker__meta');
       expect(meta?.textContent).toMatch(/· 1 trading day\b/);

@@ -10,10 +10,12 @@ import ErrorState from '../../components/ErrorState.jsx';
 import InfoTip from '../../components/InfoTip.jsx';
 import MarketChart from './MarketChart.jsx';
 import TechnicalEvidence from './TechnicalEvidence.jsx';
-import DynamicLevels from './DynamicLevels.jsx';
 import BrokerEvidence from './BrokerEvidence.jsx';
 import InvestigationBrief from './InvestigationBrief.jsx';
+import EvidenceDebate from './EvidenceDebate.jsx';
 import RiskSimulator from './RiskSimulator.jsx';
+import DetailDrawer from './DetailDrawer.jsx';
+import LevelsPanel from './LevelsPanel.jsx';
 
 function TickerHeader({ ticker, priceHistory }) {
   if (!ticker) return null;
@@ -93,133 +95,197 @@ function EvidenceSummary({ grade, stance, scorecard, dataQuality }) {
   );
 }
 
+function AnalysisSkeleton({ label }) {
+  return (
+    <div className="ui-skeleton" role="status" aria-live="polite">
+      <p className="ui-skeleton__status">{label}</p>
+      <div className="ui-skeleton__block ui-skeleton__block--lg" />
+      <div className="ui-skeleton__block ui-skeleton__block--chart" />
+      <div className="ui-skeleton__block" />
+      <div className="ui-skeleton__block" />
+    </div>
+  );
+}
+
+function CompactGrade({ grade, stance }) {
+  return (
+    <div className="wb-evidence-summary" aria-label="Score summary">
+      <div><span>Grade</span><strong>{grade?.grade || '—'}</strong></div>
+      <div><span>Regime</span><strong>{grade?.regime || 'Unknown'}</strong></div>
+      <div><span>Pattern</span><strong>{grade?.structurePhase || 'Unknown'}</strong></div>
+      <div><span>Bias</span><strong>{stance?.stance ? stance.stance.replace('_', ' ').toLowerCase() : 'neutral'}</strong></div>
+    </div>
+  );
+}
+
+function WhatChangedPanel({ data }) {
+  const contradictions = data?.investigation?.contradictions || [];
+  return (
+    <div className="wb-changed-panel">
+      <InvestigationBrief investigation={data?.investigation} />
+      <EvidenceDebate debate={data?.debate} stance={data?.stance} />
+      {contradictions.length > 0 && (
+        <section className="wb-contradictions" aria-label="Investigation contradictions">
+          <h3 className="wb-section__title text-tertiary">Contradictions</h3>
+          <ul>
+            {contradictions.map((item) => (
+              <li key={item.code || item.title}>
+                <strong>{item.title || item.code}</strong>
+                <p className="text-secondary">{(item.evidence || []).join(' · ') || item.detail || ''}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
+  );
+}
+
 export default function Workbench() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const tickerParam = searchParams.get('ticker') || '';
-  const [query, setQuery] = useState(tickerParam);
-  // `analyzing` is the ticker this state actually describes. The search box is
-  // free text and can move on while a request is still open, so nothing on
-  // screen may be labelled from `query`.
-  const [state, setState] = useState({ loading: false, analyzing: '', data: null, error: null });
-  // Monotonic request id. A response is only allowed to write state while it is
-  // still the newest request, so a slow analysis cannot replace a newer ticker.
+  const [searchParams] = useSearchParams();
+  const tickerParam = (searchParams.get('ticker') || '').trim().toUpperCase();
+  // displayed.data always belongs to displayed.ticker — never relabel mid-flight.
+  const [displayed, setDisplayed] = useState({ ticker: '', data: null });
+  const [loading, setLoading] = useState(false);
+  const [analyzing, setAnalyzing] = useState('');
+  const [error, setError] = useState(null);
+  const [failedTicker, setFailedTicker] = useState('');
   const requestRef = useRef(0);
 
   const fetchAnalysis = useCallback((raw) => {
     const ticker = String(raw || '').trim().toUpperCase();
     const requestId = ++requestRef.current;
     if (!/^[A-Z]{4}$/.test(ticker)) {
-      setState({ loading: false, analyzing: ticker, data: null, error: 'Enter a four-letter ticker (e.g. BBRI)' });
+      setLoading(false);
+      setAnalyzing(ticker);
+      setFailedTicker(ticker);
+      setError('Enter a four-letter ticker (e.g. BBRI)');
       return;
     }
-    setState({ loading: true, analyzing: ticker, data: null, error: null });
+    setLoading(true);
+    setAnalyzing(ticker);
+    setError(null);
+    setFailedTicker('');
     analyzeTicker(ticker).then((response) => {
       if (requestId !== requestRef.current) return;
       const result = guardAnalyze(response);
       if (!result.ok) {
-        setState({ loading: false, analyzing: ticker, data: null, error: result.error });
+        setLoading(false);
+        setAnalyzing('');
+        setFailedTicker(ticker);
+        setError(result.error);
         return;
       }
-      setState({ loading: false, analyzing: ticker, data: result.data, error: null });
+      setDisplayed({ ticker, data: result.data });
+      setLoading(false);
+      setAnalyzing('');
+      setError(null);
+      setFailedTicker('');
     }).catch((err) => {
       if (requestId !== requestRef.current) return;
-      setState({ loading: false, analyzing: ticker, data: null, error: err.message });
+      setLoading(false);
+      setAnalyzing('');
+      setFailedTicker(ticker);
+      setError(err.message);
     });
   }, []);
 
   useEffect(() => {
     if (!tickerParam) {
-      // Leaving the ticker behind must also drop its result; otherwise the
-      // previous analysis keeps rendering under an empty investigation.
       requestRef.current += 1;
-      setQuery('');
-      setState((current) => (current.loading || current.data || current.error
-        ? { loading: false, analyzing: '', data: null, error: null }
-        : current));
+      setDisplayed({ ticker: '', data: null });
+      setLoading(false);
+      setAnalyzing('');
+      setError(null);
+      setFailedTicker('');
       return undefined;
     }
-    setQuery(tickerParam);
     fetchAnalysis(tickerParam);
     return () => { requestRef.current += 1; };
   }, [tickerParam, fetchAnalysis]);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const clean = query.trim().toUpperCase();
-    if (clean) {
-      setSearchParams({ ticker: clean });
+  const hasDisplayed = Boolean(displayed.data && displayed.ticker);
+  const warmLoading = loading && hasDisplayed && analyzing && analyzing !== displayed.ticker;
+  const coldLoading = loading && !hasDisplayed;
+
+  const renderDrawer = (active) => {
+    const data = displayed.data;
+    if (!data) return null;
+    switch (active) {
+      case 'levels':
+        return <LevelsPanel data={data} />;
+      case 'indicators':
+        return (
+          <>
+            <CompactGrade grade={data.grade} stance={data.stance} />
+            <TechnicalEvidence
+              priceHistory={data.priceHistory}
+              ticker={data.ticker}
+              supportResistance={data.supportResistance}
+              riskGeometry={data.riskGeometry}
+            />
+          </>
+        );
+      case 'broker':
+        return <BrokerEvidence broker={data.broker} />;
+      case 'changed':
+        return <WhatChangedPanel data={data} />;
+      case 'risk':
+        return <RiskSimulator ticker={data.ticker} geometry={data.riskGeometry} />;
+      case 'methodology':
+        return (
+          <EvidenceSummary
+            grade={data.grade}
+            stance={data.stance}
+            scorecard={data.scorecard}
+            dataQuality={data.dataQuality}
+          />
+        );
+      default:
+        return null;
     }
   };
 
   return (
     <div className="workbench">
-      <form className="wb-search" onSubmit={handleSubmit}>
-        <label className="sr-only" htmlFor="wb-ticker-input">IDX ticker</label>
-        <input
-          id="wb-ticker-input"
-          className="wb-search__input"
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Enter ticker (e.g. BBRI)"
-          maxLength={4}
-          autoComplete="off"
-          spellCheck={false}
-        />
-        <button className="wb-search__btn" type="submit">Analyze</button>
-      </form>
+      {coldLoading && <AnalysisSkeleton label={`Loading ${analyzing}…`} />}
 
-      {state.loading && (
-        <div className="wb-loading text-tertiary" aria-live="polite">Analyzing {state.analyzing}…</div>
-      )}
-
-      {state.error && !state.loading && (
+      {error && !loading && (
         <ErrorState
-          title={state.analyzing ? `Analysis failed for ${state.analyzing}` : 'Analysis failed'}
-          error={state.error}
-          onRetry={() => fetchAnalysis(state.analyzing || tickerParam)}
+          title={failedTicker ? `Analysis failed for ${failedTicker}` : 'Analysis failed'}
+          error={error}
+          onRetry={() => fetchAnalysis(failedTicker || tickerParam)}
         />
       )}
 
-      {state.data && !state.loading && (
-        <div className="wb-result">
-          <TickerHeader ticker={state.data.ticker} priceHistory={state.data.priceHistory} />
-          <div className="wb-chart-panel">
-            <MarketChart chart={state.data.chart} geometry={state.data.riskGeometry} ticker={state.data.ticker} />
-          </div>
-
-          <RiskSimulator ticker={state.data.ticker} geometry={state.data.riskGeometry} />
-
-          <details className="inv-ledger">
-            <summary>
-              <span>04</span>
-              <strong>Full details</strong>
-              <small>Indicators, levels, broker flow, and scoring details</small>
-            </summary>
-            <div className="inv-ledger__body">
-              <EvidenceSummary grade={state.data.grade} stance={state.data.stance} scorecard={state.data.scorecard} dataQuality={state.data.dataQuality} />
-
-              <DynamicLevels dynamicLevels={state.data.dynamicLevels} />
-
-              <TechnicalEvidence
-                priceHistory={state.data.priceHistory}
-                ticker={state.data.ticker}
-                supportResistance={state.data.supportResistance}
-                riskGeometry={state.data.riskGeometry}
-              />
-
-              <BrokerEvidence broker={state.data.broker} />
+      {hasDisplayed && (
+        <div className={`wb-analysis-frame ${warmLoading ? 'is-stale' : ''}`}>
+          {warmLoading && (
+            <div className="wb-analysis-frame__overlay" aria-live="polite">
+              <div className="ui-progress" aria-hidden="true"><div className="ui-progress__bar" /></div>
+              <span className="wb-analysis-frame__chip">Loading {analyzing}…</span>
             </div>
-          </details>
-
-          <InvestigationBrief investigation={state.data.investigation} />
+          )}
+          <div className="wb-result" data-displayed-ticker={displayed.ticker}>
+            <TickerHeader ticker={displayed.data.ticker} priceHistory={displayed.data.priceHistory} />
+            <div className="wb-chart-panel">
+              <MarketChart
+                chart={displayed.data.chart}
+                geometry={displayed.data.riskGeometry}
+                ticker={displayed.data.ticker}
+              />
+            </div>
+            <DetailDrawer storageKey={displayed.ticker ? `nalar-drawer:${displayed.ticker}` : null}>
+              {renderDrawer}
+            </DetailDrawer>
+          </div>
         </div>
       )}
 
-      {!state.data && !state.loading && !state.error && !tickerParam && (
+      {!hasDisplayed && !loading && !error && !tickerParam && (
         <EmptyState
           title="Enter a ticker to analyze"
-          message="Type a four-letter IDX symbol above to open its chart, levels, and broker flow."
+          message="Use the command bar ticker field (OPEN) to load an IDX symbol’s chart, levels, and broker flow."
         />
       )}
     </div>
