@@ -34,8 +34,8 @@ export default function EvidenceDebate({ debate, stance }) {
           <div className="wb-debate__label text-positive">Supporting evidence</div>
           {bull.length > 0 ? (
             <ul className="wb-debate__points">
-              {bull.map((item, i) => (
-                <li key={i} className="text-secondary">
+              {bull.map((item) => (
+                <li key={`${item.factor}:${item.reason}`} className="text-secondary">
                   <span className="wb-debate__factor">{item.factor}</span>
                   <span className="text-tertiary">{item.reason}</span>
                 </li>
@@ -50,8 +50,8 @@ export default function EvidenceDebate({ debate, stance }) {
           <div className="wb-debate__label text-negative">Risks and contradictions</div>
           {bear.length > 0 ? (
             <ul className="wb-debate__points">
-              {bear.map((item, i) => (
-                <li key={i} className="text-secondary">
+              {bear.map((item) => (
+                <li key={`${item.factor}:${item.reason}`} className="text-secondary">
                   <span className="wb-debate__factor">{item.factor}</span>
                   <span className="text-tertiary">{item.reason}</span>
                 </li>

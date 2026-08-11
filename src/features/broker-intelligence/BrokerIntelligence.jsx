@@ -231,9 +231,9 @@ function MergedRankRow({ side, row, lens, selected, onSelect }) {
   return (
     <tr
       className={`ui-row bi-merged__row ${selected ? 'is-selected' : ''}`}
-      role="button"
       tabIndex={0}
-      aria-pressed={selected}
+      aria-label={`${primary} ${side === 'buy' ? 'buy' : 'sell'}`}
+      aria-selected={selected}
       onClick={onSelect}
       onKeyDown={handleKeyDown}
     >
@@ -261,7 +261,7 @@ function MergedRankRow({ side, row, lens, selected, onSelect }) {
 // Default order: positive net buyers descending, then a quiet group-label row,
 // then negative net sellers by absolute net value descending. An empty side
 // renders a quiet fallback row instead of breaking the table.
-function MergedRankGroup({ side, rows, lens, selectedRow, onSelect, emptyLabel }) {
+function MergedRankGroup({ side, rows, lens, selectedKey, onSelect, emptyLabel }) {
   if (!rows.length) {
     return (
       <tr className="ui-group-row">
@@ -277,17 +277,16 @@ function MergedRankGroup({ side, rows, lens, selectedRow, onSelect, emptyLabel }
       </tr>
       {rows.map((row) => {
         const key = lens === 'stock' ? row.code : row.ticker;
-        const isSelected = Boolean(selectedRow) && (
-          lens === 'stock' ? selectedRow.code === row.code : selectedRow.ticker === row.ticker
-        );
+        const selectionKey = `${side}:${key}`;
+        const isSelected = selectedKey === selectionKey;
         return (
           <MergedRankRow
-            key={`${side}-${key}`}
+            key={selectionKey}
             side={side}
             row={row}
             lens={lens}
             selected={isSelected}
-            onSelect={() => onSelect(key)}
+            onSelect={() => onSelect(selectionKey)}
           />
         );
       })}
@@ -361,7 +360,7 @@ function SelectedDetail({ lens, row }) {
         className="bi-detail__link"
         to={`/workbench?ticker=${encodeURIComponent(row.ticker)}`}
       >
-        Open in Workbench
+        Open in Stock Analysis
       </Link>
     </div>
   );
@@ -623,17 +622,25 @@ export default function BrokerIntelligence() {
   const showLensLoading = lensState.loading;
   const showRefreshing = lensState.refreshing && !lensState.loading;
 
-  const selectedRow = useMemo(() => {
-    const all = [...buyers, ...sellers];
-    if (!all.length) return null;
-    if (selectedKey) {
-      const found = all.find((row) => (
-        lens === 'stock' ? row.code === selectedKey : row.ticker === selectedKey
-      ));
-      if (found) return found;
+  const resolvedSelectedKey = useMemo(() => {
+    if (selectedKey) return selectedKey;
+    if (buyers[0]) {
+      return `buy:${lens === 'stock' ? buyers[0].code : buyers[0].ticker}`;
     }
-    return buyers[0] || sellers[0] || null;
-  }, [buyers, sellers, selectedKey, lens]);
+    if (sellers[0]) {
+      return `sell:${lens === 'stock' ? sellers[0].code : sellers[0].ticker}`;
+    }
+    return null;
+  }, [selectedKey, buyers, sellers, lens]);
+
+  const selectedRow = useMemo(() => {
+    if (!resolvedSelectedKey) return null;
+    const [side, identity] = String(resolvedSelectedKey).split(':');
+    const pool = side === 'sell' ? sellers : buyers;
+    return pool.find((row) => (
+      lens === 'stock' ? row.code === identity : row.ticker === identity
+    )) || null;
+  }, [buyers, sellers, resolvedSelectedKey, lens]);
 
   const identityLabel = selectedRow
     ? (lens === 'stock' ? selectedRow.code : selectedRow.ticker)
@@ -869,7 +876,7 @@ export default function BrokerIntelligence() {
                         side="buy"
                         rows={buyers}
                         lens={lens}
-                        selectedRow={selectedRow}
+                        selectedKey={resolvedSelectedKey}
                         onSelect={setSelectedKey}
                         emptyLabel="No buyers observed"
                       />
@@ -877,7 +884,7 @@ export default function BrokerIntelligence() {
                         side="sell"
                         rows={sellers}
                         lens={lens}
-                        selectedRow={selectedRow}
+                        selectedKey={resolvedSelectedKey}
                         onSelect={setSelectedKey}
                         emptyLabel="No sellers observed"
                       />

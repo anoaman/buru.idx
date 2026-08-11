@@ -98,10 +98,8 @@ and rate limiting remain as defense in depth. Radar and Cases may add private
 read/write routes only after their exact contracts are reviewed; they must not
 turn the proxy into a wildcard forwarder.
 
-## Analysis V2 baseline (Phase 0)
+## Analysis V2 baseline
 
-- Existing routes remain `/workbench` and `/broker-intelligence` until the new
-  shell lands.
 - Broker Intelligence defaults to one completed trading session. Named ranges
   and custom inclusive dates must display both resolved endpoints and the
   observed trading-session count.

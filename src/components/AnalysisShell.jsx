@@ -115,7 +115,7 @@ export default function AnalysisShell({ children }) {
             type="button"
             className="app-shell__theme"
             onClick={() => setTheme((value) => value === 'light' ? 'dark' : 'light')}
-            aria-label={`Use ${theme === 'light' ? 'dark' : 'light'} theme`}
+            aria-label={theme === 'light' ? 'Switch to Graphite Ledger' : 'Switch to Paper Ledger'}
             title={theme === 'light' ? 'Switch to Graphite Ledger' : 'Switch to Paper Ledger'}
           >
             {theme === 'light' ? 'Graphite' : 'Paper'}

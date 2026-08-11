@@ -87,10 +87,10 @@ function CaseCard({ item, onReopen, onActors }) {
       </div>
 
       <div className="case-card__actions">
-        <button type="button" aria-label={`Re-open ${item.ticker} evidence`} onClick={onReopen}>
+        <button type="button" className="ui-btn ui-btn--ghost" aria-label={`Re-open ${item.ticker} evidence`} onClick={onReopen}>
           Open Analysis
         </button>
-        <button type="button" aria-label={`Open ${item.ticker} actor map`} onClick={onActors}>
+        <button type="button" className="ui-btn ui-btn--ghost" aria-label={`Open ${item.ticker} actor map`} onClick={onActors}>
           Broker Flow
         </button>
       </div>

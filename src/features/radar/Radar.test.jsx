@@ -272,6 +272,23 @@ describe('Radar', () => {
       brokerFrom: '2026-07-01',
       brokerTo: '2026-07-31',
     })));
+    const payload = getRadarScout.mock.calls.at(-1)[0];
+    expect(payload).not.toHaveProperty('brokerSessions');
+  });
+
+  it('syncs brokerSessions from the named Scout preset', async () => {
+    getOpportunities.mockResolvedValue({ success: true, data: { run: RUN, opportunities: [] } });
+    getRadarScout.mockResolvedValue(scoutResponse({ candidates: [] }));
+
+    renderRadar();
+    fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
+    fireEvent.change(screen.getByLabelText('Date range'), { target: { value: '14d' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
+
+    await waitFor(() => expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({
+      brokerPreset: '14d',
+      brokerSessions: 14,
+    })));
   });
 
   it('submits the lead-broker minimum once the condition is enabled', async () => {
@@ -398,6 +415,7 @@ describe('Radar', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open AHAP broker flow' }));
     expect(openSpy.mock.calls.at(-1)[0]).toContain('/broker-intelligence?');
     expect(openSpy.mock.calls.at(-1)[0]).toContain('ticker=AHAP');
+    expect(openSpy.mock.calls.at(-1)[0]).toContain('preset=7d');
 
     openSpy.mockRestore();
   });

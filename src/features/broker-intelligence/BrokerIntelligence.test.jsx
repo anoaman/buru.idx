@@ -378,11 +378,11 @@ describe('BrokerIntelligence', () => {
     expect(screen.getByText('Buyers · 1')).toBeInTheDocument();
     expect(screen.getByText('Sellers · 1')).toBeInTheDocument();
 
-    const buyerRow = screen.getByRole('button', { name: /YP/i });
+    const buyerRow = screen.getByRole('row', { name: /YP/i });
     expect(within(buyerRow).getByText('Buy')).toBeInTheDocument();
     expect(within(buyerRow).getByText('9.000')).toBeInTheDocument(); // avg price when available
 
-    const sellerRow = screen.getByRole('button', { name: /AK/i });
+    const sellerRow = screen.getByRole('row', { name: /AK/i });
     expect(within(sellerRow).getByText('Sell')).toBeInTheDocument();
   });
 
@@ -390,7 +390,7 @@ describe('BrokerIntelligence', () => {
     renderAt('/broker-intelligence?lens=stock&ticker=BBCA&days=30');
     await screen.findByText('Bank Central Asia');
     expect(screen.getByText(/Estimated inventory changed from/i)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /AK/i }));
+    fireEvent.click(screen.getByRole('row', { name: /AK/i }));
     expect(await screen.findByText(/No estimated inventory curve/i)).toBeInTheDocument();
     expect(screen.queryByText(/Avg Unavailable/i)).not.toBeInTheDocument();
   });
@@ -401,10 +401,10 @@ describe('BrokerIntelligence', () => {
     // Default selection is the top buyer (YP).
     expect(screen.getByText(/Estimated inventory changed from/i)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /AK/i }));
+    fireEvent.click(screen.getByRole('row', { name: /AK/i }));
     expect(await screen.findByText(/No estimated inventory curve/i)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /YP/i }));
+    fireEvent.click(screen.getByRole('row', { name: /YP/i }));
     expect(await screen.findByText(/Estimated inventory changed from/i)).toBeInTheDocument();
   });
 
@@ -413,10 +413,10 @@ describe('BrokerIntelligence', () => {
     await screen.findByText(/Observed stocks 12/i);
     expect(screen.getByText('Stock net ranking')).toBeInTheDocument();
 
-    const buyerRow = screen.getByRole('button', { name: /BBCA/i });
+    const buyerRow = screen.getByRole('row', { name: /BBCA buy/i });
     expect(within(buyerRow).getByText('Buy')).toBeInTheDocument();
 
-    const sellerRow = screen.getByRole('button', { name: /BMRI/i });
+    const sellerRow = screen.getByRole('row', { name: /BMRI/i });
     expect(within(sellerRow).getByText('Sell')).toBeInTheDocument();
   });
 
@@ -429,7 +429,7 @@ describe('BrokerIntelligence', () => {
     await screen.findByText('Bank Central Asia');
     expect(screen.getByText(/No buyers observed/i)).toBeInTheDocument();
     expect(screen.queryByText(/^Buyers ·/)).not.toBeInTheDocument();
-    const sellerRow = screen.getByRole('button', { name: /AK/i });
+    const sellerRow = screen.getByRole('row', { name: /AK/i });
     expect(within(sellerRow).getByText('Sell')).toBeInTheDocument();
     // Falls back to the seller row when there is no buyer to default-select.
     expect(await screen.findByText(/No estimated inventory curve/i)).toBeInTheDocument();
@@ -444,7 +444,7 @@ describe('BrokerIntelligence', () => {
     await screen.findByText('Bank Central Asia');
     expect(screen.getByText(/No sellers observed/i)).toBeInTheDocument();
     expect(screen.queryByText(/^Sellers ·/)).not.toBeInTheDocument();
-    const buyerRow = screen.getByRole('button', { name: /YP/i });
+    const buyerRow = screen.getByRole('row', { name: /YP/i });
     expect(within(buyerRow).getByText('Buy')).toBeInTheDocument();
     expect(await screen.findByText(/Estimated inventory changed from/i)).toBeInTheDocument();
   });
@@ -476,24 +476,24 @@ describe('BrokerIntelligence', () => {
     expect(link).toHaveAttribute('href', '/broker-intelligence?lens=broker&code=YP&days=30');
   });
 
-  it('deep-links selected stock into Workbench', async () => {
+  it('deep-links selected stock into Stock Analysis', async () => {
     renderAt('/broker-intelligence?lens=broker&code=YP&days=30');
     await screen.findByText(/Observed stocks 12/i);
-    const link = screen.getByRole('link', { name: /Open in Workbench/i });
+    const link = screen.getByRole('link', { name: /Open in Stock Analysis/i });
     expect(link).toHaveAttribute('href', '/workbench?ticker=BBCA');
   });
 
   it('omits average-cost noise when estimated average cost is null', async () => {
     renderAt('/broker-intelligence?lens=stock&ticker=BBCA&days=30');
     await screen.findByText('Bank Central Asia');
-    fireEvent.click(screen.getByRole('button', { name: /AK/i }));
+    fireEvent.click(screen.getByRole('row', { name: /AK/i }));
     expect(screen.queryByText(/Avg Unavailable/i)).not.toBeInTheDocument();
   });
 
   it('shows a quiet dash in the merged table when the avg price is missing', async () => {
     renderAt('/broker-intelligence?lens=stock&ticker=BBCA&days=30');
     await screen.findByText('Bank Central Asia');
-    const sellerRow = screen.getByRole('button', { name: /AK/i }); // estimatedAverageCost: null
+    const sellerRow = screen.getByRole('row', { name: /AK/i }); // estimatedAverageCost: null
     expect(within(sellerRow).getByText('—')).toBeInTheDocument();
     expect(within(sellerRow).queryByText(/Unavailable/i)).not.toBeInTheDocument();
   });
@@ -648,7 +648,7 @@ describe('BrokerIntelligence', () => {
     renderAt('/broker-intelligence?lens=stock&ticker=BBCA&days=30');
     await screen.findByText('Bank Central Asia');
     expect(screen.getByText(/Estimated inventory changed from \+1\.000 to \+1\.700 lots/i)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /AK/i }));
+    fireEvent.click(screen.getByRole('row', { name: /AK/i }));
     expect(await screen.findByText(/No estimated inventory curve/i)).toBeInTheDocument();
   });
 

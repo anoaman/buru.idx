@@ -8,6 +8,7 @@ import {
 import EmptyState from '../../components/EmptyState.jsx';
 import ErrorState from '../../components/ErrorState.jsx';
 import InfoTip from '../../components/InfoTip.jsx';
+import Skeleton from '../../components/Skeleton.jsx';
 import MarketChart from './MarketChart.jsx';
 import TechnicalEvidence from './TechnicalEvidence.jsx';
 import BrokerEvidence from './BrokerEvidence.jsx';
@@ -92,18 +93,6 @@ function EvidenceSummary({ grade, stance, scorecard, dataQuality }) {
         </div>
       </details>
     </section>
-  );
-}
-
-function AnalysisSkeleton({ label }) {
-  return (
-    <div className="ui-skeleton" role="status" aria-live="polite">
-      <p className="ui-skeleton__status">{label}</p>
-      <div className="ui-skeleton__block ui-skeleton__block--lg" />
-      <div className="ui-skeleton__block ui-skeleton__block--chart" />
-      <div className="ui-skeleton__block" />
-      <div className="ui-skeleton__block" />
-    </div>
   );
 }
 
@@ -248,7 +237,7 @@ export default function Workbench() {
 
   return (
     <div className="workbench">
-      {coldLoading && <AnalysisSkeleton label={`Loading ${analyzing}…`} />}
+      {coldLoading && <Skeleton label={`Loading ${analyzing}…`} chart />}
 
       {error && !loading && (
         <ErrorState
@@ -275,7 +264,10 @@ export default function Workbench() {
                 ticker={displayed.data.ticker}
               />
             </div>
-            <DetailDrawer storageKey={displayed.ticker ? `nalar-drawer:${displayed.ticker}` : null}>
+            <DetailDrawer
+              key={displayed.ticker || 'empty'}
+              storageKey={displayed.ticker ? `nalar-drawer:${displayed.ticker}` : null}
+            >
               {renderDrawer}
             </DetailDrawer>
           </div>

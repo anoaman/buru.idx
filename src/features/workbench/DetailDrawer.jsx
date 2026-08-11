@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 
 const DEFAULT_TABS = [
   { id: 'levels', label: 'Levels' },
@@ -8,6 +8,12 @@ const DEFAULT_TABS = [
   { id: 'risk', label: 'Risk Simulator' },
   { id: 'methodology', label: 'Methodology' },
 ];
+
+function readStoredTab(storageKey, tabItems) {
+  if (!storageKey || typeof sessionStorage === 'undefined') return null;
+  const saved = sessionStorage.getItem(storageKey);
+  return tabItems.some((tab) => tab.id === saved) ? saved : null;
+}
 
 /**
  * Accessible docked detail drawer for Stock Analysis.
@@ -20,13 +26,15 @@ export default function DetailDrawer({
 }) {
   const baseId = useId();
   const tabItems = tabs;
-  const [active, setActive] = useState(() => {
-    if (storageKey && typeof sessionStorage !== 'undefined') {
-      const saved = sessionStorage.getItem(storageKey);
-      if (tabItems.some((tab) => tab.id === saved)) return saved;
-    }
-    return tabItems[0]?.id || 'levels';
-  });
+  const tabRefs = useRef({});
+  const [active, setActive] = useState(
+    () => readStoredTab(storageKey, tabItems) || tabItems[0]?.id || 'levels',
+  );
+
+  useEffect(() => {
+    const next = readStoredTab(storageKey, tabItems) || tabItems[0]?.id || 'levels';
+    setActive(next);
+  }, [storageKey, tabItems]);
 
   useEffect(() => {
     if (storageKey && typeof sessionStorage !== 'undefined') {
@@ -34,25 +42,29 @@ export default function DetailDrawer({
     }
   }, [active, storageKey]);
 
-  const selectIndex = useCallback((index) => {
+  const selectIndex = useCallback((index, { focus = false } = {}) => {
     const next = tabItems[(index + tabItems.length) % tabItems.length];
-    if (next) setActive(next.id);
+    if (!next) return;
+    setActive(next.id);
+    if (focus) {
+      requestAnimationFrame(() => tabRefs.current[next.id]?.focus());
+    }
   }, [tabItems]);
 
   const onKeyDown = (event) => {
     const index = tabItems.findIndex((tab) => tab.id === active);
     if (event.key === 'ArrowRight') {
       event.preventDefault();
-      selectIndex(index + 1);
+      selectIndex(index + 1, { focus: true });
     } else if (event.key === 'ArrowLeft') {
       event.preventDefault();
-      selectIndex(index - 1);
+      selectIndex(index - 1, { focus: true });
     } else if (event.key === 'Home') {
       event.preventDefault();
-      selectIndex(0);
+      selectIndex(0, { focus: true });
     } else if (event.key === 'End') {
       event.preventDefault();
-      selectIndex(tabItems.length - 1);
+      selectIndex(tabItems.length - 1, { focus: true });
     }
   };
 
@@ -74,6 +86,7 @@ export default function DetailDrawer({
               type="button"
               role="tab"
               id={`${baseId}-tab-${tab.id}`}
+              ref={(node) => { tabRefs.current[tab.id] = node; }}
               className={`ui-tab ${selected ? 'is-active' : ''}`}
               aria-selected={selected}
               aria-controls={`${baseId}-panel-${tab.id}`}

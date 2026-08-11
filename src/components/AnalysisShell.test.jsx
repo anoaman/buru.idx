@@ -57,10 +57,10 @@ describe('AnalysisShell', () => {
     expect(screen.getByRole('link', { name: /Watchlist/i })).toBeInTheDocument();
   });
 
-  it('defaults to Paper Ledger and persists the optional dark theme', () => {
+  it('defaults to Paper Ledger and persists the optional Graphite theme', () => {
     renderShell();
     expect(document.documentElement).toHaveAttribute('data-theme', 'light');
-    fireEvent.click(screen.getByRole('button', { name: 'Use dark theme' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Switch to Graphite Ledger' }));
     expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
     expect(localStorage.getItem('nalar-theme')).toBe('dark');
   });

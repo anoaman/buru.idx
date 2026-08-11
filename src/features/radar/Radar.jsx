@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getOpportunities, getRadarScout } from '../../lib/api/client.js';
 import { guardOpportunities, guardRadarScout } from '../../lib/api/contracts.js';
 import { formatDate, formatIDR, formatPct, formatPrice, formatRatio, formatRelativeDays } from '../../lib/format/market.js';
@@ -20,6 +20,41 @@ const DEFAULT_SCOUT_FILTERS = Object.freeze({
   useBroker: true, useSupport: true, useSideways: true, useMaxPrice: true, useLiquidity: true,
 });
 const BROKER_RANGES = [['latest', 'Latest'], ['previous', 'Previous'], ['7d', '7D'], ['14d', '14D'], ['1m', '1M'], ['custom', 'Custom (up to 60 days)']];
+const BROKER_PRESET_SESSIONS = Object.freeze({
+  latest: 1,
+  previous: 1,
+  '7d': 7,
+  '14d': 14,
+  '1m': 22,
+});
+
+function scoutRequestPayload(filters) {
+  const payload = { ...filters };
+  if (filters.brokerPreset === 'custom') {
+    delete payload.brokerSessions;
+  } else if (BROKER_PRESET_SESSIONS[filters.brokerPreset] != null) {
+    payload.brokerSessions = BROKER_PRESET_SESSIONS[filters.brokerPreset];
+  }
+  if (filters.brokerPreset !== 'custom') {
+    delete payload.brokerFrom;
+    delete payload.brokerTo;
+  }
+  return payload;
+}
+
+function scoutBrokerHandoffRange(filters) {
+  if (filters.brokerPreset === 'custom' && filters.brokerFrom && filters.brokerTo) {
+    return { preset: 'custom', from: filters.brokerFrom, to: filters.brokerTo };
+  }
+  if (filters.brokerPreset && filters.brokerPreset !== 'custom') {
+    return { preset: filters.brokerPreset };
+  }
+  return null;
+}
+
+function formatRank(rank) {
+  return Number.isFinite(rank) ? String(rank).padStart(2, '0') : '—';
+}
 const RECIPE_CONDITIONS = Object.freeze({
   quiet_accumulation: { useBroker: true, useSupport: true, useSideways: true },
   dominant_broker: { useBroker: true, useSupport: false, useSideways: false },
@@ -61,7 +96,7 @@ function ShortlistRow({ row, onInvestigate, onActors }) {
   const primaryRisk = row.risks[0];
   return (
     <tr className="ui-row">
-      <td className="tabular text-tertiary">{Number.isFinite(row.rank) ? String(row.rank).padStart(2, '0') : '—'}</td>
+      <td className="tabular text-tertiary">{formatRank(row.rank)}</td>
       <td>
         <div className="radar-cell-ticker">
           <strong>{row.ticker}</strong>
@@ -179,7 +214,7 @@ function QualifiedRow({ row, onInvestigate, onActors }) {
   return (
     <>
       <tr className="ui-row">
-        <td className="tabular text-tertiary">{String(row.rank ?? '—').padStart(2, '0')}</td>
+        <td className="tabular text-tertiary">{formatRank(row.rank)}</td>
         <td>
           <div className="radar-cell-ticker">
             <strong>{row.ticker}</strong>
@@ -278,7 +313,7 @@ function NearMissRow({ row, onInvestigate, onActors }) {
   return (
     <>
       <tr className="ui-row">
-        <td className="tabular text-tertiary">{String(row.rank ?? '—').padStart(2, '0')}</td>
+        <td className="tabular text-tertiary">{formatRank(row.rank)}</td>
         <td>
           <div className="radar-cell-ticker">
             <strong>{row.ticker}</strong>
@@ -350,6 +385,8 @@ function ScoutNearMissSection({ rows, onInvestigate, onActors }) {
 function Scout({ onInvestigate, onActors }) {
   const [filters, setFilters] = useState(DEFAULT_SCOUT_FILTERS);
   const [state, setState] = useState({ loading: false, error: null, data: null });
+  const requestRef = useRef(0);
+  useEffect(() => () => { requestRef.current += 1; }, []);
   const update = (key) => (event) => {
     const value = event.target.type === 'checkbox'
       ? event.target.checked
@@ -365,12 +402,18 @@ function Scout({ onInvestigate, onActors }) {
   };
   const run = (event) => {
     event?.preventDefault();
+    const requestId = ++requestRef.current;
     setState((current) => ({ ...current, loading: true, error: null }));
-    getRadarScout(filters).then((raw) => {
+    getRadarScout(scoutRequestPayload(filters)).then((raw) => {
+      if (requestId !== requestRef.current) return;
       const result = guardRadarScout(raw);
       setState({ loading: false, error: result.ok ? null : result.error, data: result.data });
-    }).catch((error) => setState({ loading: false, error: error.message || 'Screener request failed', data: null }));
+    }).catch((error) => {
+      if (requestId !== requestRef.current) return;
+      setState({ loading: false, error: error.message || 'Screener request failed', data: null });
+    });
   };
+  const handoffActors = (ticker) => onActors(ticker, scoutBrokerHandoffRange(filters));
   return (
     <div className="scout-view">
       <div className="scout-layout">
@@ -424,8 +467,8 @@ function Scout({ onInvestigate, onActors }) {
             <div className="radar-run"><strong>{state.data.recipe.label}</strong><span>Prices through {formatDate(state.data.asOf.priceDate)}</span><span>Broker flow {formatDate(state.data.asOf.brokerFrom)}–{formatDate(state.data.asOf.brokerTo)} · {state.data.asOf.brokerSessions} trading days</span><span>{state.data.coverage.matched} matched</span><span>Showing {state.data.coverage.returned}</span></div>
             {state.data.candidates.length === 0
               ? <EmptyState title="No stocks passed this recipe" message="That is a valid screen result. Widen the price or liquidity boundary only if it matches your intended trade universe." />
-              : <ScoutQualifiedTable rows={state.data.candidates} onInvestigate={onInvestigate} onActors={(ticker) => onActors(ticker, filters.brokerSessions)} />}
-            <ScoutNearMissSection rows={state.data.nearMisses} onInvestigate={onInvestigate} onActors={(ticker) => onActors(ticker, filters.brokerSessions)} />
+              : <ScoutQualifiedTable rows={state.data.candidates} onInvestigate={onInvestigate} onActors={handoffActors} />}
+            <ScoutNearMissSection rows={state.data.nearMisses} onInvestigate={onInvestigate} onActors={handoffActors} />
             <div className="scout-disclosures">{state.data.disclosures.map((item) => <p key={item}>{item}</p>)}</div>
           </>}
         </div>

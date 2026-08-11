@@ -47,10 +47,19 @@ export function AnalysisProvider({ children }) {
     return nextTicker ? `/workbench?ticker=${encodeURIComponent(nextTicker)}` : null;
   };
 
-  const brokerFlowUrl = (value = ticker) => {
+  const brokerFlowUrl = (value = ticker, rangeOverride = null) => {
     const nextTicker = validTicker(value);
     if (!nextTicker) return null;
-    const params = new URLSearchParams(brokerRange);
+    const params = new URLSearchParams();
+    if (rangeOverride && typeof rangeOverride === 'object') {
+      for (const [key, raw] of Object.entries(rangeOverride)) {
+        if (raw != null && raw !== '') params.set(key, String(raw));
+      }
+    } else {
+      for (const [key, raw] of new URLSearchParams(brokerRange)) {
+        params.set(key, raw);
+      }
+    }
     params.set('lens', 'stock');
     params.set('ticker', nextTicker);
     return `/broker-intelligence?${params.toString()}`;
@@ -79,8 +88,8 @@ export function AnalysisProvider({ children }) {
     return true;
   };
 
-  const openBrokerFlowTab = (value = ticker) => {
-    const url = brokerFlowUrl(value);
+  const openBrokerFlowTab = (value = ticker, rangeOverride = null) => {
+    const url = brokerFlowUrl(value, rangeOverride);
     if (!url) return false;
     window.open(url, '_blank', 'noopener,noreferrer');
     return true;
