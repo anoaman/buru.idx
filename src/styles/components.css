@@ -2099,7 +2099,7 @@
 .radar-lanes button { border: 1px solid var(--border-default); background: transparent; color: var(--text-secondary); padding: 6px 10px; border-radius: var(--radius-sm); font-size: var(--type-caption); letter-spacing: 0; text-transform: none; cursor: pointer; }
 .radar-lanes button:hover { color: var(--text-secondary); border-color: var(--border-strong); }
 .radar-lanes button.is-active { border-color: var(--color-accent); color: var(--color-accent); }
-.radar-row__risk { color: var(--color-warning); line-height: 1.45; }
+.radar-row__risk { display: block; color: var(--color-warning); line-height: 1.45; }
 .is-degraded { color: var(--color-warning); }
 .radar-row__actions, .case-card__actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .radar-row__actions button, .case-card__actions button { border: 1px solid var(--border-default); background: transparent; color: var(--text-secondary); padding: 7px 9px; border-radius: var(--radius-sm); cursor: pointer; }
@@ -2738,18 +2738,40 @@
 
 .radar-cell-ticker,
 .radar-cell-levels,
-.radar-cell-metric {
+.radar-cell-metric,
+.radar-cell-why {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
 }
-.radar-cell-ticker strong { font-family: var(--font-heading); font-size: 13px; color: var(--text-primary); }
+.radar-cell-ticker strong {
+  display: block;
+  font-family: var(--font-heading);
+  font-size: var(--type-emphasis);
+  color: var(--text-primary);
+  line-height: 1.2;
+}
 .radar-cell-ticker span,
 .radar-cell-levels span,
-.radar-cell-metric span { color: var(--text-tertiary); font-size: var(--type-meta); line-height: 1.35; }
-.radar-cell-levels { text-align: right; }
-.radar-cell-metric { text-align: right; }
-.radar-cell-metric strong { color: var(--text-primary); }
+.radar-cell-metric span {
+  display: block;
+  color: var(--text-tertiary);
+  font-size: var(--type-meta);
+  line-height: 1.4;
+  white-space: normal;
+}
+.radar-cell-why strong {
+  display: block;
+  font-size: var(--type-caption);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text-primary);
+}
+.radar-cell-levels { text-align: right; align-items: flex-end; }
+.radar-cell-metric { text-align: right; align-items: flex-end; }
+.radar-cell-metric strong { display: block; color: var(--text-primary); font-size: var(--type-cell); }
 
 .ui-table td .badge { font-size: var(--type-floor); }
 

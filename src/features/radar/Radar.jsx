@@ -112,8 +112,10 @@ function ShortlistRow({ row, onInvestigate, onActors }) {
         {row.dataQuality !== 'high' && <span className="is-degraded">{row.dataQuality} data quality</span>}
       </td>
       <td>
-        <strong>{primaryReason || 'Qualified structure'}</strong>
-        {primaryRisk ? <span className="radar-row__risk">Against: {primaryRisk}</span> : null}
+        <div className="radar-cell-why">
+          <strong>{primaryReason || 'Qualified structure'}</strong>
+          {primaryRisk ? <span className="radar-row__risk">Against: {primaryRisk}</span> : null}
+        </div>
       </td>
       <td className="tabular">
         <div className="radar-cell-levels">
