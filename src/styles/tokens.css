@@ -1,21 +1,23 @@
 :root {
   color-scheme: light;
 
-  /* Paper Ledger — light-first workstation surfaces */
+  /* Paper Ledger — light default workstation surfaces */
   --bg-base: #f3f1eb;
   --bg-elevated: #fffefa;
   --bg-surface: #f8f7f2;
   --bg-hover: #eeece5;
   --bg-active: #e6e3d9;
   --bg-chart: #0c0f12;
+  --bg-sunken: #eceae3;
+  --bg-sticky: #f8f7f2;
 
   --border-subtle: rgba(31, 38, 43, 0.08);
   --border-default: rgba(31, 38, 43, 0.14);
   --border-strong: rgba(31, 38, 43, 0.24);
 
   --text-primary: #1f262b;
-  --text-secondary: #596168;
-  --text-tertiary: #7b8287;
+  --text-secondary: #4f575d;
+  --text-tertiary: #656d73;
   --text-disabled: #a7aaa7;
 
   --color-positive: #18784a;
@@ -39,7 +41,7 @@
 
   --font-ui: 'Zen Kaku Gothic New', system-ui, -apple-system, sans-serif;
   --font-heading: 'Zen Kaku Gothic Antique', var(--font-ui);
-  --font-mono: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  --font-mono: ui-monospace, 'SF Mono-Regular', Menlo, monospace;
   --font-tabular: var(--font-ui);
 
   --space-1: 4px;
@@ -62,8 +64,20 @@
   --density-normal: 36px;
   --density-loose: 44px;
   --panel-shadow: none;
+
+  --type-floor: 10.5px;
+  --motion-fast: 120ms;
+  --motion-base: 180ms;
+  --motion-slow: 280ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Legacy aliases used by a few BI rules — map to semantic tokens */
+  --accent: var(--color-accent);
+  --warning: var(--color-warning);
 }
 
+/* Graphite Ledger — redesigned dark theme (opt-in via data-theme / nalar-theme) */
 :root[data-theme='dark'] {
   color-scheme: dark;
   --bg-base: #0c0e10;
@@ -72,12 +86,14 @@
   --bg-hover: #1f2429;
   --bg-active: #272d33;
   --bg-chart: #08090b;
-  --border-subtle: rgba(228, 231, 234, 0.07);
-  --border-default: rgba(228, 231, 234, 0.12);
-  --border-strong: rgba(228, 231, 234, 0.20);
+  --bg-sunken: #08090b;
+  --bg-sticky: #191e23;
+  --border-subtle: #191e23;
+  --border-default: #232830;
+  --border-strong: #2f3641;
   --text-primary: #e4e7ea;
   --text-secondary: #c3c9ce;
-  --text-tertiary: #8f979e;
+  --text-tertiary: #98a0a8;
   --text-disabled: #565d64;
   --color-positive: #3fae6f;
   --color-positive-dim: rgba(63, 174, 111, 0.10);
@@ -92,4 +108,12 @@
   --color-accent-on: #0c0e10;
   --color-accent-dim: rgba(168, 201, 58, 0.10);
   --color-neutral-bar: #7f8a96;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0.01ms;
+    --motion-base: 0.01ms;
+    --motion-slow: 0.01ms;
+  }
 }

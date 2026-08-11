@@ -17,7 +17,20 @@ html, body, #root {
   -moz-osx-font-smoothing: grayscale;
 }
 
-body { transition: background-color .18s ease, color .18s ease; }
+body {
+  transition: background-color var(--motion-base) var(--ease-in-out),
+    color var(--motion-base) var(--ease-in-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body { transition: none; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-heading);
@@ -40,6 +53,11 @@ input[type='date'] { color-scheme: light; }
 /* Tabular numerals for market data */
 .tabular {
   font-variant-numeric: tabular-nums;
+  font-family: var(--font-tabular);
+}
+
+.ui-type-floor {
+  font-size: max(1em, var(--type-floor));
 }
 
 /* Scrollbars */
