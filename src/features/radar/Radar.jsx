@@ -29,6 +29,39 @@ const BROKER_PRESET_SESSIONS = Object.freeze({
   '1m': 22,
 });
 
+function scoutCoherenceErrors(filters) {
+  const errors = [];
+  const brokerSessions = BROKER_PRESET_SESSIONS[filters.brokerPreset];
+  if (filters.useBroker && filters.useSupport && Number.isFinite(brokerSessions)
+    && brokerSessions > filters.supportSessions) {
+    errors.push(`Broker behavior (${brokerSessions} sessions) cannot exceed support structure (${filters.supportSessions}).`);
+  }
+  if (filters.useSideways && filters.useSupport
+    && filters.consolidationSessions > filters.supportSessions) {
+    errors.push(`Compression behavior (${filters.consolidationSessions} sessions) cannot exceed support structure (${filters.supportSessions}).`);
+  }
+  if (filters.recipe === 'quiet_accumulation' && filters.useBroker && filters.brokerPreset === 'latest') {
+    errors.push('Quiet accumulation needs multiple broker sessions; one day cannot establish persistence.');
+  }
+  return errors;
+}
+
+function ScoutWindowLedger({ windows }) {
+  if (!windows) return null;
+  const support = windows.structural;
+  const broker = windows.behavioral?.broker;
+  const compression = windows.behavioral?.compression;
+  return (
+    <div className="scout-window-ledger" aria-label="Screener window ledger">
+      <strong>Window ledger</strong>
+      {broker && <span>Broker behavior: {broker.sessions} sessions ({formatDate(broker.from)}–{formatDate(broker.to)})</span>}
+      {support && <span>{support.metric === 'established_support' ? 'Established' : 'Recent'} support: {support.sessions} sessions</span>}
+      {compression && <span>Compression: {compression.sessions} sessions</span>}
+      <span>As of {formatDate(windows.asOf)}</span>
+    </div>
+  );
+}
+
 function scoutRequestPayload(filters) {
   const payload = { ...filters };
   if (filters.brokerPreset === 'custom') {
@@ -472,6 +505,7 @@ function Scout({ onInvestigate, onActors }) {
     setFilters((current) => ({ ...current, [key]: value }));
   };
   const recipe = RECIPES.find((item) => item.id === filters.recipe);
+  const coherenceErrors = scoutCoherenceErrors(filters);
   const selectRecipe = (event) => {
     const recipeId = event.target.value;
     setFilters((current) => ({ ...current, recipe: recipeId, ...RECIPE_CONDITIONS[recipeId] }));
@@ -506,7 +540,7 @@ function Scout({ onInvestigate, onActors }) {
               {filters.brokerPreset === 'custom' && <div className="scout-condition__dates"><label>From<input type="date" disabled={!filters.useBroker} value={filters.brokerFrom} onChange={(event) => setFilters((current) => ({ ...current, brokerFrom: event.target.value }))} /></label><label>To<input type="date" disabled={!filters.useBroker} value={filters.brokerTo} onChange={(event) => setFilters((current) => ({ ...current, brokerTo: event.target.value }))} /></label></div>}
             </div>
             <div className={!filters.useSupport ? 'scout-condition is-disabled' : 'scout-condition'}>
-              <label className="scout-toggle"><input type="checkbox" checked={filters.useSupport} onChange={update('useSupport')} /><span><strong>Repeated support</strong><small>Price remains near a tested support zone.</small></span></label>
+              <label className="scout-toggle"><input type="checkbox" checked={filters.useSupport} onChange={update('useSupport')} /><span><strong>{filters.supportSessions < 40 ? 'Recent support' : 'Established support'}</strong><small>{filters.supportSessions < 40 ? 'A short-window level; useful, but not established structure.' : 'Price remains near a longer, repeatedly tested structure.'}</small></span></label>
               <label className="scout-condition__value">Trading days<input type="number" min="5" max="120" disabled={!filters.useSupport} value={filters.supportSessions} onChange={update('supportSessions')} /></label>
             </div>
             <div className={!filters.useSideways ? 'scout-condition is-disabled' : 'scout-condition'}>
@@ -526,11 +560,17 @@ function Scout({ onInvestigate, onActors }) {
               <label className="scout-condition__value">Rp net buy<input type="text" inputMode="numeric" disabled={!filters.useLeadBrokerValue} value={numericText(filters.minLeadBrokerValue)} onChange={update('minLeadBrokerValue')} /></label>
             </div>
           </fieldset>
+          {coherenceErrors.length > 0 && (
+            <div className="scout-coherence" role="alert">
+              <strong>These windows describe different periods:</strong>
+              {coherenceErrors.map((error) => <span key={error}>{error}</span>)}
+            </div>
+          )}
           <div className="scout-controls__footer">
             <span>No AI · end-of-day data · deterministic ranking</span>
             <div className="scout-controls__actions">
               <label>Return<select value={filters.limit} onChange={update('limit')}><option value="10">10 stocks</option><option value="25">25 stocks</option><option value="50">50 stocks</option><option value="100">100 stocks</option></select></label>
-              <button type="submit" className="ui-btn ui-btn--primary" disabled={state.loading}>{state.loading ? 'Screening…' : 'Run Screener'}</button>
+              <button type="submit" className="ui-btn ui-btn--primary" disabled={state.loading || coherenceErrors.length > 0}>{state.loading ? 'Screening…' : 'Run Screener'}</button>
             </div>
           </div>
         </form>
@@ -541,6 +581,7 @@ function Scout({ onInvestigate, onActors }) {
           {!state.data && !state.loading && !state.error && <EmptyState title={recipe ? `${recipe.label} is ready` : 'Custom Screener is ready'} message="Choose a recipe or enable conditions, then press Run Screener to find matching stocks." />}
           {state.data && <>
             <div className="radar-run"><strong>{state.data.recipe.label}</strong><span>Prices through {formatDate(state.data.asOf.priceDate)}</span><span>Broker flow {formatDate(state.data.asOf.brokerFrom)}–{formatDate(state.data.asOf.brokerTo)} · {state.data.asOf.brokerSessions} trading days</span><span>{state.data.coverage.matched} matched</span><span>Showing {state.data.coverage.returned}</span></div>
+            <ScoutWindowLedger windows={state.data.windows} />
             {state.data.candidates.length === 0
               ? <EmptyState title="No stocks passed this recipe" message="That is a valid screen result. Widen the price or liquidity boundary only if it matches your intended trade universe." />
               : <ScoutQualifiedTable rows={state.data.candidates} run={state.data} onInvestigate={onInvestigate} onActors={handoffActors} />}

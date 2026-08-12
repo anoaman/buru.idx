@@ -47,6 +47,22 @@ function avgCostLabel(value) {
   return Number.isFinite(value) ? formatPrice(value) : null;
 }
 
+function interpretationTiers(window = {}) {
+  const observed = window.populatedSessions || 0;
+  const expected = window.tradingSessions || 0;
+  const completeness = expected > 0 ? observed / expected : 0;
+  return {
+    observed,
+    completeness,
+    hasGaps: (window.gapSessions || 0) + (window.missingSessions || 0) > 0,
+    persistence: observed >= 10 && completeness >= 0.8 ? 'full' : observed >= 5 && completeness >= 0.8 ? 'early' : 'suppressed',
+    cost: observed >= 10 && completeness >= 0.9 ? 'full' : 'suppressed',
+    curve: observed >= 10 && completeness >= 0.9 ? 'full' : observed >= 5 ? 'early' : 'suppressed',
+    preferredShare: observed >= 5 && completeness >= 0.8 ? 'full' : 'suppressed',
+    rotation: observed >= 14 && completeness >= 0.8 ? 'full' : 'suppressed',
+  };
+}
+
 // Phase 6: the two default accumulation/distribution panel lists are merged, on the
 // frontend only, into one signed net ranking table (no backend/calculation changes).
 function SideBadge({ side }) {
@@ -57,10 +73,11 @@ function SideBadge({ side }) {
   );
 }
 
-function MergedRankRow({ side, row, lens, selected, onSelect }) {
+function MergedRankRow({ side, row, lens, selected, onSelect, tiers }) {
   const primary = lens === 'stock' ? row.code : row.ticker;
   const secondary = lens === 'stock' ? (row.sourceType || '—') : row.name;
-  const avgCost = avgCostLabel(row.estimatedAverageCost);
+  const costAllowed = lens === 'stock' ? tiers?.cost === 'full' : row.observedSessions >= 10;
+  const avgCost = costAllowed ? avgCostLabel(row.estimatedAverageCost) : null;
   const netValue = row.netValue;
   const netLots = row.netLots;
 
@@ -103,7 +120,7 @@ function MergedRankRow({ side, row, lens, selected, onSelect }) {
 // Default order: positive net buyers descending, then a quiet group-label row,
 // then negative net sellers by absolute net value descending. An empty side
 // renders a quiet fallback row instead of breaking the table.
-function MergedRankGroup({ side, rows, lens, selectedKey, onSelect, emptyLabel }) {
+function MergedRankGroup({ side, rows, lens, selectedKey, onSelect, emptyLabel, tiers, windowFrom }) {
   const [expanded, setExpanded] = useState(false);
   if (!rows.length) {
     return (
@@ -133,6 +150,7 @@ function MergedRankGroup({ side, rows, lens, selectedKey, onSelect, emptyLabel }
             lens={lens}
             selected={isSelected}
             onSelect={() => onSelect(selectionKey)}
+            tiers={tiers}
           />
         );
       })}
@@ -158,7 +176,7 @@ function MergedRankGroup({ side, rows, lens, selectedKey, onSelect, emptyLabel }
   );
 }
 
-function SelectedDetail({ lens, row }) {
+function SelectedDetail({ lens, row, tiers, windowFrom }) {
   if (!row) {
     return (
       <div className="bi-detail bi-detail--empty text-tertiary">
@@ -179,10 +197,8 @@ function SelectedDetail({ lens, row }) {
             </span>
           </div>
           <div>
-            <span className="text-tertiary">Est. inventory</span>
-            <span className={`tabular ${row.estimatedInventoryLots > 0 ? 'text-positive' : row.estimatedInventoryLots < 0 ? 'text-negative' : ''}`}>
-              {signedLots(row.estimatedInventoryLots)}
-            </span>
+            <span className="text-tertiary">Window inventory since {formatDate(windowFrom)}</span>
+            <span className="tabular">{tiers?.curve === 'suppressed' ? 'Needs 5 observed sessions' : signedLots(row.estimatedInventoryLots)}</span>
           </div>
           <div>
             <span className="text-tertiary">Frequency</span>
@@ -214,10 +230,8 @@ function SelectedDetail({ lens, row }) {
           <span className="tabular">{formatNumber(row.observedSessions)}</span>
         </div>
         <div>
-          <span className="text-tertiary">Est. inventory</span>
-          <span className={`tabular ${row.estimatedInventoryLots > 0 ? 'text-positive' : row.estimatedInventoryLots < 0 ? 'text-negative' : ''}`}>
-            {signedLots(row.estimatedInventoryLots)}
-          </span>
+          <span className="text-tertiary">Window inventory since {formatDate(windowFrom)}</span>
+          <span className="tabular">{tiers?.curve === 'suppressed' ? 'Needs 5 observed sessions' : signedLots(row.estimatedInventoryLots)}</span>
         </div>
       </div>
       <Link
@@ -441,6 +455,7 @@ const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
   const stockData = lens === 'stock' && data?.ticker ? data : null;
   const brokerData = lens === 'broker' && data?.broker?.code ? data : null;
   const viewData = stockData || brokerData;
+  const stockTiers = stockData ? interpretationTiers(stockData.window) : null;
 
   const accumulation = viewData?.accumulation || [];
   const distribution = viewData?.distribution || [];
@@ -485,6 +500,11 @@ const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
       lens === 'stock' ? row.code === identity : row.ticker === identity
     )) || null;
   }, [buyers, sellers, resolvedSelectedKey, lens]);
+  const selectedTiers = lens === 'stock'
+    ? stockTiers
+    : {
+        curve: (selectedRow?.observedSessions || 0) >= 10 ? 'full' : (selectedRow?.observedSessions || 0) >= 5 ? 'early' : 'suppressed',
+      };
 
   const identityLabel = selectedRow
     ? (lens === 'stock' ? selectedRow.code : selectedRow.ticker)
@@ -613,7 +633,14 @@ const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
                 )}
               </div>
               <div className="bi-summary__metrics">
-                {(stockData.preferredBroker.observedCodes || []).length > 0 && stockData.preferredBroker.share > 0 && (
+                {stockTiers.persistence !== 'full' && (
+                  <div className="bi-summary__primary">
+                    <span className="text-tertiary">Interpretation</span>
+                    <strong>{stockTiers.persistence === 'early' ? 'Early read' : 'Raw totals only'}</strong>
+                    <small className="text-tertiary">{stockTiers.observed} observed sessions · {Math.round(stockTiers.completeness * 100)}% complete</small>
+                  </div>
+                )}
+                {stockTiers.preferredShare === 'full' && (stockData.preferredBroker.observedCodes || []).length > 0 && stockData.preferredBroker.share > 0 && (
                   <div className="bi-summary__primary">
                     <span className="text-tertiary">Preferred-broker share</span>
                     <strong className="tabular">{`${(stockData.preferredBroker.share * 100).toFixed(1)}%`}</strong>
@@ -622,7 +649,7 @@ const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
                 )}
 
               </div>
-              {stockData.rotationHandoff && (
+              {stockTiers.rotation === 'full' && stockData.rotationHandoff && (
                 <div className="bi-rotation" role="status">
                   <strong>Broker handoff detected</strong>
                   <span>{stockData.rotationHandoff.outgoingBroker} → {stockData.rotationHandoff.incomingBroker}</span>
@@ -658,7 +685,7 @@ const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
                     {signedValue(brokerData.summary.netValue)}
                   </span>
                 </div>
-                {brokerData.fingerprint && (
+                {brokerData.fingerprint && brokerData.window.tradingSessions >= 20 && brokerData.summary.observedStocks >= 5 && (
                   <div className="bi-summary__primary">
                     <span className="text-tertiary">Behavioral fingerprint</span>
                     <strong>{brokerData.fingerprint.style} · {String(brokerData.fingerprint.bias).replaceAll('_', ' ')}</strong>
@@ -694,7 +721,7 @@ const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
                         <th scope="col">Side</th>
                         <th scope="col" className="tabular">Net value</th>
                         <th scope="col" className="tabular">Net lots</th>
-                        <th scope="col" className="tabular">Avg price</th>
+                        <th scope="col" className="tabular">Window cost since {formatDate(viewData.window.from)}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -705,6 +732,8 @@ const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
                         selectedKey={resolvedSelectedKey}
                         onSelect={setSelectedKey}
                         emptyLabel="No buyers observed"
+                        tiers={stockTiers}
+                        windowFrom={viewData.window.from}
                       />
                       <MergedRankGroup
                         side="sell"
@@ -713,6 +742,8 @@ const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
                         selectedKey={resolvedSelectedKey}
                         onSelect={setSelectedKey}
                         emptyLabel="No sellers observed"
+                        tiers={stockTiers}
+                        windowFrom={viewData.window.from}
                       />
                     </tbody>
                   </table>
@@ -720,13 +751,15 @@ const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
               </section>
 
               <div className="bi-inspect">
-                <InventoryCurve
-                  points={selectedRow?.curve || []}
-                  identityLabel={identityLabel}
-                />
+                {selectedTiers.curve === 'suppressed'
+                  ? <div className="bi-detail bi-detail--empty text-tertiary">Inventory curve needs at least 5 observed sessions.</div>
+                  : <InventoryCurve points={selectedRow?.curve || []} identityLabel={identityLabel} />}
+                {selectedTiers.curve === 'early' && <p className="text-tertiary">Early read · window-relative curve, not holdings.</p>}
                 <SelectedDetail
                   lens={lens}
                   row={selectedRow ? { ...selectedRow, _days: days } : null}
+                  tiers={selectedTiers}
+                  windowFrom={viewData.window.from}
                 />
               </div>
             </div>

@@ -476,6 +476,7 @@ export function guardRadarScout(raw) {
   const recipe = data.recipe && typeof data.recipe === 'object' ? data.recipe : {};
   const asOf = data.asOf && typeof data.asOf === 'object' ? data.asOf : {};
   const coverage = data.coverage && typeof data.coverage === 'object' ? data.coverage : {};
+  const windows = data.windows && typeof data.windows === 'object' ? data.windows : {};
   return {
     ok: true,
     error: null,
@@ -491,6 +492,12 @@ export function guardRadarScout(raw) {
         brokerFrom: asOf.brokerFrom || null,
         brokerTo: asOf.brokerTo || null,
         brokerSessions: Number.isFinite(asOf.brokerSessions) ? asOf.brokerSessions : 0,
+      },
+      windows: {
+        asOf: windows.asOf || null,
+        structural: windows.structural && typeof windows.structural === 'object' ? windows.structural : null,
+        behavioral: windows.behavioral && typeof windows.behavioral === 'object' ? windows.behavioral : {},
+        rules: normalizeStringList(windows.rules, 6),
       },
       coverage: {
         evaluated: Number.isFinite(coverage.evaluated) ? coverage.evaluated : 0,
