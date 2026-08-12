@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router';
 import { useAnalysisContext } from './AnalysisContext.jsx';
+import { privateWritesEnabled } from '../lib/api/client.js';
 
 const NAV = [
   { path: '/radar', label: 'Screener', mark: 'SC' },
   { path: '/workbench', label: 'Stock Analysis', mark: 'SA' },
   { path: '/broker-intelligence', label: 'Broker Flow', mark: 'BF' },
+  ...(privateWritesEnabled ? [{ path: '/cases', label: 'Watchlist', mark: 'WL' }] : []),
 ];
 
 function CommandBar() {

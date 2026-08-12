@@ -1868,6 +1868,71 @@
 }
 
 /* Responsive private companion */
+
+.wb-case-action {
+  display: flex;
+  justify-content: flex-end;
+  margin: -4px 0 8px;
+}
+
+.case-capture {
+  width: min(760px, 100%);
+  margin: 0 0 12px;
+  padding: 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+}
+
+.case-capture__header,
+.case-capture__success,
+.case-capture__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.case-capture__header h3 { margin: 0; font-size: 14px; }
+.case-capture__header p { margin: 3px 0 0; color: var(--text-tertiary); font-size: 11px; }
+.case-capture__summary { display: flex; gap: 14px; margin: 0; }
+.case-capture__summary div { display: grid; gap: 2px; }
+.case-capture__summary dt { color: var(--text-tertiary); font-size: 10px; text-transform: uppercase; }
+.case-capture__summary dd { margin: 0; font-variant-numeric: tabular-nums; }
+
+.case-capture__form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+  margin-top: 14px;
+}
+
+.case-capture__form label { display: grid; gap: 5px; color: var(--text-secondary); font-size: 11px; }
+.case-capture__form input,
+.case-capture__form textarea {
+  width: 100%;
+  padding: 8px 9px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  color: var(--text-primary);
+  font: inherit;
+}
+.case-capture__wide,
+.case-capture__actions,
+.case-capture__error { grid-column: 1 / -1; }
+.case-capture__actions { justify-content: flex-start; }
+.case-capture__error { margin: 0; color: var(--color-negative); }
+.case-capture__success { margin-top: 12px; }
+
+@media (max-width: 640px) {
+  .case-capture__header { align-items: flex-start; flex-direction: column; }
+  .case-capture__summary { flex-wrap: wrap; }
+  .case-capture__form { grid-template-columns: 1fr; }
+  .case-capture__wide,
+  .case-capture__actions,
+  .case-capture__error { grid-column: 1; }
+}
 @media (max-width: 768px) {
   .app-shell__sidebar {
     position: fixed;

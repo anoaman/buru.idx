@@ -140,7 +140,7 @@ describe('Cases', () => {
     getCases.mockResolvedValue({ success: true, data: { items: [] } });
     renderCases();
     expect(await screen.findByText('Your watchlist is empty')).toBeInTheDocument();
-    expect(screen.getByText(/Watchlist management will appear here when the workflow is enabled/i)).toBeInTheDocument();
+    expect(screen.getByText(/Save a qualified setup from Screener or Stock Analysis/i)).toBeInTheDocument();
   });
 
   it('reports a failed read and retries on demand', async () => {

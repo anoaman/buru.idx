@@ -5,6 +5,7 @@ import { AnalysisProvider } from '../../components/AnalysisContext.jsx';
 import Radar from './Radar.jsx';
 
 vi.mock('../../lib/api/client.js', () => ({
+  privateWritesEnabled: false,
   getOpportunities: vi.fn(),
   getRadarScout: vi.fn(),
 }));

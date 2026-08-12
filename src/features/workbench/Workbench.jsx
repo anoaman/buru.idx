@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { analyzeTicker } from '../../lib/api/client.js';
+import { analyzeTicker, privateWritesEnabled } from '../../lib/api/client.js';
 import { guardAnalyze } from '../../lib/api/contracts.js';
 import {
   formatIDR, formatNumber, formatPrice, formatPct, formatVolume,
@@ -17,6 +17,7 @@ import EvidenceDebate from './EvidenceDebate.jsx';
 import RiskSimulator from './RiskSimulator.jsx';
 import DetailDrawer from './DetailDrawer.jsx';
 import LevelsPanel from './LevelsPanel.jsx';
+import CaseCapturePanel from '../cases/CaseCapturePanel.jsx';
 
 function TickerHeader({ ticker, priceHistory }) {
   if (!ticker) return null;
@@ -139,6 +140,7 @@ export default function Workbench() {
   const [analyzing, setAnalyzing] = useState('');
   const [error, setError] = useState(null);
   const [failedTicker, setFailedTicker] = useState('');
+  const [capturingCase, setCapturingCase] = useState(false);
   const requestRef = useRef(0);
 
   const fetchAnalysis = useCallback((raw) => {
@@ -166,6 +168,7 @@ export default function Workbench() {
         return;
       }
       setDisplayed({ ticker, data: result.data });
+      setCapturingCase(false);
       setLoading(false);
       setAnalyzing('');
       setError(null);
@@ -257,6 +260,56 @@ export default function Workbench() {
           )}
           <div className="wb-result" data-displayed-ticker={displayed.ticker}>
             <TickerHeader ticker={displayed.data.ticker} priceHistory={displayed.data.priceHistory} />
+            {privateWritesEnabled && (
+              <div className="wb-case-action">
+                <button
+                  type="button"
+                  className="ui-btn ui-btn--ghost"
+                  aria-expanded={capturingCase}
+                  onClick={() => setCapturingCase((value) => !value)}
+                >
+                  {capturingCase ? 'Cancel save' : 'Save setup'}
+                </button>
+              </div>
+            )}
+            {capturingCase && (
+              <CaseCapturePanel
+                ticker={displayed.ticker}
+                source="Stock Analysis"
+                snapshot={{
+                  dataAsOf: displayed.data.chart?.source?.lastDate || null,
+                  capitalTier: displayed.data.capitalTier || null,
+                  tradingProfile: displayed.data.ticker?.tier || null,
+                  isFca: displayed.data.ticker?.isFca === true,
+                  board: displayed.data.ticker?.board || null,
+                  score: Number.isFinite(displayed.data.grade?.score)
+                    ? displayed.data.grade.score * 100
+                    : null,
+                  dataQuality: displayed.data.dataQuality,
+                  reasons: (displayed.data.debate?.bull || []).map(
+                    (item) => item?.reason || item?.factor || String(item),
+                  ),
+                  risks: (displayed.data.debate?.bear || []).map(
+                    (item) => item?.reason || item?.factor || String(item),
+                  ),
+                  contradictions: displayed.data.investigation?.contradictions || [],
+                  levels: displayed.data.riskGeometry || {},
+                  brokerSummary: displayed.data.broker || {},
+                  structureState: displayed.data.grade || {},
+                }}
+                defaults={{
+                  confirmation: displayed.data.riskGeometry?.confirmationEntry
+                    ? `Daily close above ${displayed.data.riskGeometry.confirmationEntry}`
+                    : 'Wait for a confirmed daily close above the setup level',
+                  triggerPrice: displayed.data.riskGeometry?.confirmationEntry ?? null,
+                  invalidationPrice: displayed.data.riskGeometry?.invalidation
+                    ?? displayed.data.riskGeometry?.stop
+                    ?? displayed.data.supportResistance?.support,
+                  targetPrice: displayed.data.riskGeometry?.target ?? null,
+                }}
+                onCancel={() => setCapturingCase(false)}
+              />
+            )}
             <div className="wb-chart-panel">
               <MarketChart
                 chart={displayed.data.chart}

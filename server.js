@@ -12,6 +12,16 @@ const ROOT = fileURLToPath(new URL('./dist/', import.meta.url));
 const HOST = process.env.STOCK_ANALYSIS_HOST || '127.0.0.1';
 const PORT = Number(process.env.STOCK_ANALYSIS_PORT || 8792);
 const API_ORIGIN = new URL(process.env.STOCK_ANALYSIS_API_ORIGIN || 'http://127.0.0.1:8787');
+const PRIVATE_WRITES = process.env.STOCK_ANALYSIS_PRIVATE_WRITES === 'true';
+const PRIVATE_WORKFLOW_ROUTES = new Set(['/api/watchlist', '/api/trade-plans', '/api/journal']);
+
+export function resolveProxyRequest(method, rawUrl, privateWrites = PRIVATE_WRITES) {
+  const requestUrl = new URL(rawUrl || '/', 'http://private.local');
+  if (privateWrites && PRIVATE_WORKFLOW_ROUTES.has(requestUrl.pathname)) {
+    return { ok: true, path: `${requestUrl.pathname}${requestUrl.search}`, privateWorkflow: true };
+  }
+  return { ...resolvePublicApiRequest(method, rawUrl || '/'), privateWorkflow: false };
+}
 
 const contentTypes = {
   '.css': 'text/css; charset=utf-8',
@@ -45,18 +55,28 @@ function proxyApi(req, res) {
     });
   }
 
-  const decision = resolvePublicApiRequest(req.method, req.url || '/');
+  const decision = resolveProxyRequest(req.method, req.url || '/');
+  const privateWorkflow = decision.privateWorkflow;
   if (!decision.ok) {
     return sendJson(res, decision.status, { success: false, error: decision.error });
+  }
+  const contentLength = Number(req.headers['content-length'] || 0);
+  if (privateWorkflow && contentLength > 1024 * 1024) {
+    return sendJson(res, 413, { success: false, error: 'Request body exceeds 1 MB.' });
   }
 
   const upstream = httpRequest({
     protocol: API_ORIGIN.protocol,
     hostname: API_ORIGIN.hostname,
     port: API_ORIGIN.port,
-    method: 'GET',
+    method: privateWorkflow ? req.method : 'GET',
     path: decision.path,
-    headers: { accept: 'application/json' },
+    headers: {
+      accept: 'application/json',
+      ...(privateWorkflow && req.headers['content-type']
+        ? { 'content-type': req.headers['content-type'] }
+        : {}),
+    },
   }, (upstreamRes) => {
     const status = upstreamRes.statusCode || 502;
     // A 5xx body from the private API may contain internal authentication or
@@ -89,8 +109,12 @@ function proxyApi(req, res) {
     console.error(`[proxy] ${decision.path}: ${error.message}`);
     sendJson(res, 502, { success: false, error: 'Analysis service is temporarily unavailable.' });
   });
-  // Nothing from the client body is forwarded; only allowlisted GETs get here.
-  upstream.end();
+  if (privateWorkflow && ['POST', 'PATCH'].includes(req.method || '')) {
+    req.pipe(upstream);
+  } else {
+    // Public requests never forward a client body.
+    upstream.end();
+  }
 }
 
 export function resolveStaticPath(urlPath) {

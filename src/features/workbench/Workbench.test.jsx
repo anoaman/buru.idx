@@ -27,6 +27,7 @@ function SetTicker({ ticker }) {
 
 // Mock the API client
 vi.mock('../../lib/api/client.js', () => ({
+  privateWritesEnabled: false,
   analyzeTicker: vi.fn(),
   simulateRisk: vi.fn(),
   getStockBrokerIntelligence: vi.fn(),

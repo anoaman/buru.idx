@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { getOpportunities, getRadarScout } from '../../lib/api/client.js';
+import { getOpportunities, getRadarScout, privateWritesEnabled } from '../../lib/api/client.js';
 import { guardOpportunities, guardRadarScout } from '../../lib/api/contracts.js';
 import { formatDate, formatIDR, formatPct, formatPrice, formatRatio, formatRelativeDays } from '../../lib/format/market.js';
 import EmptyState from '../../components/EmptyState.jsx';
 import ErrorState from '../../components/ErrorState.jsx';
 import Skeleton from '../../components/Skeleton.jsx';
 import { useAnalysisContext } from '../../components/AnalysisContext.jsx';
+import CaseCapturePanel from '../cases/CaseCapturePanel.jsx';
 
 const ALL_LANES = 'all';
 const RECIPES = [
@@ -91,10 +92,31 @@ function ScanProvenance({ run, candidateCount }) {
 }
 
 // Dense table, not card-bands: rank, ticker+lane, score, why/against, levels, actions.
-function ShortlistRow({ row, onInvestigate, onActors }) {
+function shortlistSnapshot(row, run) {
+  return {
+    dataAsOf: run?.dataAsOf || row.freshness?.priceDate || null,
+    configVersion: run?.configVersion || null,
+    sourceRunId: run?.id ?? null,
+    capitalTier: row.lane || null,
+    tradingProfile: row.tradingProfile || null,
+    isFca: row.isFca === true,
+    scenario: row.scenario || null,
+    score: row.score,
+    dataQuality: row.dataQuality,
+    reasons: row.reasons,
+    risks: row.risks,
+    levels: row.levels,
+    freshness: row.freshness,
+    scoreBreakdown: row.scoreBreakdown || {},
+  };
+}
+
+function ShortlistRow({ row, run, onInvestigate, onActors }) {
+  const [capturing, setCapturing] = useState(false);
   const primaryReason = row.reasons[0];
   const primaryRisk = row.risks[0];
   return (
+    <>
     <tr className="ui-row">
       <td className="tabular text-tertiary">{formatRank(row.rank)}</td>
       <td>
@@ -132,13 +154,32 @@ function ShortlistRow({ row, onInvestigate, onActors }) {
           <button type="button" className="ui-btn ui-btn--ghost" aria-label={`Open ${row.ticker} broker flow`} onClick={onActors}>
             Broker Flow
           </button>
+          {privateWritesEnabled && <button type="button" className="ui-btn ui-btn--ghost" aria-expanded={capturing} onClick={() => setCapturing((value) => !value)}>Save</button>}
         </div>
       </td>
     </tr>
+    {capturing && (
+      <tr className="ui-row-detail"><td colSpan="6">
+        <CaseCapturePanel
+          ticker={row.ticker}
+          source={`Market Shortlist scan #${run?.id ?? '—'}`}
+          snapshot={shortlistSnapshot(row, run)}
+          defaults={{
+            setupType: row.scenario || 'qualified shortlist setup',
+            confirmation: row.levels?.trigger ? `Daily close above ${row.levels.trigger}` : '',
+            triggerPrice: row.levels?.trigger,
+            invalidationPrice: row.levels?.invalidation,
+            targetPrice: row.levels?.target,
+          }}
+          onCancel={() => setCapturing(false)}
+        />
+      </td></tr>
+    )}
+    </>
   );
 }
 
-function ShortlistTable({ rows, onInvestigate, onActors }) {
+function ShortlistTable({ rows, run, onInvestigate, onActors }) {
   return (
     <div className="ui-table-wrap">
       <table className="ui-table ui-table--shortlist" aria-label="Shortlisted candidates">
@@ -157,6 +198,7 @@ function ShortlistTable({ rows, onInvestigate, onActors }) {
             <ShortlistRow
               key={row.ticker}
               row={row}
+              run={run}
               onInvestigate={() => onInvestigate(row.ticker)}
               onActors={() => onActors(row.ticker)}
             />
@@ -211,8 +253,9 @@ function ScoutDetail({ row }) {
 
 const QUALIFIED_COLUMNS = 10;
 
-function QualifiedRow({ row, onInvestigate, onActors }) {
+function QualifiedRow({ row, run, onInvestigate, onActors }) {
   const [expanded, setExpanded] = useState(false);
+  const [capturing, setCapturing] = useState(false);
   return (
     <>
       <tr className="ui-row">
@@ -254,6 +297,7 @@ function QualifiedRow({ row, onInvestigate, onActors }) {
           <div className="radar-row__actions">
             <button type="button" className="ui-btn ui-btn--ghost" aria-label={`Open ${row.ticker} analysis`} onClick={onInvestigate}>Open Analysis</button>
             <button type="button" className="ui-btn ui-btn--ghost" aria-label={`Open ${row.ticker} broker flow`} onClick={onActors}>Broker Flow</button>
+            {privateWritesEnabled && <button type="button" className="ui-btn ui-btn--ghost" aria-expanded={capturing} onClick={() => setCapturing((value) => !value)}>Save</button>}
             <button
               type="button"
               className="ui-btn ui-btn--ghost"
@@ -271,11 +315,40 @@ function QualifiedRow({ row, onInvestigate, onActors }) {
           <td colSpan={QUALIFIED_COLUMNS}><ScoutDetail row={row} /></td>
         </tr>
       )}
+      {capturing && (
+        <tr className="ui-row-detail"><td colSpan={QUALIFIED_COLUMNS}>
+          <CaseCapturePanel
+            ticker={row.ticker}
+            source={`Custom Screener · ${run?.recipe?.label || 'recipe'}`}
+            snapshot={{
+              dataAsOf: run?.asOf?.priceDate || null,
+              scenario: run?.recipe?.id || null,
+              score: row.score,
+              reasons: row.reasons,
+              risks: row.risks,
+              board: row.board,
+              levels: { support: row.price?.support },
+              windowLedger: {
+                broker: run?.asOf?.brokerSessions || null,
+                support: run?.filters?.supportSessions || null,
+                compression: run?.filters?.consolidationSessions || null,
+              },
+              brokerSummary: row.broker,
+            }}
+            defaults={{
+              setupType: run?.recipe?.label || 'custom screener setup',
+              confirmation: 'Wait for daily price confirmation above the current range',
+              invalidationPrice: row.price?.support,
+            }}
+            onCancel={() => setCapturing(false)}
+          />
+        </td></tr>
+      )}
     </>
   );
 }
 
-function ScoutQualifiedTable({ rows, onInvestigate, onActors }) {
+function ScoutQualifiedTable({ rows, run, onInvestigate, onActors }) {
   return (
     <div className="ui-table-wrap">
       <table className="ui-table ui-table--scout" aria-label="Scout candidates">
@@ -298,6 +371,7 @@ function ScoutQualifiedTable({ rows, onInvestigate, onActors }) {
             <QualifiedRow
               key={row.ticker}
               row={row}
+              run={run}
               onInvestigate={() => onInvestigate(row.ticker)}
               onActors={() => onActors(row.ticker)}
             />
@@ -469,7 +543,7 @@ function Scout({ onInvestigate, onActors }) {
             <div className="radar-run"><strong>{state.data.recipe.label}</strong><span>Prices through {formatDate(state.data.asOf.priceDate)}</span><span>Broker flow {formatDate(state.data.asOf.brokerFrom)}–{formatDate(state.data.asOf.brokerTo)} · {state.data.asOf.brokerSessions} trading days</span><span>{state.data.coverage.matched} matched</span><span>Showing {state.data.coverage.returned}</span></div>
             {state.data.candidates.length === 0
               ? <EmptyState title="No stocks passed this recipe" message="That is a valid screen result. Widen the price or liquidity boundary only if it matches your intended trade universe." />
-              : <ScoutQualifiedTable rows={state.data.candidates} onInvestigate={onInvestigate} onActors={handoffActors} />}
+              : <ScoutQualifiedTable rows={state.data.candidates} run={state.data} onInvestigate={onInvestigate} onActors={handoffActors} />}
             <ScoutNearMissSection rows={state.data.nearMisses} onInvestigate={onInvestigate} onActors={handoffActors} />
             <div className="scout-disclosures">{state.data.disclosures.map((item) => <p key={item}>{item}</p>)}</div>
           </>}
@@ -590,6 +664,7 @@ export default function Radar() {
           {visible.length > 0 && (
             <ShortlistTable
               rows={visible}
+              run={state.data.run}
               onInvestigate={openInvestigationTab}
               onActors={openBrokerFlowTab}
             />

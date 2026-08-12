@@ -1,6 +1,7 @@
 const API_BASE = (import.meta.env.VITE_API_BASE || '').replace(/\/+$/, '');
 const CACHE_MAX_ENTRIES = 64;
 const CACHE_TTL_MS = 45_000;
+export const privateWritesEnabled = import.meta.env.VITE_PRIVATE_WRITES === 'true';
 
 const cache = new Map();
 const inFlight = new Map();
@@ -130,6 +131,17 @@ export function getRadarScout(options = {}) {
 
 export function getCases() {
   return request('/api/watchlist');
+}
+
+export function saveCase(payload) {
+  if (!privateWritesEnabled) {
+    return Promise.resolve({ success: false, error: 'Case capture is available only on the private workstation.' });
+  }
+  return request('/api/watchlist', {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
 }
 
 export function getBrokerArchiveHealth() {

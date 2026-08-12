@@ -107,6 +107,12 @@ rewriting application code. The Worker reaches the loopback API only through a
 Tunnel hostname protected by a Cloudflare Access service token stored as Worker
 secrets; neither credential nor the origin hostname enters the browser bundle.
 
+Release 1 case writes are a private-surface capability. They require both the
+frontend build flag `VITE_PRIVATE_WRITES=true` and the Node boundary flag
+`STOCK_ANALYSIS_PRIVATE_WRITES=true`. The Cloudflare Worker remains read-only
+and never forwards workflow writes. The private Node boundary forwards only the
+exact watchlist, trade-plan and journal paths; the raw API remains unexposed.
+
 ## Platform baseline
 
 - Broker Intelligence defaults to one completed trading session. Named ranges

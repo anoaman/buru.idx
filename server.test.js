@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { resolveStaticPath } from './server.js';
+import { resolveProxyRequest, resolveStaticPath } from './server.js';
 
 // The static handler is the only place in the process that decodes attacker-
 // supplied text. decodeURIComponent throws on malformed percent-encoding, and an
@@ -22,5 +22,19 @@ describe('static path resolution', () => {
   it('falls back to the SPA entry for unknown in-app routes', () => {
     expect(resolveStaticPath('/radar')).toMatch(/index\.html$/);
     expect(resolveStaticPath('/')).toMatch(/index\.html$/);
+  });
+});
+
+describe('private workflow boundary', () => {
+  it('keeps workflow writes closed by default', () => {
+    expect(resolveProxyRequest('POST', '/api/watchlist', false)).toMatchObject({ ok: false, status: 405 });
+  });
+
+  it('opens only exact workflow paths when the private flag is enabled', () => {
+    expect(resolveProxyRequest('POST', '/api/watchlist', true)).toEqual({
+      ok: true, path: '/api/watchlist', privateWorkflow: true,
+    });
+    expect(resolveProxyRequest('POST', '/api/watchlist/export', true)).toMatchObject({ ok: false });
+    expect(resolveProxyRequest('POST', '/api/analyze', true)).toMatchObject({ ok: false });
   });
 });
