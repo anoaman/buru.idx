@@ -107,6 +107,22 @@ function EvidenceSummary({ grade, stance, scorecard, dataQuality }) {
   );
 }
 
+function MarketContextStrip({ macro }) {
+  const regime = macro?.regime;
+  const strength = macro?.relativeStrength;
+  if (!regime && !strength) return null;
+  const excess20 = strength?.periods?.[20]?.excessReturnPct;
+  const excess60 = strength?.periods?.[60]?.excessReturnPct;
+  return (
+    <section className="wb-market-context" aria-label="Market and relative strength context">
+      <div><span>IHSG regime</span><strong>{String(regime?.state || 'unknown').replace('_', ' ')}</strong><small>as of {regime?.asOf || '—'}</small></div>
+      <div><span>Relative strength vs IHSG</span><strong>{Number.isFinite(excess20) ? `${excess20 >= 0 ? '+' : ''}${excess20.toFixed(1)}% · 20 sessions` : 'Unavailable'}</strong><small>{Number.isFinite(excess60) ? `${excess60 >= 0 ? '+' : ''}${excess60.toFixed(1)}% over 60 sessions` : '60-session history unavailable'}</small></div>
+      <div><span>RS line</span><strong>{strength?.lineState || 'unavailable'}</strong><small>{strength?.matchedSessions || 0} matched sessions</small></div>
+      <div><span>Sector comparison</span><strong>{strength?.sector?.available ? 'Available' : 'Not claimed'}</strong><small>{strength?.sector?.available ? strength.sector.symbol : 'Awaiting verified issuer mapping'}</small></div>
+    </section>
+  );
+}
+
 function CompactGrade({ grade, stance }) {
   return (
     <div className="wb-evidence-summary" aria-label="Score summary">
@@ -270,6 +286,7 @@ export default function Workbench() {
           )}
           <div className="wb-result" data-displayed-ticker={displayed.ticker}>
             <TickerHeader ticker={displayed.data.ticker} priceHistory={displayed.data.priceHistory} />
+            <MarketContextStrip macro={displayed.data.macro} />
             {privateWritesEnabled && (
               <div className="wb-case-action">
                 <button
