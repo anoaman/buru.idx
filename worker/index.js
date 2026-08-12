@@ -50,6 +50,24 @@ function json(status, error) {
   });
 }
 
+const SECURITY_HEADERS = {
+  'content-security-policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests",
+  'cross-origin-opener-policy': 'same-origin',
+  'permissions-policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
+  'referrer-policy': 'strict-origin-when-cross-origin',
+  'strict-transport-security': 'max-age=31536000; includeSubDomains',
+  'x-content-type-options': 'nosniff',
+  'x-frame-options': 'DENY',
+};
+
+function secure(response) {
+  const secured = new Response(response.body, response);
+  for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
+    secured.headers.set(name, value);
+  }
+  return secured;
+}
+
 function originRequest(request, env, url) {
   const origin = new URL(env.API_ORIGIN);
   origin.pathname = url.pathname;
@@ -103,6 +121,6 @@ export default {
       });
     }
 
-    return env.ASSETS.fetch(request);
+    return secure(await env.ASSETS.fetch(request));
   },
 };
