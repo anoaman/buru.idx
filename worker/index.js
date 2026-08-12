@@ -1,13 +1,47 @@
 const ALLOWED_API_PATHS = new Set([
   '/api/analyze',
   '/api/broker-intelligence/broker',
-  '/api/broker-intelligence/health',
   '/api/broker-intelligence/stock',
   '/api/opportunities',
   '/api/radar/scout',
   '/api/risk-simulation',
-  '/api/watchlist',
 ]);
+
+const PRIVATE_KEYS = new Set([
+  'archive',
+  'earliestAvailableDate',
+  'fetchedAt',
+  'materializedAt',
+  'priceSource',
+  'serving',
+  'servingAvailable',
+  'servingEarliest',
+  'servingLatest',
+  'servingReason',
+  'servingRows',
+  'servingStatus',
+  'sourceLatestDate',
+  'sourceThroughDate',
+  'sources',
+]);
+
+function publicText(value) {
+  return value
+    .replace(/stockbit(?:[- ][a-z0-9]+)?/gi, 'market data')
+    .replace(/\barchive\b/gi, 'dataset')
+    .replace(/\bserving layer\b/gi, 'data service')
+    .replace(/\bmaterialized\b/gi, 'updated');
+}
+
+function sanitize(value) {
+  if (typeof value === 'string') return publicText(value);
+  if (Array.isArray(value)) return value.map(sanitize);
+  if (!value || typeof value !== 'object') return value;
+  return Object.fromEntries(Object.entries(value)
+    .filter(([key]) => !PRIVATE_KEYS.has(key))
+    .filter(([key]) => key !== 'name' || !('lastDate' in value))
+    .map(([key, item]) => [key, sanitize(item)]));
+}
 
 function json(status, error) {
   return Response.json({ success: false, error }, {
@@ -43,9 +77,9 @@ export default {
 
     if (url.pathname === '/readyz') {
       const response = await fetch(originRequest(request, env, new URL('/readyz', url)));
-      return new Response(response.body, {
+      return Response.json({ status: response.ok ? 'ready' : 'unavailable' }, {
         status: response.status,
-        headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
+        headers: { 'cache-control': 'no-store' },
       });
     }
 
@@ -55,10 +89,14 @@ export default {
       }
       if (!ALLOWED_API_PATHS.has(url.pathname)) return json(404, 'Not found.');
       const response = await fetch(originRequest(request, env, url));
-      return new Response(response.body, {
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        return json(response.ok ? 502 : response.status, 'Analysis service returned an invalid response.');
+      }
+      const payload = sanitize(await response.json());
+      return Response.json(payload, {
         status: response.status,
         headers: {
-          'content-type': response.headers.get('content-type') || 'application/json',
           'cache-control': 'no-store',
           'x-content-type-options': 'nosniff',
         },

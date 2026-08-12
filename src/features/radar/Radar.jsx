@@ -453,7 +453,7 @@ function Scout({ onInvestigate, onActors }) {
             </div>
           </fieldset>
           <div className="scout-controls__footer">
-            <span>No AI · cached EOD data · deterministic ranking</span>
+            <span>No AI · end-of-day data · deterministic ranking</span>
             <div className="scout-controls__actions">
               <label>Return<select value={filters.limit} onChange={update('limit')}><option value="10">10 stocks</option><option value="25">25 stocks</option><option value="50">50 stocks</option><option value="100">100 stocks</option></select></label>
               <button type="submit" className="ui-btn ui-btn--primary" disabled={state.loading}>{state.loading ? 'Screening…' : 'Run Screener'}</button>

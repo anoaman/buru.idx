@@ -525,20 +525,6 @@ describe('BrokerIntelligence', () => {
     expect(await screen.findByText(/Calendar degraded/i)).toBeInTheDocument();
   });
 
-  it('shows partial latest archive state', async () => {
-    getBrokerArchiveHealth.mockResolvedValue({
-      ...HEALTH_OK,
-      data: {
-        ...HEALTH_OK.data,
-        latestDate: { date: '2026-07-22', accounted: 820, expected: 900, complete: false },
-      },
-    });
-    renderAt('/broker-intelligence?lens=stock&ticker=BBCA&days=30');
-    await screen.findByText('Bank Central Asia');
-    expect((await screen.findAllByText(/Partial/i)).length).toBeGreaterThan(0);
-    expect(screen.getByText(/820\/900/)).toBeInTheDocument();
-  });
-
   it('shows empty rankings state', async () => {
     getStockBrokerIntelligence.mockResolvedValue({
       ...STOCK_OK,
@@ -561,61 +547,6 @@ describe('BrokerIntelligence', () => {
     getStockBrokerIntelligence.mockResolvedValue(STOCK_OK);
     fireEvent.click(screen.getByRole('button', { name: /Retry/i }));
     expect(await screen.findByText('Bank Central Asia')).toBeInTheDocument();
-  });
-
-  it('keeps lens data when health fails', async () => {
-    getBrokerArchiveHealth.mockResolvedValue({ success: false, error: 'health offline' });
-    renderAt('/broker-intelligence?lens=stock&ticker=BBCA&days=30');
-    expect(await screen.findByText('Bank Central Asia')).toBeInTheDocument();
-    expect(screen.getByText(/Archive health unavailable/i)).toBeInTheDocument();
-    expect(screen.getByText(/health offline/i)).toBeInTheDocument();
-    expect(screen.getAllByText('YP').length).toBeGreaterThan(0);
-  });
-
-  it('invalidates the client cache before retrying archive health', async () => {
-    getBrokerArchiveHealth
-      .mockResolvedValueOnce({ success: false, error: 'health offline' })
-      .mockResolvedValueOnce(HEALTH_OK);
-    renderAt('/broker-intelligence?lens=stock&ticker=BBCA&days=30');
-    expect(await screen.findByText(/Archive health unavailable/i)).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: /Retry/i }));
-    await waitFor(() => {
-      expect(invalidateBrokerCache).toHaveBeenCalledTimes(1);
-      expect(getBrokerArchiveHealth).toHaveBeenCalledTimes(2);
-    });
-  });
-
-  it('renders unavailable archive state with reason instead of zero stats', async () => {
-    getBrokerArchiveHealth.mockResolvedValue({
-      success: true,
-      data: {
-        available: false,
-        reason: 'database_missing',
-        canonicalTickers: 0,
-        earliestAvailableDate: null,
-        latestAvailableDate: null,
-        latestCompletedDate: null,
-        verifiedTradingDates: 0,
-        populatedStockDays: 0,
-        gapStockDays: 0,
-        accountedStockDays: 0,
-        expectedStockDays: 0,
-        coverage: null,
-        latestDate: null,
-      },
-      meta: {
-        calendarCoverage: { status: 'degraded', reason: 'calendar_missing' },
-        disclosures: DISCLOSURES,
-      },
-    });
-    renderAt('/broker-intelligence?lens=stock&ticker=BBCA&days=30');
-    expect(await screen.findByText('Bank Central Asia')).toBeInTheDocument();
-    expect(screen.getByText(/Archive unavailable/i)).toBeInTheDocument();
-    expect(screen.getByText(/database_missing/i)).toBeInTheDocument();
-    expect(screen.queryByText(/Full-universe complete/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/0\/0 stock-days/i)).not.toBeInTheDocument();
-    expect(screen.getAllByText('YP').length).toBeGreaterThan(0);
   });
 
   it('ignores stale responses from older requests', async () => {
@@ -657,30 +588,6 @@ describe('BrokerIntelligence', () => {
     await screen.findByText('Bank Central Asia');
     expect(screen.queryByText(/Serving layer/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/materialized/i)).not.toBeInTheDocument();
-  });
-
-  it('shows last failure in serving layer health strip', async () => {
-    getBrokerArchiveHealth.mockResolvedValue({
-      ...HEALTH_OK,
-      data: {
-        ...HEALTH_OK.data,
-        serving: {
-          ...HEALTH_OK.data.serving,
-          servingAvailable: true,
-          servingStatus: 'stale',
-          lastFailure: {
-            startedAt: '2026-07-22T16:10:00Z',
-            finishedAt: '2026-07-22T16:10:05Z',
-            error: 'No completed broker archive date available',
-            mode: 'incremental',
-          },
-        },
-      },
-    });
-    renderAt('/broker-intelligence?lens=stock&ticker=BBCA&days=30');
-    await screen.findByText('Bank Central Asia');
-    expect(await screen.findByText(/Last failure/i)).toBeInTheDocument();
-    expect(screen.getByText(/No completed broker archive date available/i)).toBeInTheDocument();
   });
 
   it('avoids forbidden holdings/portfolio language', async () => {

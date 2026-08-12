@@ -7,7 +7,7 @@ const inFlight = new Map();
 
 function publicErrorMessage(message) {
   const text = String(message || '').trim();
-  if (/401 unauthorized|token|grab-token|set-token|stockbit/i.test(text)) {
+  if (/401 unauthorized|token|grab-token|set-token/i.test(text)) {
     return 'Delayed analysis is temporarily unavailable while the data cache refreshes.';
   }
   return text || 'Request failed';

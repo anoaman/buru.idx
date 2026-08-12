@@ -52,7 +52,7 @@ export default function BrokerEvidence({ broker }) {
   // there has never been a `tradingSessionCount` field on the view model.
   const sessions = window ? window.tradingSessions : null;
   const customIncomplete = preset === 'custom' && (!custom.from || !custom.to);
-  const methodNote = useMemo(() => window?.complete === false ? 'Selected range has incomplete archive coverage.' : null, [window]);
+  const methodNote = useMemo(() => window?.complete === false ? 'Selected range has incomplete data coverage.' : null, [window]);
   if (!symbol && (!broker || !broker.available)) return <div className="wb-broker"><h3 className="wb-section__title text-tertiary">Broker flow</h3><div className="text-tertiary">{broker?.note || 'No broker data available.'}</div></div>;
 
   return <div className="wb-broker">

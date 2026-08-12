@@ -1,15 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import {
-  getBrokerArchiveHealth,
   getStockBrokerIntelligence,
   getBrokerStockIntelligence,
-  invalidateBrokerCache,
   prefetchStockBrokerIntelligence,
   prefetchBrokerStockIntelligence,
 } from '../../lib/api/client.js';
 import {
-  guardBrokerArchiveHealth,
   guardStockBrokerIntelligence,
   guardBrokerStockIntelligence,
 } from '../../lib/api/contracts.js';
@@ -48,144 +45,6 @@ function signedLots(value) {
 
 function avgCostLabel(value) {
   return Number.isFinite(value) ? formatPrice(value) : null;
-}
-
-function coveragePct(coverage) {
-  if (!Number.isFinite(coverage)) return '—';
-  return `${(coverage * 100).toFixed(1)}%`;
-}
-
-function ArchiveHealthStrip({ health, loading, error, onRetry }) {
-  if (loading) return null;
-
-  if (error || !health?.ok) {
-    return (
-      <div className="bi-health bi-health--error">
-        <span className="text-negative">Archive health unavailable</span>
-        <span className="text-secondary">{error || health?.error || 'Request failed'}</span>
-        {onRetry && (
-          <button type="button" className="bi-health__retry" onClick={onRetry}>
-            Retry
-          </button>
-        )}
-      </div>
-    );
-  }
-
-  const data = health.data;
-  if (data?.available === false) {
-    return (
-      <div className="bi-health bi-health--unavailable">
-        <span className="text-warning">Archive unavailable</span>
-        <span className="text-secondary">{data.reason || 'Archive not available'}</span>
-        {onRetry && (
-          <button type="button" className="bi-health__retry" onClick={onRetry}>
-            Retry
-          </button>
-        )}
-      </div>
-    );
-  }
-
-  const calendar = health.meta?.calendarCoverage;
-  const latest = data.latestDate;
-  const latestStatus = !latest
-    ? 'Unavailable'
-    : latest.complete
-      ? 'Complete'
-      : 'Partial';
-
-  const healthy = latest?.complete
-    && calendar?.status !== 'degraded'
-    && !data.completedCoverageStalled
-    && data.serving?.servingStatus !== 'stale'
-    && data.serving?.servingAvailable !== false
-    && !data.serving?.lastFailure;
-  if (healthy) return null;
-
-  return (
-    <details
-      className={`bi-health ${calendar?.status === 'degraded' ? 'bi-health--degraded' : ''} ${latest && !latest.complete ? 'bi-health--partial' : ''}`}
-    >
-      <summary>
-        <span>Archive</span>
-        <strong className={latest?.complete ? 'text-positive' : 'text-warning'}>{formatDate(latest?.date)} · {latestStatus}</strong>
-        <small>{coveragePct(data.coverage)} coverage</small>
-      </summary>
-      <div className="bi-health__details">
-      <div className="bi-health__item">
-        <span className="bi-health__label">Full-universe complete</span>
-        <span
-          className={`bi-health__value tabular ${data.completedCoverageStalled ? 'text-warning' : ''}`}
-          title={data.completedCoverageStalled
-            ? `${data.completedCoverageReason} Daily data continues past this date; see Latest available.`
-            : 'Every canonical ticker is accounted for on this date.'}
-        >
-          {data.latestCompletedDate || '—'}
-        </span>
-        {data.completedCoverageStalled && data.completedLagSessions > 0 && (
-          <span className="bi-health__note text-tertiary">
-            stalled · {data.completedLagSessions} trading days of partial data since
-          </span>
-        )}
-      </div>
-      <div className="bi-health__item">
-        <span className="bi-health__label">Earliest archive</span>
-        <span className="bi-health__value tabular">{data.earliestAvailableDate || '—'}</span>
-      </div>
-      <div className="bi-health__item">
-        <span className="bi-health__label">Coverage</span>
-        <span className="bi-health__value tabular">
-          {coveragePct(data.coverage)} · {formatNumber(data.accountedStockDays)}/{formatNumber(data.expectedStockDays)} stock-days
-        </span>
-      </div>
-      <div className="bi-health__item">
-        <span className="bi-health__label">Verified trading dates</span>
-        <span className="bi-health__value tabular">{formatNumber(data.verifiedTradingDates)}</span>
-      </div>
-      <div className="bi-health__item">
-        <span className="bi-health__label">Latest available</span>
-        <span className={`bi-health__value tabular ${latest && !latest.complete ? 'text-warning' : ''}`}>
-          {latest?.date || '—'} · {latestStatus}
-          {latest && Number.isFinite(latest.accounted) && Number.isFinite(latest.expected)
-            ? ` (${latest.accounted}/${latest.expected})`
-            : ''}
-        </span>
-      </div>
-      {calendar?.status === 'degraded' && (
-        <div className="bi-health__banner text-warning">
-          Calendar coverage degraded{calendar.reason ? `: ${calendar.reason}` : ''}
-          {calendar.uncoveredWeekdays?.length
-            ? ` · uncovered ${calendar.uncoveredWeekdays.join(', ')}`
-            : ''}
-        </div>
-      )}
-      {data.serving && (
-        <div className={`bi-health__serving ${data.serving.servingAvailable ? 'bi-health__serving--ready' : 'bi-health__serving--unavailable'}`}>
-          <span className="bi-health__label">Serving layer</span>
-          <span className={`bi-health__value ${data.serving.servingAvailable ? (data.serving.servingStatus === 'stale' ? 'text-warning' : 'text-positive') : 'text-secondary'}`}>
-            {data.serving.servingStatus}
-            {data.serving.servingAvailable && data.serving.servingRows > 0
-              ? ` · ${formatNumber(data.serving.servingRows)} rows`
-              : ''}
-            {data.serving.materializedAt
-              ? ` · materialized ${data.serving.materializedAt.slice(0, 10)}`
-              : ''}
-          </span>
-          {data.serving.servingReason && (
-            <span className="bi-health__value text-warning">{data.serving.servingReason}</span>
-          )}
-          {data.serving.lastFailure && (
-            <span className="bi-health__value text-negative">
-              Last failure: {data.serving.lastFailure.finishedAt?.slice(0, 10) || 'unknown'}
-              {data.serving.lastFailure.error ? ` · ${data.serving.lastFailure.error}` : ''}
-            </span>
-          )}
-        </div>
-      )}
-      </div>
-    </details>
-  );
 }
 
 // Phase 6: the two default accumulation/distribution panel lists are merged, on the
@@ -417,11 +276,6 @@ const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
   const [searchInput, setSearchInput] = useState(lens === 'broker' ? code : ticker);
   const [validationError, setValidationError] = useState(null);
 
-  const [healthState, setHealthState] = useState({
-    loading: true,
-    result: null,
-    error: null,
-  });
   const [lensState, setLensState] = useState({
     loading: true,
     refreshing: false,
@@ -429,7 +283,6 @@ const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
     error: null,
   });
   const [selectedKey, setSelectedKey] = useState(null);
-  const [healthRetry, setHealthRetry] = useState(0);
   const [lensRetry, setLensRetry] = useState(0);
   const requestRef = useRef(0);
 
@@ -437,26 +290,6 @@ const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
     setSearchInput(lens === 'broker' ? code : ticker);
     setValidationError(null);
   }, [lens, ticker, code]);
-
-  useEffect(() => {
-    let cancelled = false;
-    setHealthState((prev) => ({ ...prev, loading: true, error: null }));
-    getBrokerArchiveHealth()
-      .then((raw) => {
-        if (cancelled) return;
-        const result = guardBrokerArchiveHealth(raw);
-        if (!result.ok) {
-          setHealthState({ loading: false, result: null, error: result.error });
-          return;
-        }
-        setHealthState({ loading: false, result, error: null });
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        setHealthState({ loading: false, result: null, error: err.message || 'Network error' });
-      });
-    return () => { cancelled = true; };
-  }, [healthRetry]);
 
   useEffect(() => {
     const reqId = ++requestRef.current;
@@ -662,11 +495,6 @@ const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
     : /^[A-Z]{2}$/i.test(searchInput.trim());
 
   const retryLens = () => setLensRetry((n) => n + 1);
-  const retryHealth = () => {
-    invalidateBrokerCache();
-    setHealthRetry((n) => n + 1);
-  };
-
   return (
     <div className="bi-page">
       <header className="bi-intro">
@@ -674,13 +502,6 @@ const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
           <h2 className="bi-intro__title">Broker Flow</h2>
         </div>
       </header>
-
-      <ArchiveHealthStrip
-        health={healthState.result}
-        loading={healthState.loading}
-        error={healthState.error}
-        onRetry={retryHealth}
-      />
 
       <div className="bi-controls">
         <div className="bi-lens" role="group" aria-label="Lens">
