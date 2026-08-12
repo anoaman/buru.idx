@@ -1,10 +1,15 @@
-const ALLOWED_API_PATHS = new Set([
-  '/api/analyze',
-  '/api/broker-intelligence/broker',
-  '/api/broker-intelligence/stock',
-  '/api/opportunities',
-  '/api/radar/scout',
-  '/api/risk-simulation',
+const PUBLIC_ROUTES = new Map([
+  ['/api/analyze', { params: ['ticker'], force: { mode: 'delayed' } }],
+  ['/api/broker-intelligence/broker', { params: ['code', 'days', 'limit', 'date', 'preset', 'from', 'to'] }],
+  ['/api/broker-intelligence/stock', { params: ['ticker', 'days', 'date', 'preset', 'from', 'to'] }],
+  ['/api/opportunities', { params: [] }],
+  ['/api/radar/scout', { params: [
+    'recipe', 'brokerSessions', 'brokerPreset', 'brokerFrom', 'brokerTo',
+    'consolidationSessions', 'supportSessions', 'maxPrice', 'minAverageValue',
+    'minLeadBrokerValue', 'limit', 'useBroker', 'useSupport', 'useSideways',
+    'useMaxPrice', 'useLiquidity', 'useLeadBrokerValue',
+  ] }],
+  ['/api/risk-simulation', { params: ['entry', 'stop', 'target', 'capital', 'maxRiskPct'] }],
 ]);
 
 const PRIVATE_KEYS = new Set([
@@ -71,7 +76,14 @@ function secure(response) {
 function originRequest(request, env, url) {
   const origin = new URL(env.API_ORIGIN);
   origin.pathname = url.pathname;
-  origin.search = url.search;
+  const route = PUBLIC_ROUTES.get(url.pathname);
+  const query = new URLSearchParams();
+  for (const name of route?.params || []) {
+    const value = url.searchParams.get(name);
+    if (value != null && value !== '') query.set(name, value);
+  }
+  for (const [name, value] of Object.entries(route?.force || {})) query.set(name, value);
+  origin.search = query.toString();
   const headers = new Headers(request.headers);
   headers.set('accept', 'application/json');
   headers.set('cf-access-client-id', env.CF_ACCESS_CLIENT_ID);
@@ -105,7 +117,7 @@ export default {
       if (!['GET', 'HEAD'].includes(request.method)) {
         return json(405, 'This endpoint is read-only.');
       }
-      if (!ALLOWED_API_PATHS.has(url.pathname)) return json(404, 'Not found.');
+      if (!PUBLIC_ROUTES.has(url.pathname)) return json(404, 'Not found.');
       const response = await fetch(originRequest(request, env, url));
       const contentType = response.headers.get('content-type') || '';
       if (!contentType.includes('application/json')) {
