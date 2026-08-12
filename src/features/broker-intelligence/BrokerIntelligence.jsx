@@ -17,7 +17,6 @@ import { formatDate, formatIDR, formatNumber, formatPrice } from '../../lib/form
 import EmptyState from '../../components/EmptyState.jsx';
 import ErrorState from '../../components/ErrorState.jsx';
 import InventoryCurve from './InventoryCurve.jsx';
-import ActorMap from './ActorMap.jsx';
 
 const ALLOWED_DAYS = [1, 7, 14, 30, 60];
 const RANGE_PRESETS = [['latest', 'Latest'], ['previous', 'Previous'], ['7d', '7D'], ['14d', '14D'], ['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['1y', '1Y'], ['ytd', 'YTD'], ['custom', 'Custom']];
@@ -46,20 +45,6 @@ function signedLots(value) {
   return `${sign}${formatNumber(value)} lots`;
 }
 
-function consistencyLabel(consistency) {
-  if (!consistency) return null;
-  const side = consistency.dominantSide;
-  const ratio = consistency.consistencyRatio;
-  // Suppress empty / zero-value status noise ("buy · 100%" with no real side/value).
-  if (!side || side === 'mixed') {
-    if (!Number.isFinite(ratio) || ratio <= 0) return null;
-  }
-  if (!Number.isFinite(ratio) || ratio <= 0) {
-    return side || null;
-  }
-  if (!side) return null;
-  return `${side} · ${Math.round(ratio * 100)}%`;
-}
 
 function avgCostLabel(value) {
   return Number.isFinite(value) ? formatPrice(value) : null;
@@ -216,7 +201,6 @@ function SideBadge({ side }) {
 function MergedRankRow({ side, row, lens, selected, onSelect }) {
   const primary = lens === 'stock' ? row.code : row.ticker;
   const secondary = lens === 'stock' ? (row.sourceType || '—') : row.name;
-  const note = consistencyLabel(row.consistency);
   const avgCost = avgCostLabel(row.estimatedAverageCost);
   const netValue = row.netValue;
   const netLots = row.netLots;
@@ -245,7 +229,6 @@ function MergedRankRow({ side, row, lens, selected, onSelect }) {
       </td>
       <td>
         <SideBadge side={side} />
-        {note ? <span className="bi-merged__note text-tertiary"> · {note}</span> : null}
       </td>
       <td className={`tabular ${netValue > 0 ? 'text-positive' : netValue < 0 ? 'text-negative' : 'text-secondary'}`}>
         {signedValue(netValue)}
@@ -262,6 +245,7 @@ function MergedRankRow({ side, row, lens, selected, onSelect }) {
 // then negative net sellers by absolute net value descending. An empty side
 // renders a quiet fallback row instead of breaking the table.
 function MergedRankGroup({ side, rows, lens, selectedKey, onSelect, emptyLabel }) {
+  const [expanded, setExpanded] = useState(false);
   if (!rows.length) {
     return (
       <tr className="ui-group-row">
@@ -270,12 +254,15 @@ function MergedRankGroup({ side, rows, lens, selectedKey, onSelect, emptyLabel }
     );
   }
   const label = side === 'buy' ? 'Buyers' : 'Sellers';
+  const LIMIT = 10;
+  const visible = expanded ? rows : rows.slice(0, LIMIT);
+  const hiddenCount = rows.length - visible.length;
   return (
     <>
       <tr className="ui-group-row">
         <td colSpan={5}>{label} · {rows.length}</td>
       </tr>
-      {rows.map((row) => {
+      {visible.map((row) => {
         const key = lens === 'stock' ? row.code : row.ticker;
         const selectionKey = `${side}:${key}`;
         const isSelected = selectedKey === selectionKey;
@@ -290,6 +277,24 @@ function MergedRankGroup({ side, rows, lens, selectedKey, onSelect, emptyLabel }
           />
         );
       })}
+      {hiddenCount > 0 && (
+        <tr className="ui-group-row">
+          <td colSpan={5}>
+            <button type="button" className="bi-show-more" onClick={() => setExpanded(true)}>
+              Show {hiddenCount} more
+            </button>
+          </td>
+        </tr>
+      )}
+      {expanded && rows.length > LIMIT && (
+        <tr className="ui-group-row">
+          <td colSpan={5}>
+            <button type="button" className="bi-show-more" onClick={() => setExpanded(false)}>
+              Show less
+            </button>
+          </td>
+        </tr>
+      )}
     </>
   );
 }
@@ -794,12 +799,7 @@ const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
                     <small className="text-tertiary">{stockData.preferredBroker.observedCodes.join(', ')}</small>
                   </div>
                 )}
-                <div>
-                  <span className="text-tertiary">Observed net value</span>
-                  <span className={`tabular ${stockData.observedFlow.netValue > 0 ? 'text-positive' : stockData.observedFlow.netValue < 0 ? 'text-negative' : ''}`}>
-                    {signedValue(stockData.observedFlow.netValue)}
-                  </span>
-                </div>
+
               </div>
               {stockData.rotationHandoff && (
                 <div className="bi-rotation" role="status">
@@ -810,7 +810,6 @@ const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
                   </span>
                 </div>
               )}
-              <ActorMap data={stockData.actorMap} />
             </section>
           ) : (
             <section className="bi-summary" aria-label="Broker window summary">

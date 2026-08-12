@@ -84,13 +84,16 @@ function scoutResponse({ candidates = [], nearMisses = [], coverage } = {}) {
 }
 
 function renderRadar() {
-  return render(
+  const result = render(
     <MemoryRouter initialEntries={['/radar']}>
       <AnalysisProvider>
         <Radar />
       </AnalysisProvider>
     </MemoryRouter>,
   );
+  // Market Shortlist tests opt into the second tab; production defaults to Custom Screener.
+  fireEvent.click(screen.getByRole('tab', { name: 'Market Shortlist' }));
+  return result;
 }
 
 describe('Radar', () => {
@@ -237,6 +240,7 @@ describe('Radar', () => {
 
     renderRadar();
     fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
+    fireEvent.change(screen.getByLabelText('Screening recipe'), { target: { value: 'quiet_accumulation' } });
     expect(screen.getByText(/moderate, persistent buying/i)).toBeInTheDocument();
     expect(screen.getByLabelText('Rp')).toHaveValue('1,000');
     expect(screen.getByLabelText('Rp average')).toHaveValue('500,000,000');

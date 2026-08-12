@@ -253,6 +253,8 @@ describe('Workbench', () => {
     );
 
     expect(await screen.findByText('Price & volume')).toBeInTheDocument();
+    expect(screen.queryByText('MA5')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Show MA lines' }));
     expect(screen.getAllByText('MA5').length).toBeGreaterThan(0);
     expect(screen.getAllByText('MA200').length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'Full screen' })).toBeInTheDocument();
@@ -292,6 +294,8 @@ describe('Workbench', () => {
     );
 
     expect(await screen.findByText('Price & volume')).toBeInTheDocument();
+    expect(screen.queryByText('MA20')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Show MA lines' }));
     expect(screen.getAllByText('MA20').length).toBeGreaterThan(0);
   });
 

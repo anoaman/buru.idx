@@ -3051,3 +3051,20 @@
     max-height: none;
   }
 }
+
+.bi-show-more {
+  display: block;
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--type-caption);
+  text-align: center;
+}
+.bi-show-more:hover {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}

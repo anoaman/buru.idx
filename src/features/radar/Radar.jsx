@@ -14,10 +14,10 @@ const RECIPES = [
   { id: 'support_compression', label: 'Support compression', description: 'Looks for repeated one-month support while recent candles remain inside a controlled sideways range.' },
 ];
 const DEFAULT_SCOUT_FILTERS = Object.freeze({
-  recipe: 'quiet_accumulation', brokerSessions: 7, brokerPreset: '7d', brokerFrom: '', brokerTo: '', consolidationSessions: 10,
+  recipe: '', brokerSessions: 7, brokerPreset: '7d', brokerFrom: '', brokerTo: '', consolidationSessions: 10,
   supportSessions: 20, maxPrice: 1000, minAverageValue: 500_000_000, limit: 10,
   minLeadBrokerValue: 1_000_000_000, useLeadBrokerValue: false,
-  useBroker: true, useSupport: true, useSideways: true, useMaxPrice: true, useLiquidity: true,
+  useBroker: false, useSupport: false, useSideways: false, useMaxPrice: false, useLiquidity: false,
 });
 const BROKER_RANGES = [['latest', 'Latest'], ['previous', 'Previous'], ['7d', '7D'], ['14d', '14D'], ['1m', '1M'], ['custom', 'Custom (up to 60 days)']];
 const BROKER_PRESET_SESSIONS = Object.freeze({
@@ -397,7 +397,7 @@ function Scout({ onInvestigate, onActors }) {
         : Number(event.target.value);
     setFilters((current) => ({ ...current, [key]: value }));
   };
-  const recipe = RECIPES.find((item) => item.id === filters.recipe) || RECIPES[0];
+  const recipe = RECIPES.find((item) => item.id === filters.recipe);
   const selectRecipe = (event) => {
     const recipeId = event.target.value;
     setFilters((current) => ({ ...current, recipe: recipeId, ...RECIPE_CONDITIONS[recipeId] }));
@@ -421,8 +421,8 @@ function Scout({ onInvestigate, onActors }) {
       <div className="scout-layout">
         <form className="scout-controls scout-layout__conditions" onSubmit={run}>
           <div className="scout-controls__intro">
-            <label className="scout-controls__recipe">Screening recipe<select value={filters.recipe} onChange={selectRecipe}>{RECIPES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
-            <div className="scout-recipe-explanation"><strong>{recipe.label}</strong><p>{recipe.description}</p><span>Every enabled condition must pass.</span></div>
+            <label className="scout-controls__recipe">Screening recipe<select value={filters.recipe} onChange={selectRecipe}><option value="" disabled>Select a recipe</option>{RECIPES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+            {recipe && <div className="scout-recipe-explanation"><strong>{recipe.label}</strong><p>{recipe.description}</p><span>Every enabled condition must pass.</span></div>}
           </div>
           <fieldset className="scout-conditions">
             <legend>Conditions</legend>
@@ -464,7 +464,7 @@ function Scout({ onInvestigate, onActors }) {
         <div className="scout-results">
           {state.error && <ErrorState title="Custom Screener unavailable" error={state.error} onRetry={run} />}
           {!state.data && state.loading && <Skeleton label="Screening…" />}
-          {!state.data && !state.loading && !state.error && <EmptyState title={`${recipe.label} is ready`} message="Adjust the conditions on the left, then press Run Screener to find matching stocks." />}
+          {!state.data && !state.loading && !state.error && <EmptyState title={recipe ? `${recipe.label} is ready` : 'Custom Screener is ready'} message="Choose a recipe or enable conditions, then press Run Screener to find matching stocks." />}
           {state.data && <>
             <div className="radar-run"><strong>{state.data.recipe.label}</strong><span>Prices through {formatDate(state.data.asOf.priceDate)}</span><span>Broker flow {formatDate(state.data.asOf.brokerFrom)}–{formatDate(state.data.asOf.brokerTo)} · {state.data.asOf.brokerSessions} trading days</span><span>{state.data.coverage.matched} matched</span><span>Showing {state.data.coverage.returned}</span></div>
             {state.data.candidates.length === 0
@@ -483,7 +483,7 @@ export default function Radar() {
   const { openInvestigationTab, openBrokerFlowTab } = useAnalysisContext();
   const [state, setState] = useState({ loading: true, error: null, data: null });
   const [lane, setLane] = useState(ALL_LANES);
-  const [view, setView] = useState('scan');
+  const [view, setView] = useState('scout');
 
   const load = useCallback(() => {
     let cancelled = false;
@@ -519,8 +519,8 @@ export default function Radar() {
       </header>
 
       <div className="radar-view-tabs" role="tablist" aria-label="Screener views">
-        <button type="button" role="tab" aria-selected={view === 'scan'} className={view === 'scan' ? 'is-active' : ''} onClick={() => setView('scan')}>Market Shortlist</button>
         <button type="button" role="tab" aria-selected={view === 'scout'} className={view === 'scout' ? 'is-active' : ''} onClick={() => setView('scout')}>Custom Screener</button>
+        <button type="button" role="tab" aria-selected={view === 'scan'} className={view === 'scan' ? 'is-active' : ''} onClick={() => setView('scan')}>Market Shortlist</button>
       </div>
 
       {view === 'scout' && <Scout onInvestigate={openInvestigationTab} onActors={openBrokerFlowTab} />}

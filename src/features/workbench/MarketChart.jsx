@@ -43,7 +43,7 @@ export default function MarketChart({ chart, geometry, ticker }) {
   const sectionRef = useRef(null);
   const chartRef = useRef(null);
   const [fullscreen, setFullscreen] = useState(false);
-  const [showMovingAverages, setShowMovingAverages] = useState(true);
+  const [showMovingAverages, setShowMovingAverages] = useState(false);
   const [themeVersion, setThemeVersion] = useState(0);
 
   useEffect(() => {
