@@ -1609,7 +1609,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
   gap: var(--space-4);
-  align-items: start;
+  align-items: stretch;
 }
 
 .bi-rank {
@@ -1682,6 +1682,8 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  flex: 1 1 auto;
+  min-height: 280px;
 }
 
 .bi-curve--empty {
@@ -2122,7 +2124,7 @@
 .scout-conditions legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .scout-condition { display: grid; align-content: space-between; gap: 14px; min-height: 118px; padding: 14px; border-right: 1px solid var(--border-default); transition: opacity .15s, background .15s; }
 .scout-condition:last-child { border-right: 0; }
-.scout-condition.is-disabled { opacity: .72; background: var(--bg-base); color: var(--text-disabled); }
+.scout-condition.is-disabled { opacity: .5; background: var(--bg-base); color: var(--text-disabled); }
 .scout-condition__value { display: grid; gap: 5px; }
 .scout-condition__dates { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .scout-condition__dates label { display: grid; gap: 4px; }
@@ -2260,7 +2262,7 @@
 .scout-controls__intro { background: var(--bg-surface); }
 .scout-controls label { font-family: var(--font-ui); letter-spacing: 0; }
 .scout-condition { min-height: 110px; border-color: var(--border-subtle); }
-.scout-condition.is-disabled { background: var(--bg-surface); opacity: .72; }
+.scout-condition.is-disabled { background: var(--bg-surface); opacity: .5; }
 .scout-controls input:not([type='checkbox']),
 .scout-controls select,
 .bi-controls input,
@@ -2775,6 +2777,7 @@
 .scout-results {
   min-width: 0;
   max-width: 100%;
+  min-height: 240px;
 }
 .scout-results .ui-table-wrap {
   max-width: 100%;
@@ -2918,6 +2921,10 @@
   line-height: 1.4;
   white-space: normal;
 }
+/* Color-code the three level items so they don't read as one phrase. */
+.ui-table--shortlist .radar-cell-levels span:nth-child(1) { color: var(--color-positive); }
+.ui-table--shortlist .radar-cell-levels span:nth-child(2) { color: var(--color-warning); }
+.ui-table--shortlist .radar-cell-levels span:nth-child(3) { color: var(--text-secondary); font-weight: 600; }
 .radar-cell-why strong {
   display: block;
   font-size: var(--type-caption);
@@ -2974,7 +2981,7 @@
 /* Phase 6 — Broker Flow merged signed ranking table (display-only merge). */
 .bi-merged__scroll {
   min-width: 0;
-  max-height: 700px;
+  max-height: min(700px, calc(100vh - 350px));
   overflow-x: auto;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
