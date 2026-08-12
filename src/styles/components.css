@@ -603,7 +603,7 @@
   flex-direction: column;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-10) var(--space-5);
+  padding: var(--space-6) var(--space-5);
   text-align: center;
   max-width: 560px;
   margin-inline: auto;
@@ -1598,7 +1598,7 @@
 
 .bi-summary__metrics {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: var(--space-3);
 }
 
@@ -2103,10 +2103,10 @@
   .actor-map__metrics { grid-template-columns: 1fr; }
 }
 
-.module-heading { display: flex; align-items: end; justify-content: space-between; gap: var(--space-5); margin-bottom: var(--space-4); }
+.module-heading { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); margin-bottom: var(--space-4); }
 .module-heading span { color: var(--color-accent); font-size: var(--type-meta); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .module-heading h2 { margin: 3px 0 0; font-size: clamp(30px, 4vw, 48px); letter-spacing: -.045em; }
-.module-heading p { max-width: 480px; margin: 0; color: var(--text-secondary); text-align: right; }
+.module-heading p { max-width: 480px; margin: 0; color: var(--text-secondary); text-align: left; }
 .radar-view-tabs { display: flex; gap: 4px; margin-bottom: var(--space-4); border-bottom: 1px solid var(--border-default); }
 .radar-view-tabs button { border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--text-secondary); padding: 8px 12px; font-size: var(--type-caption); text-transform: none; letter-spacing: 0; cursor: pointer; font-weight: 600; }
 .radar-view-tabs button.is-active { color: var(--color-accent); border-bottom-color: var(--color-accent); }
@@ -2574,6 +2574,7 @@
 .ui-table--shortlist th:nth-child(5), .ui-table--shortlist td:nth-child(5) { width: 34%; padding-right: var(--space-6); }
 .ui-table--shortlist th:nth-child(6), .ui-table--shortlist td:nth-child(6) { width: 216px; padding-left: var(--space-6); }
 /* Headers follow their column's content alignment. */
+.ui-table--shortlist th:nth-child(3) { text-align: right; }
 .ui-table--shortlist th:nth-child(5) { text-align: left; }
 .ui-table--shortlist th:nth-child(6) { text-align: right; }
 .ui-table--shortlist .radar-cell-levels {
@@ -2800,6 +2801,10 @@
   min-width: 0;
   max-width: 100%;
   min-height: 240px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
 }
 .scout-results .ui-table-wrap {
   max-width: 100%;
