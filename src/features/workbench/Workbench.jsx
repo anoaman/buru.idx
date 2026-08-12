@@ -93,6 +93,16 @@ function EvidenceSummary({ grade, stance, scorecard, dataQuality }) {
           ))}
         </div>
       </details>
+      <details className="wb-method__details">
+        <summary>Platform thresholds & analytical boundaries</summary>
+        <div className="wb-method__lenses">
+          <div><strong>Screener windows</strong><span>Structure is longer than behavior</span><small>Broker and compression windows may not exceed their support window. All windows end on the displayed as-of date.</small></div>
+          <div><strong>Broker persistence</strong><span>Full: ≥10 observed sessions and ≥80% complete</span><small>Five to nine sessions is labeled early read. Below five, only raw totals are shown.</small></div>
+          <div><strong>Window cost</strong><span>Shown only at ≥10 sessions and ≥90% completeness</span><small>It starts at zero on the selected window's first date. It is not holdings or confirmed cost basis.</small></div>
+          <div><strong>Inventory curve</strong><span>Early curve: ≥5 sessions · full interpretation: ≥10</span><small>Gaps and the selected anchor can materially change the curve.</small></div>
+          <div><strong>Deliberate exclusions</strong><span>No indicator pile-up</span><small>No Ichimoku, Fibonacci suite, candlestick oracle, volume-profile approximation, or single bandar score without evidence that supports the claim.</small></div>
+        </div>
+      </details>
     </section>
   );
 }
