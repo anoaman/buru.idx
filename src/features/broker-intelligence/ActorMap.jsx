@@ -29,7 +29,7 @@ export default function ActorMap({ data }) {
         <div><span>Directional consistency</span><strong>{Number.isFinite(data.consistencyRatio) ? `${Math.round(data.consistencyRatio * 100)}%` : '—'}</strong></div>
       </div>
 
-      <div className="actor-map__replay" aria-label="Daily broker flow">
+      <div className={`actor-map__replay${replay.length === 1 ? ' actor-map__replay--single' : ''}`} aria-label="Daily broker flow">
         <div className="actor-map__replay-head">
           <strong>Daily broker flow</strong>
         </div>

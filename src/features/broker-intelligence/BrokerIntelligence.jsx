@@ -397,7 +397,13 @@ export default function BrokerIntelligence() {
     ? searchParams.get('date')
     : '';
   const presetParam = RANGE_PRESETS.some(([value]) => value === searchParams.get('preset')) ? searchParams.get('preset') : '';
-  const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
+  function formatWindow(from, to) {
+  if (!from || !to) return '';
+  if (from === to) return formatDate(from);
+  return `${formatDate(from)}–${formatDate(to)}`;
+}
+
+const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
   const from = /^\d{4}-\d{2}-\d{2}$/.test(searchParams.get('from') || '') ? searchParams.get('from') : '';
   const to = /^\d{4}-\d{2}-\d{2}$/.test(searchParams.get('to') || '') ? searchParams.get('to') : '';
   const ticker = (searchParams.get('ticker') || DEFAULT_TICKER).toUpperCase();
@@ -768,7 +774,7 @@ export default function BrokerIntelligence() {
                 <strong>{stockData.ticker}</strong>
                 <span className="text-secondary">{stockData.name}</span>
                 <span className="text-tertiary">
-                  {formatDate(stockData.window.from)}–{formatDate(stockData.window.to)}
+                  {formatWindow(stockData.window.from, stockData.window.to)}
                 </span>
                 {!stockData.window.complete && <span className="badge badge-warning">Broker data incomplete</span>}
                 {(stockData.window.gapSessions > 0 || stockData.window.missingSessions > 0) && (
@@ -814,7 +820,7 @@ export default function BrokerIntelligence() {
                   {(brokerData.broker.sourceTypes || []).join(' / ') || '—'}
                 </span>
                 <span className="text-tertiary">
-                  {formatDate(brokerData.window.from)}–{formatDate(brokerData.window.to)}
+                  {formatWindow(brokerData.window.from, brokerData.window.to)}
                 </span>
                 <span className="text-tertiary">
                   Observed stocks {formatNumber(brokerData.summary.observedStocks)}

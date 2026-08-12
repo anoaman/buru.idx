@@ -156,6 +156,7 @@ export default function Cases() {
         <EmptyState
           title="Your watchlist is empty"
           message="No saved setups yet. Watchlist management will appear here when the workflow is enabled."
+          action={<a className="ui-btn ui-btn--ghost" href="/radar">Browse setups in Screener</a>}
         />
       )}
 
