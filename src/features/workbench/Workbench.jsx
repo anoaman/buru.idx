@@ -51,7 +51,22 @@ function TickerHeader({ ticker, priceHistory }) {
         <div><span>RSI14 / ATR14</span><strong>{priceHistory?.rsi14?.toFixed(1) || '—'} / {formatPct(priceHistory?.atr14Pct)}</strong></div>
         <div><span>Returns 5 / 20 / 60</span><strong>{formatPct(priceHistory?.ret5d)} / {formatPct(priceHistory?.ret20d)} / {formatPct(priceHistory?.ret60d)}</strong></div>
       </div>
-      {(ticker.notations?.length > 0 || ticker.uma) && <div className="wb-overview-flags text-warning">{[...(ticker.notations || []), ...(ticker.uma ? ['UMA'] : [])].join(' · ')}</div>}
+      {(ticker.notations?.length > 0 || ticker.uma || ticker.suspension) && (
+        <div className="wb-overview-flags text-warning">
+          {[...(ticker.notations || []), ...(ticker.uma ? ['UMA'] : []), ...(ticker.suspension ? ['SUSPENDED'] : [])].join(' · ')}
+        </div>
+      )}
+      {(ticker.regulatoryNotices || []).length > 0 && (
+        <div className="wb-regulatory-notices" aria-label="Official IDX notices">
+          {(ticker.regulatoryNotices || []).map((notice) => (
+            <a key={notice.sourceRef} href={notice.sourceUrl} target="_blank" rel="noopener noreferrer">
+              <strong>{notice.noticeType.toUpperCase()}</strong>
+              <span>{notice.title}</span>
+              <small>{notice.noticeDate} · Official IDX source ↗</small>
+            </a>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
