@@ -100,6 +100,13 @@ and rate limiting remain as defense in depth. Radar and Cases may add private
 read/write routes only after their exact contracts are reviewed; they must not
 turn the proxy into a wildcard forwarder.
 
+Cloudflare production uses `worker/index.js` as the same-origin static asset and
+API boundary. The public hostname is deployment configuration, not product
+identity, so a later rename changes Cloudflare routes without moving data or
+rewriting application code. The Worker reaches the loopback API only through a
+Tunnel hostname protected by a Cloudflare Access service token stored as Worker
+secrets; neither credential nor the origin hostname enters the browser bundle.
+
 ## Analysis V2 baseline
 
 - Broker Intelligence defaults to one completed trading session. Named ranges
