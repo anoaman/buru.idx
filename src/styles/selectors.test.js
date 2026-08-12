@@ -86,7 +86,8 @@ describe('stylesheet selector groups', () => {
   it('keeps the known Graphite symptom selectors as comma groups', () => {
     const css = readFileSync(STYLESHEETS[0], 'utf8');
     expect(css).toMatch(/\.module-heading h2,\s*\n\.bi-intro__title,\s*\n\.wb-header__symbol\s*\{/);
-    expect(css).toMatch(/\.scout-layout__conditions \.scout-controls__intro,\s*\n\.scout-layout__conditions \.scout-conditions\s*\{/);
+    expect(css).toMatch(/\.scout-layout__conditions \.scout-controls__intro\s*\{[\s\S]*?grid-template-columns: minmax\(220px, \.7fr\) 1\.3fr;/);
+    expect(css).toMatch(/\.scout-layout__conditions \.scout-conditions\s*\{[\s\S]*?grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/);
     expect(css).toMatch(/\.radar-cell-ticker,\s*\n\.radar-cell-levels,\s*\n\.radar-cell-metric,\s*\n\.radar-cell-why\s*\{/);
   });
 

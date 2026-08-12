@@ -2482,8 +2482,7 @@
   vertical-align: middle;
 }
 .ui-table th {
-  position: sticky;
-  top: 0;
+  position: static;
   z-index: 1;
   height: 34px;
   background: color-mix(in srgb, var(--bg-sticky) 88%, transparent);
@@ -2730,9 +2729,10 @@
   font-weight: 600;
 }
 
+
 .scout-layout {
   display: grid;
-  grid-template-columns: 352px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
   align-items: start;
   width: 100%;
@@ -2740,14 +2740,11 @@
   container-type: inline-size;
   container-name: scout-layout;
 }
-/* The recipe picker and Run Screener are the two controls you touch every time,
-   and they used to sit at opposite ends of a column taller than the viewport —
-   running a screen meant scrolling past six conditions to reach the button.
-   Cap the panel to the viewport and let only the condition list scroll, so both
-   ends stay put. */
+/* The desktop control deck keeps the recipe, conditions, and primary action in
+   one compact panel. Narrow layouts stack the same controls without a nested
+   scroll region, so Run Screener stays reachable in both compositions. */
 .scout-layout__conditions {
-  position: sticky;
-  top: 0;
+  position: static;
   /* Grid, not flex: the condition list is a <fieldset>, which as a flex item
      refuses to shrink below its content even with min-height: 0. A
      minmax(0, 1fr) track constrains it, so the scroll region actually scrolls
@@ -2758,7 +2755,7 @@
      Without it the panel is viewport-height only once stuck, so Run Screener
      starts ~117px below the fold on load. Over-estimating costs nothing: the
      condition list just scrolls a little sooner. */
-  max-height: calc(100vh - var(--header-height) - var(--space-6) * 2 - var(--screener-chrome));
+  max-height: none;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   background: var(--bg-elevated);
@@ -2766,7 +2763,7 @@
 }
 .scout-layout__conditions .scout-conditions {
   min-height: 0;
-  overflow-y: auto;
+  overflow-y: visible;
   /* Reserve the scrollbar track so toggling a condition open/closed does not
      reflow the whole form sideways. */
   scrollbar-gutter: stable;
@@ -2822,7 +2819,11 @@
   /* Stacked: the panel is no longer a sidebar, so it grows with the page and
      the condition list must not become a second scroll region. */
   .scout-layout__conditions { position: static; max-width: none; max-height: none; }
-  .scout-layout__conditions .scout-conditions { overflow-y: visible; }
+  .scout-layout__conditions .scout-conditions { grid-template-columns: 1fr; overflow-y: visible; }
+  .scout-layout__conditions .scout-condition { border-right: 0; border-bottom: 1px solid var(--border-default); }
+  .scout-layout__conditions .scout-condition:last-child { border-bottom: 0; }
+  .scout-layout__conditions .scout-controls__footer,
+  .scout-layout__conditions .scout-controls__actions { align-items: stretch; flex-direction: column; }
 }
 .scout-near-miss {
   margin-top: var(--space-4);
@@ -2852,19 +2853,19 @@
    Phase 5 — Screener tables (Market Shortlist + Custom Screener)
    ============================================ */
 
-/* The conditions form keeps its full grammar (recipe, six conditions, custom
-   dates, footer) but now lives in a fixed ~352px sidebar, so it always renders
-   single-column regardless of viewport — the multi-column layout only made
-   sense at full page width. */
+/* The conditions form keeps its full grammar while using the available desktop
+   width as a compact control deck; narrow layouts override it to one column. */
 .scout-layout__conditions.scout-controls {
   border: 0;
   border-radius: 0;
   background: transparent;
   overflow: visible;
 }
-.scout-layout__conditions .scout-controls__intro,
+.scout-layout__conditions .scout-controls__intro {
+  grid-template-columns: minmax(220px, .7fr) 1.3fr;
+}
 .scout-layout__conditions .scout-conditions {
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 .scout-layout__conditions .scout-recipe-explanation {
   width: 100%;
@@ -2872,17 +2873,23 @@
   min-width: 0;
 }
 .scout-layout__conditions .scout-condition {
-  border-right: 0;
-  border-bottom: 1px solid var(--border-default);
+  border-right: 1px solid var(--border-default);
+  border-bottom: 0;
 }
+.scout-layout__conditions .scout-condition:nth-child(3n) { border-right: 0; }
 .scout-layout__conditions .scout-condition:last-child { border-bottom: 0; }
 .scout-layout__conditions .scout-controls__footer,
 .scout-layout__conditions .scout-controls__actions {
-  align-items: stretch;
-  flex-direction: column;
+  align-items: center;
+  flex-direction: row;
 }
 @media (max-width: 1100px) {
   .scout-layout__conditions { position: static; }
+  .scout-layout__conditions .scout-conditions { grid-template-columns: 1fr; }
+  .scout-layout__conditions .scout-condition { border-right: 0; border-bottom: 1px solid var(--border-default); }
+  .scout-layout__conditions .scout-condition:last-child { border-bottom: 0; }
+  .scout-layout__conditions .scout-controls__footer,
+  .scout-layout__conditions .scout-controls__actions { align-items: stretch; flex-direction: column; }
 }
 
 .radar-cell-ticker,
@@ -2967,7 +2974,7 @@
 /* Phase 6 — Broker Flow merged signed ranking table (display-only merge). */
 .bi-merged__scroll {
   min-width: 0;
-  max-height: 420px;
+  max-height: 700px;
   overflow-x: auto;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
