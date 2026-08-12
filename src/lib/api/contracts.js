@@ -312,7 +312,11 @@ function normalizeStringList(raw, limit) {
   return Number.isFinite(limit) ? items.slice(0, limit) : items;
 }
 
-function normalizeOpportunityLevels(raw) {
+// fallbackNetRewardRisk: the shortlist API carries net reward/risk under
+// features.risk, not levels, so every row rendered "Reward / risk —". Levels is
+// the right shape for the UI, so the drift is reconciled here rather than
+// teaching the component about two payload paths.
+function normalizeOpportunityLevels(raw, fallbackNetRewardRisk) {
   const levels = raw && typeof raw === 'object' ? raw : {};
   return {
     last: preserveFiniteOrNull(levels.last),
@@ -320,7 +324,7 @@ function normalizeOpportunityLevels(raw) {
     resistance: preserveFiniteOrNull(levels.resistance),
     trigger: preserveFiniteOrNull(levels.trigger),
     invalidation: preserveFiniteOrNull(levels.invalidation),
-    netRewardRisk: preserveFiniteOrNull(levels.netRewardRisk),
+    netRewardRisk: preserveFiniteOrNull(levels.netRewardRisk ?? fallbackNetRewardRisk),
   };
 }
 
@@ -353,7 +357,7 @@ function normalizeOpportunityRow(row) {
     // eligible rows, so only an explicit false may be shown as a gate failure.
     ineligible: row.eligible === false,
     isFca: features.isFca === true,
-    levels: normalizeOpportunityLevels(row.levels),
+    levels: normalizeOpportunityLevels(row.levels, features.risk?.netRewardRisk),
     freshness: normalizeOpportunityFreshness(row.freshness),
     reasons: normalizeStringList(row.reasons, 6),
     risks: normalizeStringList(row.risks, 8),

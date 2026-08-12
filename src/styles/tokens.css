@@ -89,7 +89,12 @@
 
   --sidebar-width: 190px;
   --header-height: 46px;
-  --content-max: 1600px;
+  /* Page title + view tabs above a screener panel. */
+  --screener-chrome: 118px;
+  /* Full bleed: the shell already reserves the nav rail and content padding, so
+     an extra centred cap only added dead gutters on wide monitors. Data pages
+     are tables and charts, not prose — they earn the width. */
+  --content-max: 100%;
   --radius-sm: 3px;
   --radius-md: 6px;
   --radius-lg: 8px;

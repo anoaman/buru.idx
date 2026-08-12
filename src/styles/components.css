@@ -2526,21 +2526,44 @@
 
 /* Table grammar: each data family has a deliberate minimum canvas and fixed
    tracks. Narrow panes scroll inside .ui-table-wrap instead of widening the
-   application shell or letting auto layout move the action column. */
+   application shell or letting auto layout move the action column.
+
+   min-width is the scroll floor; width: 100% is the growth. `max-content` did
+   both jobs badly — it pinned these tables to their floor forever, so on a wide
+   monitor the wrapper stretched and the table did not. */
 .ui-table--shortlist {
-  width: max-content;
+  width: 100%;
   min-width: 980px;
   table-layout: fixed;
 }
-.ui-table--shortlist th:nth-child(1), .ui-table--shortlist td:nth-child(1) { width: 48px; }
-.ui-table--shortlist th:nth-child(2), .ui-table--shortlist td:nth-child(2) { width: 145px; }
-.ui-table--shortlist th:nth-child(3), .ui-table--shortlist td:nth-child(3) { width: 82px; }
-.ui-table--shortlist th:nth-child(4), .ui-table--shortlist td:nth-child(4) { width: 235px; }
-.ui-table--shortlist th:nth-child(5), .ui-table--shortlist td:nth-child(5) { width: 235px; }
-.ui-table--shortlist th:nth-child(6), .ui-table--shortlist td:nth-child(6) { width: 235px; }
+/* Rank/score/actions hold fixed-size content and stay put; the three text
+   columns absorb the surplus width. */
+.ui-table--shortlist th:nth-child(1), .ui-table--shortlist td:nth-child(1) { width: 52px; }
+.ui-table--shortlist th:nth-child(2), .ui-table--shortlist td:nth-child(2) { width: 11%; }
+.ui-table--shortlist th:nth-child(3), .ui-table--shortlist td:nth-child(3) { width: 86px; }
+.ui-table--shortlist th:nth-child(4), .ui-table--shortlist td:nth-child(4) { width: 24%; }
+/* Levels used to be right-aligned with Actions starting immediately after it,
+   so the prices and the buttons shared a 20px seam. On a wide monitor the
+   three-line stack then left a void beside it, so the levels run inline
+   instead: they fill the width they are given, the row loses a line of height,
+   and the only large gap left is the conventional one before a trailing action
+   column. */
+.ui-table--shortlist th:nth-child(5), .ui-table--shortlist td:nth-child(5) { width: 34%; padding-right: var(--space-6); }
+.ui-table--shortlist th:nth-child(6), .ui-table--shortlist td:nth-child(6) { width: 216px; padding-left: var(--space-6); }
+/* Headers follow their column's content alignment. */
+.ui-table--shortlist th:nth-child(5) { text-align: left; }
+.ui-table--shortlist th:nth-child(6) { text-align: right; }
+.ui-table--shortlist .radar-cell-levels {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px var(--space-5);
+  text-align: left;
+}
+.ui-table--shortlist .radar-row__actions { justify-content: flex-end; }
 
 .ui-table--scout {
-  width: max-content;
+  width: 100%;
   min-width: 1260px;
   table-layout: fixed;
 }
@@ -2556,7 +2579,7 @@
 .ui-table--scout th:nth-child(10), .ui-table--scout td:nth-child(10) { width: 240px; }
 
 .ui-table--near-miss {
-  width: max-content;
+  width: 100%;
   min-width: 940px;
   table-layout: fixed;
 }
@@ -2567,8 +2590,13 @@
 .ui-table--near-miss th:nth-child(5), .ui-table--near-miss td:nth-child(5) { width: 275px; }
 .ui-table--near-miss th:nth-child(6), .ui-table--near-miss td:nth-child(6) { width: 242px; }
 
+/* A group header sits inside an elevated panel, so --bg-sunken (the darkest
+   surface in the dark theme, below the page base) punched a black block through
+   the card. Delineate with the header surface plus rules instead of depth. */
 .ui-group-row td {
-  background: var(--bg-sunken);
+  background: var(--bg-sticky);
+  border-top: 1px solid var(--border-default);
+  border-bottom: 1px solid var(--border-default);
   color: var(--text-tertiary);
   font-size: var(--type-floor);
   font-weight: 600;
@@ -2712,13 +2740,40 @@
   container-type: inline-size;
   container-name: scout-layout;
 }
+/* The recipe picker and Run Screener are the two controls you touch every time,
+   and they used to sit at opposite ends of a column taller than the viewport —
+   running a screen meant scrolling past six conditions to reach the button.
+   Cap the panel to the viewport and let only the condition list scroll, so both
+   ends stay put. */
 .scout-layout__conditions {
   position: sticky;
   top: 0;
+  /* Grid, not flex: the condition list is a <fieldset>, which as a flex item
+     refuses to shrink below its content even with min-height: 0. A
+     minmax(0, 1fr) track constrains it, so the scroll region actually scrolls
+     and the footer stays inside the panel. */
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  /* --screener-chrome is the page title + view tabs sitting above the panel.
+     Without it the panel is viewport-height only once stuck, so Run Screener
+     starts ~117px below the fold on load. Over-estimating costs nothing: the
+     condition list just scrolls a little sooner. */
+  max-height: calc(100vh - var(--header-height) - var(--space-6) * 2 - var(--screener-chrome));
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   background: var(--bg-elevated);
   padding: var(--space-4);
+}
+.scout-layout__conditions .scout-conditions {
+  min-height: 0;
+  overflow-y: auto;
+  /* Reserve the scrollbar track so toggling a condition open/closed does not
+     reflow the whole form sideways. */
+  scrollbar-gutter: stable;
+}
+.scout-layout__conditions .scout-controls__footer {
+  border-top: 1px solid var(--border-default);
+  padding-top: var(--space-3);
 }
 .scout-results {
   min-width: 0;
@@ -2758,11 +2813,16 @@
   .scout-layout__conditions {
     position: static;
     max-width: 352px;
+    max-height: none;
   }
+  .scout-layout__conditions .scout-conditions { overflow-y: visible; }
 }
 @media (max-width: 1100px) {
   .scout-layout { grid-template-columns: 1fr; }
-  .scout-layout__conditions { position: static; max-width: none; }
+  /* Stacked: the panel is no longer a sidebar, so it grows with the page and
+     the condition list must not become a second scroll region. */
+  .scout-layout__conditions { position: static; max-width: none; max-height: none; }
+  .scout-layout__conditions .scout-conditions { overflow-y: visible; }
 }
 .scout-near-miss {
   margin-top: var(--space-4);
@@ -2913,11 +2973,13 @@
   -webkit-overflow-scrolling: touch;
 }
 .ui-table--broker-ranking {
-  width: max-content;
+  width: 100%;
   min-width: 700px;
   table-layout: fixed;
 }
-.ui-table--broker-ranking th:nth-child(1), .ui-table--broker-ranking td:nth-child(1) { width: 210px; }
+/* Broker identity absorbs the surplus; the three numeric columns keep a fixed
+   canvas so the digits stay aligned across the panel. */
+.ui-table--broker-ranking th:nth-child(1), .ui-table--broker-ranking td:nth-child(1) { width: 30%; }
 .ui-table--broker-ranking th:nth-child(2), .ui-table--broker-ranking td:nth-child(2) { width: 105px; }
 .ui-table--broker-ranking th:nth-child(3), .ui-table--broker-ranking td:nth-child(3) { width: 145px; }
 .ui-table--broker-ranking th:nth-child(4), .ui-table--broker-ranking td:nth-child(4) { width: 115px; }

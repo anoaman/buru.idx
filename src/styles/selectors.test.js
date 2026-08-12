@@ -92,6 +92,9 @@ describe('stylesheet selector groups', () => {
 
   it('does not add pseudo-elements directly to table rows', () => {
     const css = stripBlockComments(readFileSync(STYLESHEETS[0], 'utf8'));
-    expect(css).not.toMatch(/(?:\btr|\.ui-row)[^,{]*::(?:before|after)\s*\{/);
+    // The tail must stay inside one selector: [^,{]* also crossed `}` and `;`,
+    // so `transition: transform …} .app-shell--mobile-open::after {` matched and
+    // the guard reported three phantom violations. Selector characters only.
+    expect(css).not.toMatch(/(?:\btr|\.ui-row)[\w.\-[\]='":() ]*::(?:before|after)\s*\{/);
   });
 });

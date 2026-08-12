@@ -194,6 +194,39 @@ describe('public Stock Analysis contracts', () => {
     expect(result.data.dataQualityTally).toEqual({ high: 1, medium: 0, low: 0, unknown: 0 });
   });
 
+  it('reads net reward/risk from features.risk when levels omits it', () => {
+    const result = guardOpportunities({
+      success: true,
+      data: {
+        run: null,
+        opportunities: [{
+          ticker: 'BJTM',
+          levels: { support: 500, trigger: 515, invalidation: 500 },
+          features: { risk: { netRewardRisk: 9.27 } },
+        }],
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.data.candidates[0].levels.netRewardRisk).toBe(9.27);
+  });
+
+  it('prefers netRewardRisk on levels over the features.risk fallback', () => {
+    const result = guardOpportunities({
+      success: true,
+      data: {
+        run: null,
+        opportunities: [{
+          ticker: 'BJTM',
+          levels: { netRewardRisk: 2.4 },
+          features: { risk: { netRewardRisk: 9.27 } },
+        }],
+      },
+    });
+
+    expect(result.data.candidates[0].levels.netRewardRisk).toBe(2.4);
+  });
+
   it('keeps a scoreless, levelless candidate renderable and marks unknown quality', () => {
     const result = guardOpportunities({
       success: true,
