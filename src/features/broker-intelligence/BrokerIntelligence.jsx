@@ -51,16 +51,26 @@ function interpretationTiers(window = {}) {
   const observed = window.populatedSessions || 0;
   const expected = window.tradingSessions || 0;
   const completeness = expected > 0 ? observed / expected : 0;
+  const corporateActionRisk = (window.corporateActionAnomalies || []).length > 0;
   return {
     observed,
     completeness,
     hasGaps: (window.gapSessions || 0) + (window.missingSessions || 0) > 0,
     persistence: observed >= 10 && completeness >= 0.8 ? 'full' : observed >= 5 && completeness >= 0.8 ? 'early' : 'suppressed',
-    cost: observed >= 10 && completeness >= 0.9 ? 'full' : 'suppressed',
-    curve: observed >= 10 && completeness >= 0.9 ? 'full' : observed >= 5 ? 'early' : 'suppressed',
+    cost: !corporateActionRisk && observed >= 10 && completeness >= 0.9 ? 'full' : 'suppressed',
+    curve: corporateActionRisk ? 'suppressed' : observed >= 10 && completeness >= 0.9 ? 'full' : observed >= 5 ? 'early' : 'suppressed',
     preferredShare: observed >= 5 && completeness >= 0.8 ? 'full' : 'suppressed',
     rotation: observed >= 14 && completeness >= 0.8 ? 'full' : 'suppressed',
   };
+}
+
+function factualInvestorRollup(rows = []) {
+  return rows.reduce((totals, row) => {
+    const type = String(row.sourceType || '').toLowerCase();
+    const key = type.includes('foreign') ? 'foreign' : type.includes('local') || type.includes('domestic') ? 'local' : null;
+    if (key) totals[key] += Number.isFinite(row.netValue) ? row.netValue : 0;
+    return totals;
+  }, { foreign: 0, local: 0 });
 }
 
 // Phase 6: the two default accumulation/distribution panel lists are merged, on the
@@ -459,6 +469,7 @@ const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
 
   const accumulation = viewData?.accumulation || [];
   const distribution = viewData?.distribution || [];
+  const investorRollup = stockData ? factualInvestorRollup(stockData.brokers) : null;
 
   // Display-only merge: sort buyers by net value descending and sellers by
   // absolute net value descending. No backend/calculation changes.
@@ -628,11 +639,21 @@ const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
                     Missing {formatNumber((stockData.window.gapSessions || 0) + (stockData.window.missingSessions || 0))} trading days
                   </span>
                 )}
+                {(stockData.window.corporateActionAnomalies || []).length > 0 && (
+                  <span className="badge badge-warning">Possible corporate-action discontinuity · curve suppressed</span>
+                )}
                 {meta?.archive?.calendarCoverage?.status === 'degraded' && (
                   <span className="badge badge-warning">Calendar degraded</span>
                 )}
               </div>
               <div className="bi-summary__metrics">
+                {investorRollup && (
+                  <div className="bi-summary__primary">
+                    <span className="text-tertiary">Observed investor type</span>
+                    <strong className="tabular">Foreign {signedValue(investorRollup.foreign)} · Local {signedValue(investorRollup.local)}</strong>
+                    <small className="text-tertiary">Factual broker source type; not investor identity or intent.</small>
+                  </div>
+                )}
                 {stockTiers.persistence !== 'full' && (
                   <div className="bi-summary__primary">
                     <span className="text-tertiary">Interpretation</span>

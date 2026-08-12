@@ -3,7 +3,7 @@ import { simulateRisk } from '../../lib/api/client.js';
 import { guardRiskSimulation } from '../../lib/api/contracts.js';
 import { formatIDR, formatNumber, formatPct, formatPrice } from '../../lib/format/market.js';
 
-export default function RiskSimulator({ ticker, geometry }) {
+export default function RiskSimulator({ ticker, geometry, atr14Pct }) {
   const best = geometry?.bestSetup;
   const [form, setForm] = useState({
     entry: ticker?.close || '',
@@ -31,6 +31,15 @@ export default function RiskSimulator({ ticker, geometry }) {
   }, [ticker?.symbol, ticker?.close, best?.stop, best?.target]);
 
   if (!ticker || !best) return null;
+
+  const entryNumber = Number(form.entry);
+  const stopNumber = Number(form.stop);
+  const stopDistancePct = entryNumber > 0 && stopNumber > 0
+    ? ((entryNumber - stopNumber) / entryNumber) * 100
+    : null;
+  const stopAtrMultiple = Number.isFinite(stopDistancePct) && Number.isFinite(atr14Pct) && atr14Pct > 0
+    ? stopDistancePct / atr14Pct
+    : null;
 
   const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
   const submit = async (event) => {
@@ -77,6 +86,12 @@ export default function RiskSimulator({ ticker, geometry }) {
         ))}
         <button type="submit" disabled={state.loading}>{state.loading ? 'CALCULATING' : 'CALCULATE SIZE'}</button>
       </form>
+      {Number.isFinite(stopAtrMultiple) && stopAtrMultiple < 1 && (
+        <p className="inv-simulator__error">Invalidation is {stopAtrMultiple.toFixed(1)} ATR from entry—inside the recent daily noise range.</p>
+      )}
+      {Number.isFinite(stopAtrMultiple) && stopAtrMultiple > 3 && (
+        <p className="text-warning">Invalidation is {stopAtrMultiple.toFixed(1)} ATR from entry; position sizing may become unusually thin.</p>
+      )}
       {state.error && <p className="inv-simulator__error">{state.error}</p>}
       {state.data && (
         <div className="inv-simulator__result">

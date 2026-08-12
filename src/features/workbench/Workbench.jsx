@@ -233,7 +233,7 @@ export default function Workbench() {
       case 'changed':
         return <WhatChangedPanel data={data} />;
       case 'risk':
-        return <RiskSimulator ticker={data.ticker} geometry={data.riskGeometry} />;
+        return <RiskSimulator ticker={data.ticker} geometry={data.riskGeometry} atr14Pct={data.priceHistory?.atr14Pct} />;
       case 'methodology':
         return (
           <EvidenceSummary

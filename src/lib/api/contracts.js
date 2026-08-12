@@ -626,6 +626,9 @@ export function guardStockBrokerIntelligence(raw) {
         gapSessions: Number.isFinite(window.gapSessions) ? window.gapSessions : 0,
         missingSessions: Number.isFinite(window.missingSessions) ? window.missingSessions : 0,
         complete: window.complete === true,
+        corporateActionAnomalies: Array.isArray(window.corporateActionAnomalies)
+          ? window.corporateActionAnomalies.filter((item) => item?.date)
+          : [],
       },
       observedFlow: {
         netValue: preserveFiniteOrZero(observedFlow.netValue),

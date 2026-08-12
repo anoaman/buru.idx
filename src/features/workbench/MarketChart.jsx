@@ -45,6 +45,7 @@ export default function MarketChart({ chart, geometry, ticker }) {
   const [fullscreen, setFullscreen] = useState(false);
   const [showMovingAverages, setShowMovingAverages] = useState(false);
   const [themeVersion, setThemeVersion] = useState(0);
+  const [hoverBar, setHoverBar] = useState(null);
 
   useEffect(() => {
     const sync = () => {
@@ -108,6 +109,15 @@ export default function MarketChart({ chart, geometry, ticker }) {
         : undefined,
     });
     candles.setData(chart.candles.map((row) => ({ time: row.date, open: row.open, high: row.high, low: row.low, close: row.close })));
+    const onCrosshairMove = (param) => {
+      const bar = param?.seriesData?.get?.(candles);
+      if (!bar || !param?.time) {
+        setHoverBar(null);
+        return;
+      }
+      setHoverBar({ date: String(param.time), open: bar.open, high: bar.high, low: bar.low, close: bar.close });
+    };
+    instance.subscribeCrosshairMove?.(onCrosshairMove);
 
     const volume = instance.addSeries(HistogramSeries, { priceFormat: { type: 'volume' }, priceScaleId: 'volume' });
     instance.priceScale('volume').applyOptions({ scaleMargins: { top: .82, bottom: 0 } });
@@ -184,6 +194,8 @@ export default function MarketChart({ chart, geometry, ticker }) {
     return () => {
       relockTimers.forEach(clearTimeout);
       observer.disconnect();
+      instance.unsubscribeCrosshairMove?.(onCrosshairMove);
+      setHoverBar(null);
       chartRef.current = null;
       instance.remove();
     };
@@ -196,7 +208,12 @@ export default function MarketChart({ chart, geometry, ticker }) {
   return (
     <section className="wb-market-chart" ref={sectionRef}>
       <header>
-        <div><strong>Price & volume</strong><span>Data through {formatDate(chart.source?.lastDate)}</span></div>
+        <div>
+          <strong>Price & volume</strong>
+          {hoverBar
+            ? <span className="tabular">{formatDate(hoverBar.date)} · O {formatPrice(hoverBar.open)} · H {formatPrice(hoverBar.high)} · L {formatPrice(hoverBar.low)} · C {formatPrice(hoverBar.close)}</span>
+            : <span>Data through {formatDate(chart.source?.lastDate)} · hover chart for OHLC</span>}
+        </div>
         <div className="wb-market-chart__actions">
           <button type="button" aria-pressed={showMovingAverages} onClick={() => setShowMovingAverages((visible) => !visible)}>{showMovingAverages ? 'Hide MA lines' : 'Show MA lines'}</button>
           <button type="button" onClick={() => (fullscreen ? document.exitFullscreen() : sectionRef.current?.requestFullscreen())}>{fullscreen ? 'Exit full screen' : 'Full screen'}</button>
