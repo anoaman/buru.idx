@@ -32,7 +32,6 @@ const PRIVATE_KEYS = new Set([
 
 function publicText(value) {
   return value
-    .replace(/stockbit(?:[- ][a-z0-9]+)?/gi, 'market data')
     .replace(/\barchive\b/gi, 'dataset')
     .replace(/\bserving layer\b/gi, 'data service')
     .replace(/\bmaterialized\b/gi, 'updated');

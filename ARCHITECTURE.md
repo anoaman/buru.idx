@@ -1,10 +1,10 @@
-# Stock Analysis Architecture
+# Buru IDX Architecture
 
 ## Purpose
 
-Private Vite/React workstation for IDX investigation and broker intelligence.
-This is the primary analysis product. It will absorb discovery and lightweight
-case tracking from the retiring cockpit without duplicating backend engines.
+Vite/React workstation for IDX opportunity discovery, stock investigation,
+broker intelligence, and setup tracking. It is the primary analysis product
+and consumes existing backend engines without duplicating their calculations.
 
 ## Boundaries
 
@@ -107,17 +107,14 @@ rewriting application code. The Worker reaches the loopback API only through a
 Tunnel hostname protected by a Cloudflare Access service token stored as Worker
 secrets; neither credential nor the origin hostname enters the browser bundle.
 
-## Analysis V2 baseline
+## Platform baseline
 
 - Broker Intelligence defaults to one completed trading session. Named ranges
   and custom inclusive dates must display both resolved endpoints and the
   observed trading-session count.
-- Cockpit data remains canonical in `trading-db/idx.db`; no migration, copy, or
-  deletion occurs during shell work.
 - Opportunity evaluations, frozen watchlist snapshots, trade plans, and trade
-  outcomes are preserved until replacement routes are verified against the
-  same records.
-- FCA remains independently deployed and outside the Analysis V2 UI rewrite.
+  outcomes remain backend-owned records.
+- FCA remains independently deployed and outside this application.
 
 ## Deferred (Graphite pass)
 

@@ -59,10 +59,9 @@ function proxyApi(req, res) {
     headers: { accept: 'application/json' },
   }, (upstreamRes) => {
     const status = upstreamRes.statusCode || 502;
-    // A 5xx body from the private API is an unhandled exception message. One of
-    // them reads "401 Unauthorized — token likely expired. Run: npm run grab-token":
-    // an operator runbook served to whoever asked. 4xx bodies are validation text
-    // written for a caller, so those pass through.
+    // A 5xx body from the private API may contain internal authentication or
+    // operator-runbook details. 4xx bodies are caller-facing validation text,
+    // so those pass through.
     if (status >= 500) {
       upstreamRes.resume();
       console.error(`[proxy] upstream ${status} for ${decision.path}`);

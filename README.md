@@ -1,61 +1,64 @@
-# Stock Analysis
+# Buru IDX
 
-Private Vite/React workstation for IDX investigation and broker intelligence.
-It is the primary analysis product and will absorb the useful discovery and
-case-tracking capabilities from the retiring Trading Analysis Platform cockpit.
+Buru IDX is an IDX market-analysis workstation for screening opportunities,
+investigating individual stocks, reading broker flow, and tracking setups. It
+combines deterministic market data with an auditable interface: the frontend
+explains the evidence it receives but does not invent scores, levels, or trade
+signals.
 
-## Routes
+## Platform capabilities
 
-- `/workbench` provides ticker analysis, technical evidence, trade geometry,
-  broker evidence, and the optional TradingView comparison.
-- `/broker-intelligence` provides stock and broker lenses over observed broker
-  flow and estimated inventory curves.
-- `/` redirects to `/workbench`.
+- **Market Shortlist** — ranked opportunities that pass the platform's
+  liquidity, structure, confirmation, and reward/risk gates.
+- **Custom Screener** — configurable scans for broker accumulation, support,
+  compression, price, liquidity, and lead-broker activity.
+- **Stock Analysis** — candlestick and volume charting, MA5/10/20/50/200,
+  technical levels, indicators, trade geometry, change history, broker
+  evidence, and risk simulation.
+- **Broker Flow** — stock and broker lenses across preset or custom date ranges,
+  including buyer/seller rankings and estimated inventory behavior.
+- **Watchlist** — monitored setups and frozen analysis snapshots supplied by the
+  backend workflow.
+- **Shared investigation context** — ticker selection carries between Stock
+  Analysis and Broker Flow, while screener handoffs preserve the originating
+  result set.
 
-## Private delayed-data intent
+## Application routes
 
-This private surface is decision-support software built around delayed, cached,
-or asynchronously refreshed market data. It is not a live quote terminal,
-brokerage connection, order-entry system, or recommendation engine. Coverage
-and methodology disclosures from the backend remain visible in the interface.
+- `/radar` — Market Shortlist and Custom Screener
+- `/workbench` — Stock Analysis
+- `/broker-intelligence` — Broker Flow
+- `/cases` — Watchlist
 
-The application is private-only. Bind it to loopback or the host's Tailscale
-address and never expose the raw analysis API. The read-only route allowlist and
-rate limiter remain in place as defense in depth while Analysis V2 introduces
-private Radar and Cases workflows.
+The root route redirects to `/workbench`.
 
-## Backend boundary
+## Architecture
 
-All first-party requests are made through `src/lib/api/client.js` and are
-prefixed with `VITE_API_BASE`. The value must point at an API origin that exposes
-the existing `/api/analyze` and `/api/broker-intelligence/*` contracts and allows
-the frontend origin through CORS.
+The repository contains a Vite/React frontend plus two production boundaries:
 
-`server.js` serves the production build and proxies a strict read-only subset of
-the loopback API. It is not an internet edge and must remain on the private
-network until application authentication exists.
+- `server.js` serves the production build and proxies an allowlisted subset of
+  the analysis API for private-network deployments.
+- `worker/index.js` provides the equivalent static and API boundary for
+  Cloudflare deployments.
 
-Private Stockbit/token maintenance errors are sanitized in the browser client.
-The preferred production backend is still a delayed/cache-serving API, not a
-live token-dependent endpoint exposed raw.
+All first-party requests pass through `src/lib/api/client.js`. Analysis,
+ranking, broker inventory, and data-coverage calculations remain backend
+responsibilities; the browser only submits bounded inputs and renders returned
+evidence. See [ARCHITECTURE.md](./ARCHITECTURE.md) for ownership rules and
+contracts.
+
+## Local development
+
+Requirements: Node.js 20+ and a compatible analysis API.
 
 ```bash
-cp .env.example .env.local
-# Edit VITE_API_BASE for the API environment.
 npm install
+cp .env.example .env.local
 npm run dev
 ```
 
-The production-style local service runs with:
-
-```bash
-npm run build
-npm start
-```
-
-Do not put Stockbit credentials, upstream tokens, or other secrets in
-`VITE_API_BASE` or any `VITE_*` variable because Vite embeds them in the browser
-bundle.
+Set `VITE_API_BASE` in `.env.local` to the API origin. Never place credentials
+or secrets in `VITE_*` variables because Vite embeds them in the browser bundle.
 
 ## Verification
 
@@ -63,3 +66,16 @@ bundle.
 npm test
 npm run build
 ```
+
+Run the production-style Node service after building:
+
+```bash
+npm start
+```
+
+## Data and usage boundary
+
+The platform is decision-support software built on delayed, cached, or
+asynchronously refreshed market data. It is not a live quote terminal,
+brokerage connection, order-entry system, or recommendation engine. Coverage
+and methodology disclosures must remain visible wherever evidence is shown.

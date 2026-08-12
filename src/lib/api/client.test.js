@@ -67,7 +67,7 @@ describe('Stock Analysis API client', () => {
     expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 
-  it('sanitizes private Stockbit auth errors for the public surface', async () => {
+  it('sanitizes upstream authentication errors for the public surface', async () => {
     global.fetch = vi.fn().mockResolvedValue(response({
       error: '401 Unauthorized — token likely expired. Run: npm run grab-token',
     }, {

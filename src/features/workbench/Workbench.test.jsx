@@ -109,7 +109,7 @@ describe('Workbench', () => {
         supports: [{ price: 4300, touches: 3, volWeight: 2.1 }],
         resistances: [{ price: 4700, touches: 2, volWeight: 1.5 }],
       },
-      source: { name: 'stockbit-chartbit', lastDate: '2026-07-17' },
+      source: { name: 'market-data-provider', lastDate: '2026-07-17' },
     },
     broker: {
       available: true,
@@ -134,7 +134,7 @@ describe('Workbench', () => {
       bull: [{ factor: 'Trend', reason: 'Above all MAs' }],
       bear: [{ factor: 'Valuation', reason: 'P/E above sector median' }],
     },
-    dataQuality: { sources: ['stockbit', 'yahoo'], warnings: [] },
+    dataQuality: { sources: ['primary-market-data', 'secondary-market-data'], warnings: [] },
     investigation: {
       question: { code: 'CONFIRMATION_TEST', title: 'What confirms the structure?', detail: 'Trending with usable geometry.' },
       timeline: [{ date: '2026-07-17', type: 'state', title: 'Current phase', detail: 'Evidence aligned.' }],
