@@ -588,7 +588,7 @@
 
 .wb-level-strip { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1px; background: var(--border-default); border: 1px solid var(--border-default); }
 .wb-level-strip > div:not(.wb-level-strip__mas) { display: flex; flex-direction: column; gap: 3px; padding: var(--space-3); background: var(--bg-elevated); }
-.wb-level-strip > div > span { color: var(--text-tertiary); font-size: var(--type-meta); text-transform: uppercase; }
+.wb-level-strip > div > span { color: var(--text-secondary); font-size: var(--type-meta); text-transform: uppercase; }
 .wb-level-strip strong { font-family: var(--font-tabular); font-size: 12px; }
 .wb-level-strip__mas { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--space-4); padding: var(--space-2) var(--space-3); background: var(--bg-base); }
 .wb-level-strip__mas span { font-family: var(--font-tabular); }
@@ -605,6 +605,8 @@
   gap: var(--space-3);
   padding: var(--space-10) var(--space-5);
   text-align: center;
+  max-width: 560px;
+  margin-inline: auto;
 }
 
 .empty-state__icon,
@@ -727,8 +729,14 @@
 .wb-overview-grid strong { font: 600 var(--type-cell) var(--font-tabular); }
 .wb-overview-flags { font: var(--type-meta) var(--font-tabular); }
 
+.wb-levels-panel { display: flex; flex-direction: column; gap: var(--space-3); }
+.wb-levels-panel h3 { font-size: var(--type-caption); font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
+.wb-levels-panel h4 { font-size: var(--type-meta); font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
+.wb-levels-panel span { color: var(--text-secondary); }
+.wb-levels-panel small { color: var(--text-tertiary); }
+
 .wb-market-chart { border: 1px solid var(--border-default); background: var(--bg-elevated); }
-.wb-market-chart header { display: flex; justify-content: space-between; gap: var(--space-4); padding: 12px 14px; border-bottom: 1px solid var(--border-subtle); }
+.wb-market-chart header { display: flex; justify-content: space-between; gap: var(--space-4); padding: 12px 14px; border-bottom: 1px solid var(--border-default); }
 .wb-market-chart header div { display: grid; gap: 3px; }
 .wb-market-chart header strong { font-size: 12px; }
 .wb-market-chart header span, .wb-market-chart header a, .wb-market-chart header button { color: var(--chart-chrome-muted); font-size: var(--type-caption); }
@@ -736,7 +744,7 @@
 .wb-market-chart header button:hover { color: var(--color-accent); }
 .wb-market-chart__actions { display: flex !important; grid-auto-flow: column; align-items: center; gap: var(--space-3) !important; }
 .wb-market-chart__canvas { height: 480px; min-height: 480px; }
-.wb-market-chart footer { display: grid; gap: 8px; padding: 8px 14px; border-top: 1px solid var(--border-subtle); }
+.wb-market-chart footer { display: grid; gap: 8px; padding: 8px 14px; border-top: 1px solid var(--border-default); }
 .wb-market-chart footer span { display: flex; align-items: center; gap: 5px; color: var(--chart-chrome-muted); font: var(--type-meta) var(--font-tabular); }
 .wb-market-chart footer i { width: 12px; height: 2px; }
 .wb-market-chart__legend, .wb-market-chart__setup { display: flex; flex-wrap: wrap; gap: 12px; }
@@ -2109,7 +2117,7 @@
    would otherwise grey out every degraded-state colour set by a text-* utility. */
 .radar-run__age--missing { color: var(--color-warning); }
 .radar-lanes { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: var(--space-3); }
-.radar-lanes button { border: 1px solid var(--border-default); background: transparent; color: var(--text-secondary); padding: 6px 10px; border-radius: var(--radius-sm); font-size: var(--type-caption); letter-spacing: 0; text-transform: none; cursor: pointer; }
+.radar-lanes button { border: 1px solid var(--border-strong); background: transparent; color: var(--text-secondary); padding: 6px 10px; border-radius: var(--radius-sm); font-size: var(--type-caption); letter-spacing: 0; text-transform: none; cursor: pointer; }
 .radar-lanes button:hover { color: var(--text-secondary); border-color: var(--border-strong); }
 .radar-lanes button.is-active { border-color: var(--color-accent); color: var(--color-accent); }
 .radar-row__risk { display: block; color: var(--color-warning); line-height: 1.45; }
@@ -2305,6 +2313,12 @@
   border-radius: var(--radius-lg);
   background: var(--bg-elevated);
 }
+.wb-levels-panel { display: flex; flex-direction: column; gap: var(--space-3); }
+.wb-levels-panel h3 { font-size: var(--type-caption); font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
+.wb-levels-panel h4 { font-size: var(--type-meta); font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
+.wb-levels-panel span { color: var(--text-secondary); }
+.wb-levels-panel small { color: var(--text-tertiary); }
+
 .wb-market-chart {
   overflow: hidden;
   border-radius: var(--radius-lg);
@@ -2315,7 +2329,7 @@
 .wb-market-chart footer {
   background: var(--chart-chrome-bg);
   color: var(--chart-chrome-text);
-  border-color: var(--chart-chrome-border);
+  border-color: var(--border-default);
 }
 .wb-market-chart header span,
 .wb-market-chart header a,
@@ -2547,7 +2561,7 @@
 }
 /* Rank/score/actions hold fixed-size content and stay put; the three text
    columns absorb the surplus width. */
-.ui-table--shortlist th:nth-child(1), .ui-table--shortlist td:nth-child(1) { width: 52px; }
+.ui-table--shortlist th:nth-child(1), .ui-table--shortlist td:nth-child(1) { width: 40px; }
 .ui-table--shortlist th:nth-child(2), .ui-table--shortlist td:nth-child(2) { width: 11%; }
 .ui-table--shortlist th:nth-child(3), .ui-table--shortlist td:nth-child(3) { width: 86px; }
 .ui-table--shortlist th:nth-child(4), .ui-table--shortlist td:nth-child(4) { width: 24%; }
