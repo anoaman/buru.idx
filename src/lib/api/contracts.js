@@ -678,6 +678,20 @@ export function guardStockBrokerIntelligence(raw) {
             replay: Array.isArray(data.actorMap.replay) ? data.actorMap.replay : [],
           }
         : null,
+      flowPersistence: data.flowPersistence && typeof data.flowPersistence === 'object'
+        ? {
+            observedSessions: preserveFiniteOrZero(data.flowPersistence.observedSessions),
+            positiveSessions: preserveFiniteOrZero(data.flowPersistence.positiveSessions),
+            negativeSessions: preserveFiniteOrZero(data.flowPersistence.negativeSessions),
+            dominantSide: data.flowPersistence.dominantSide || 'mixed',
+            persistenceRatio: preserveFiniteOrNull(data.flowPersistence.persistenceRatio),
+            currentStreak: preserveFiniteOrZero(data.flowPersistence.currentStreak),
+            streakSide: data.flowPersistence.streakSide || null,
+            priceChangePct: preserveFiniteOrNull(data.flowPersistence.priceChangePct),
+            divergence: data.flowPersistence.divergence || 'unavailable',
+            meaningful: data.flowPersistence.meaningful === true,
+          }
+        : null,
       accumulation: normalizeBrokerRows(data.accumulation, normalizeStockBrokerRow),
       distribution: normalizeBrokerRows(data.distribution, normalizeStockBrokerRow),
       brokers: normalizeBrokerRows(data.brokers, normalizeStockBrokerRow),

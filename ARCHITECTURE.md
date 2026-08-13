@@ -24,7 +24,8 @@ and consumes existing backend engines without duplicating their calculations.
   panels (BrokerEvidence) mount only when their tab is selected.
 - `src/features/broker-intelligence/` owns stock/broker lenses, the merged
   signed ranking table (frontend display merge of accumulation + distribution
-  arrays only), and inventory curve presentation.
+  arrays only), inventory curve presentation, and backend-owned multi-session
+  flow-persistence/divergence presentation.
 - `src/lib/api/client.js` is the only first-party network boundary and prefixes
   every API path with `VITE_API_BASE`. Successful GET responses for
   `/api/broker-intelligence/*` and `/api/analyze` are cached ~45s with

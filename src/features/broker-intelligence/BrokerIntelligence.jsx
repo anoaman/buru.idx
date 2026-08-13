@@ -668,6 +668,17 @@ const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
                     <small className="text-tertiary">{stockData.preferredBroker.observedCodes.join(', ')}</small>
                   </div>
                 )}
+                {stockTiers.persistence === 'full' && stockData.flowPersistence?.meaningful && (
+                  <div className="bi-summary__primary">
+                    <span className="text-tertiary">Flow persistence</span>
+                    <strong>{stockData.flowPersistence.dominantSide.replaceAll('_', ' ')}</strong>
+                    <small className="text-tertiary">
+                      {Math.round(stockData.flowPersistence.persistenceRatio * 100)}% of observed sessions
+                      {stockData.flowPersistence.divergence !== 'aligned' && stockData.flowPersistence.divergence !== 'mixed_flow'
+                        ? ` · ${stockData.flowPersistence.divergence.replaceAll('_', ' ')}` : ''}
+                    </small>
+                  </div>
+                )}
 
               </div>
               {stockTiers.rotation === 'full' && stockData.rotationHandoff && (
