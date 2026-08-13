@@ -525,6 +525,16 @@ function normalizeCaseMonitoring(raw) {
   const state = ['meaningful_change', 'no_material_change', 'unavailable'].includes(monitoring.state)
     ? monitoring.state
     : 'unavailable';
+  const lifecycleEvents = Array.isArray(monitoring.lifecycleEvents)
+    ? monitoring.lifecycleEvents.slice(0, 20).map((event) => ({
+        id: event?.id ?? null,
+        eventDate: event?.eventDate || null,
+        eventType: event?.eventType || 'unknown',
+        severity: ['info', 'warning', 'critical'].includes(event?.severity) ? event.severity : 'info',
+        message: typeof event?.message === 'string' ? event.message : '',
+        evidence: event?.evidence && typeof event.evidence === 'object' ? event.evidence : {},
+      })).filter((event) => event.message)
+    : [];
   return {
     state,
     material: monitoring.material === true,
@@ -545,6 +555,8 @@ function normalizeCaseMonitoring(raw) {
           risks: normalizeStringList(current.risks, 8),
         }
       : null,
+    lifecycleEvents,
+    latestLifecycleEvent: lifecycleEvents[0] || null,
   };
 }
 

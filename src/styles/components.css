@@ -2297,6 +2297,13 @@
 .case-card__levels dt { color: var(--text-tertiary); font-size: var(--type-meta); text-transform: uppercase; letter-spacing: .06em; }
 .case-card__levels dd { margin: 2px 0 0; font-family: var(--font-tabular); font-size: 13px; }
 .case-card__risk { min-height: 0; margin: 0 0 var(--space-2); font-size: var(--type-caption); line-height: 1.5; }
+.case-card__event { margin: 0 0 var(--space-3); padding: 10px 12px; border-left: 3px solid var(--border-strong); background: var(--bg-sunken); font-size: var(--type-caption); }
+.case-card__event--warning { border-left-color: var(--color-warning); }
+.case-card__event--critical { border-left-color: var(--color-negative); }
+.case-card__event > span { text-transform: uppercase; letter-spacing: .06em; color: var(--text-tertiary); font-size: var(--type-meta); }
+.case-card__event p { margin: 4px 0; color: var(--text-primary); }
+.case-card__event small { color: var(--text-tertiary); }
+.case-card__event a { margin-left: 10px; }
 .case-card__provenance { display: flex; flex-direction: column; gap: 2px; margin-bottom: var(--space-3); font-size: var(--type-meta); }
 .case-card__actions { margin-top: auto; }
 .case-card__actions button { min-width: 0; white-space: nowrap; }

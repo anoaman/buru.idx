@@ -36,6 +36,7 @@ function SnapshotAge({ monitoring }) {
 function CaseCard({ item, onReopen, onActors }) {
   const { monitoring, snapshot } = item;
   const delta = monitoring.current?.scoreDelta;
+  const lifecycleEvent = monitoring.latestLifecycleEvent;
   return (
     <article className="case-card" role="listitem">
       <div className="case-card__top">
@@ -79,6 +80,17 @@ function CaseCard({ item, onReopen, onActors }) {
 
       {snapshot.risks[0] && (
         <p className="case-card__risk text-warning">Against: {snapshot.risks[0]}</p>
+      )}
+
+      {lifecycleEvent && (
+        <div className={`case-card__event case-card__event--${lifecycleEvent.severity}`}>
+          <span>{lifecycleEvent.eventType.replaceAll('_', ' ')}</span>
+          <p>{lifecycleEvent.message}</p>
+          <small>{lifecycleEvent.eventDate}</small>
+          {lifecycleEvent.evidence?.sourceUrl && (
+            <a href={lifecycleEvent.evidence.sourceUrl} target="_blank" rel="noreferrer">Official source</a>
+          )}
+        </div>
       )}
 
       <div className="case-card__provenance">

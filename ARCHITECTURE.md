@@ -48,6 +48,8 @@ and consumes existing backend engines without duplicating their calculations.
   contracts through `contracts.js` like every other feature. They rank nothing,
   score nothing, and decide no material change; those all arrive already
   computed. Radar's lane filter only hides rows the backend already ranked.
+  Watchlist renders backend-owned lifecycle events and source links; it does not
+  infer trigger, invalidation, confirmation, expiry, or notice state in React.
   Custom Screener uses a split layout (conditions column + results table) and
   forwards broker custom range / lead-broker minimum through the public
   allowlist.

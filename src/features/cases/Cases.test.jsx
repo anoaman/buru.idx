@@ -136,6 +136,29 @@ describe('Cases', () => {
     expect(await screen.findByText('compression resolved on rising volume')).toBeInTheDocument();
   });
 
+  it('shows the latest lifecycle event and its official source', async () => {
+    getCases.mockResolvedValue({
+      success: true,
+      data: { items: [caseItem({
+        monitoring: {
+          state: 'no_material_change', material: false, snapshotStale: false,
+          snapshotAgeDays: 1, current: null,
+          lifecycleEvents: [{
+            id: 10, eventDate: '2026-08-12', eventType: 'regulatory_notice',
+            severity: 'warning', message: 'Active uma: Unusual market activity',
+            evidence: { sourceUrl: 'https://www.idx.co.id/example' },
+          }],
+        },
+      })] },
+    });
+
+    renderCases();
+    expect(await screen.findByText('Active uma: Unusual market activity')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Official source' })).toHaveAttribute(
+      'href', 'https://www.idx.co.id/example',
+    );
+  });
+
   it('renders an empty state when nothing is being tracked', async () => {
     getCases.mockResolvedValue({ success: true, data: { items: [] } });
     renderCases();
