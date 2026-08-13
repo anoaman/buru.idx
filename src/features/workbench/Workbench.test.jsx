@@ -248,12 +248,12 @@ describe('Workbench', () => {
     expect(await screen.findByText('BBRI')).toBeInTheDocument();
     expect(screen.getByText(/Bank Rakyat Indonesia/i)).toBeInTheDocument();
     expect(screen.getByText('Setup type')).toBeInTheDocument();
-    expect(screen.getByText('Pullback in an uptrend')).toBeInTheDocument();
+    expect(screen.getByText(/Pullback in an uptrend/)).toBeInTheDocument();
     expect(screen.getAllByText('Clears above').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Fails below').length).toBeGreaterThan(0);
-    expect(screen.getByText('What confirms the structure?')).toBeInTheDocument();
+    expect(screen.queryByText('What confirms the structure?')).not.toBeInTheDocument();
     expect(screen.getByText('Price & volume')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Hide market vs ihsg/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /market vs ihsg/i })).not.toBeInTheDocument();
     expect(screen.getByText(/Cost drag/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('tab', { name: /Indicators/i }));
@@ -292,10 +292,15 @@ describe('Workbench', () => {
     const tablist = screen.getByRole('tablist', { name: /Analysis detail sections/i });
     expect(within(tablist).getByRole('tab', { name: /^Levels$/i })).toBeInTheDocument();
     expect(within(tablist).getByRole('tab', { name: /^Indicators$/i })).toBeInTheDocument();
+    expect(within(tablist).getByRole('tab', { name: /^IHSG$/i })).toBeInTheDocument();
     expect(within(tablist).getByRole('tab', { name: /^Broker Flow$/i })).toBeInTheDocument();
     expect(within(tablist).getByRole('tab', { name: /^What Changed$/i })).toBeInTheDocument();
     expect(within(tablist).getByRole('tab', { name: /^Risk Simulator$/i })).toBeInTheDocument();
     expect(within(tablist).getByRole('tab', { name: /^Methodology$/i })).toBeInTheDocument();
+    fireEvent.click(within(tablist).getByRole('tab', { name: /^IHSG$/i }));
+    expect(screen.getByLabelText('Market versus IHSG')).toBeInTheDocument();
+    expect(screen.getByText('Vs IHSG')).toBeInTheDocument();
+    expect(screen.getByText(/2\.4% · 20 sessions/)).toBeInTheDocument();
   });
 
   it('shows cost drag on the Levels tab', async () => {
@@ -347,8 +352,9 @@ describe('Workbench', () => {
       </MemoryRouter>,
     );
     expect((await screen.findAllByText(/not a long entry/i)).length).toBeGreaterThan(0);
-    expect(screen.getByText(/not a green long setup/i)).toBeInTheDocument();
+    expect(screen.getByText(/Selling pressure/)).toBeInTheDocument();
     expect(screen.queryByText(/Breakout above last close/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/What confirms the structure/i)).not.toBeInTheDocument();
   });
 
   it('uses one TradingView-powered NALAR market chart', async () => {
@@ -360,9 +366,7 @@ describe('Workbench', () => {
     );
 
     expect(await screen.findByText('Price & volume')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Hide market vs ihsg/i })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Hide market vs ihsg/i }));
-    expect(screen.getByRole('button', { name: /Show market vs ihsg/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /market vs ihsg/i })).not.toBeInTheDocument();
     expect(screen.queryByText('MA5')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Show MA lines' }));
     expect(screen.getAllByText('MA5').length).toBeGreaterThan(0);

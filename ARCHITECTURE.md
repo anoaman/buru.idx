@@ -9,11 +9,11 @@ and consumes existing backend engines without duplicating their calculations.
 ## Boundaries
 
 - `src/features/workbench/` owns ticker analysis presentation and chart views.
-  Layout order is setup overview (setup type, clears above, fails below,
-  upside to), full-width market chart, then a docked accessible `DetailDrawer`
-  with tabs: Levels · Indicators · Broker Flow · What Changed · Risk Simulator ·
-  Methodology. Market vs IHSG lives inside the chart card behind a default-on
-  toggle; moving-average overlays stay a separate toggle. The chart uses
+  Layout order is ticker header, full-width market chart, then a docked
+  accessible `DetailDrawer` with tabs: Levels · Indicators · IHSG · Broker Flow ·
+  What Changed · Risk Simulator · Methodology. Setup type lives on Levels above
+  the price grid. Market versus IHSG is its own tab, not a chart overlay.
+  Moving-average overlays stay a chart toggle. The chart uses
   TradingView Lightweight Charts so first-party levels remain auditable. Nothing on the
   page may be labelled from a stale request: cold loads use skeletons; warm
   ticker switches keep the previous completed frame (still labelled with its

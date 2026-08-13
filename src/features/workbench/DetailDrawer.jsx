@@ -3,6 +3,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react';
 const DEFAULT_TABS = [
   { id: 'levels', label: 'Levels' },
   { id: 'indicators', label: 'Indicators' },
+  { id: 'ihsg', label: 'IHSG' },
   { id: 'broker', label: 'Broker Flow' },
   { id: 'changed', label: 'What Changed' },
   { id: 'risk', label: 'Risk Simulator' },

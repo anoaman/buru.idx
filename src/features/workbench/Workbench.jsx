@@ -17,13 +17,11 @@ import EvidenceDebate from './EvidenceDebate.jsx';
 import RiskSimulator from './RiskSimulator.jsx';
 import DetailDrawer from './DetailDrawer.jsx';
 import LevelsPanel from './LevelsPanel.jsx';
+import IhsgPanel from './IhsgPanel.jsx';
 import CaseCapturePanel from '../cases/CaseCapturePanel.jsx';
 import {
   LABELS,
-  framingLabel,
   leanLabel,
-  priceLevelCaption,
-  setupTypeLabel,
 } from '../../lib/copy/terms.js';
 
 function TickerHeader({ ticker, priceHistory, storyIntelligence }) {
@@ -135,47 +133,6 @@ function EvidenceSummary({ grade, stance, scorecard, dataQuality }) {
           <div><strong>Deliberate exclusions</strong><span>No indicator pile-up</span><small>No Ichimoku, Fibonacci suite, candlestick oracle, volume-profile approximation, or single bandar score without evidence that supports the claim.</small></div>
         </div>
       </details>
-    </section>
-  );
-}
-
-function SetupOverview({ scenario, geometry, question }) {
-  const setup = geometry || scenario?.geometry;
-  if (!scenario && !setup) return null;
-  const framing = setup?.framing || 'unavailable';
-  const longSetup = framing === 'long_setup';
-  const clearsPrice = longSetup ? setup?.confirmation?.price ?? setup?.trigger?.price : null;
-  const failsPrice = setup?.invalidation?.price ?? setup?.defensiveExit?.price;
-  const upsidePrice = longSetup ? setup?.target?.price : null;
-  return (
-    <section className="wb-setup-overview" aria-label="Setup overview">
-      {question?.title && <p className="wb-setup-overview__question">{question.title}</p>}
-      <div className="wb-overview-grid">
-        <div>
-          <span>{LABELS.setupType}</span>
-          <strong>{setupTypeLabel(scenario?.scenario)}</strong>
-          <small className="text-tertiary">
-            {setup?.labels?.summary || `${framingLabel(framing)} · ${scenario?.fitScore || 0}% evidence fit`}
-          </small>
-        </div>
-        <div>
-          <span>{priceLevelCaption(framing, { longLabel: LABELS.clearsAbove, defensiveLabel: LABELS.longEntry })}</span>
-          <strong className="tabular">{formatPrice(clearsPrice)}</strong>
-          <small className="text-tertiary">{setup?.labels?.confirmation || setup?.unavailableReason || 'No fabricated last-close entry'}</small>
-        </div>
-        <div>
-          <span>{priceLevelCaption(framing, { longLabel: LABELS.failsBelow, defensiveLabel: LABELS.damageIfLost })}</span>
-          <strong className="tabular">{formatPrice(failsPrice)}</strong>
-          <small className="text-tertiary">{setup?.labels?.invalidation || (longSetup ? 'Daily close through this price ends the setup' : 'Unavailable')}</small>
-        </div>
-        <div>
-          <span>{LABELS.upsideTo}</span>
-          <strong className={`tabular ${upsidePrice != null ? 'text-positive' : ''}`}>{formatPrice(upsidePrice)}</strong>
-          <small className={upsidePrice != null ? 'text-positive' : 'text-tertiary'}>
-            {setup?.labels?.target || (upsidePrice != null ? 'Geometry aim, not a forecast' : 'No long upside')}
-          </small>
-        </div>
-      </div>
     </section>
   );
 }
@@ -335,6 +292,8 @@ export default function Workbench() {
             />
           </>
         );
+      case 'ihsg':
+        return <IhsgPanel macro={data.macro} />;
       case 'broker':
         return <BrokerEvidence broker={data.broker} />;
       case 'changed':
@@ -380,11 +339,6 @@ export default function Workbench() {
               ticker={displayed.data.ticker}
               priceHistory={displayed.data.priceHistory}
               storyIntelligence={displayed.data.storyIntelligence}
-            />
-            <SetupOverview
-              scenario={displayed.data.scenario}
-              geometry={displayed.data.scenarioGeometry}
-              question={displayed.data.investigation?.question}
             />
             {privateWritesEnabled && (
               <div className="wb-case-action">
@@ -450,7 +404,6 @@ export default function Workbench() {
                 geometry={displayed.data.riskGeometry}
                 scenarioGeometry={displayed.data.scenarioGeometry}
                 ticker={displayed.data.ticker}
-                macro={displayed.data.macro}
               />
             </div>
             <DetailDrawer

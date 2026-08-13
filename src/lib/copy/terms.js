@@ -125,7 +125,7 @@ export const GLOSSARY_GROUPS = Object.freeze([
       {
         id: 'market-vs-ihsg',
         title: LABELS.marketVsIhsg,
-        body: 'IHSG state plus this stock’s return versus IHSG over 20 and 60 sessions. Hidden from the chart with one toggle so candles stay readable.',
+        body: 'IHSG state plus this stock’s return versus IHSG over 20 and 60 sessions. Lives on the IHSG tab under the chart, not on the candles.',
       },
     ],
   },

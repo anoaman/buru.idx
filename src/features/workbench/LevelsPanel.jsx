@@ -1,9 +1,10 @@
 import { formatPct, formatPrice, formatRatio } from '../../lib/format/market.js';
 import DynamicLevels from './DynamicLevels.jsx';
-import { LABELS, priceLevelCaption } from '../../lib/copy/terms.js';
+import { LABELS, framingLabel, priceLevelCaption, setupTypeLabel } from '../../lib/copy/terms.js';
 
 export default function LevelsPanel({ data }) {
   const setup = data?.scenarioGeometry;
+  const scenario = data?.scenario;
   const geometry = data?.riskGeometry;
   const best = geometry?.bestSetup;
   const levels = data?.supportResistance || data?.chart?.levels || {};
@@ -21,6 +22,12 @@ export default function LevelsPanel({ data }) {
 
   return (
     <div className="wb-levels-panel">
+      {(scenario || setup) && (
+        <p className="wb-levels-panel__setup">
+          <span>{LABELS.setupType}</span>
+          {setupTypeLabel(scenario?.scenario)} · {framingLabel(setup?.framing)}
+        </p>
+      )}
       <div className="wb-overview-grid" aria-label="Setup levels">
         <div>
           <span>{priceLevelCaption(setup?.framing, { longLabel: LABELS.clearsAbove, defensiveLabel: LABELS.longEntry })}</span>

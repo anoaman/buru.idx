@@ -39,29 +39,12 @@ function readChartTheme(element) {
   };
 }
 
-function MarketContextStrip({ macro }) {
-  const regime = macro?.regime;
-  const strength = macro?.relativeStrength;
-  if (!regime && !strength) return null;
-  const excess20 = strength?.periods?.[20]?.excessReturnPct;
-  const excess60 = strength?.periods?.[60]?.excessReturnPct;
-  return (
-    <div className="wb-market-context" aria-label="Market versus IHSG">
-      <div><span>{LABELS.ihsg}</span><strong>{String(regime?.state || 'unknown').replace('_', ' ')}</strong><small>as of {regime?.asOf || '—'}</small></div>
-      <div><span>{LABELS.vsIhsg}</span><strong>{Number.isFinite(excess20) ? `${excess20 >= 0 ? '+' : ''}${excess20.toFixed(1)}% · 20 sessions` : 'Unavailable'}</strong><small>{Number.isFinite(excess60) ? `${excess60 >= 0 ? '+' : ''}${excess60.toFixed(1)}% over 60 sessions` : '60-session history unavailable'}</small></div>
-      <div><span>Relative line</span><strong>{strength?.lineState || 'unavailable'}</strong><small>{strength?.matchedSessions || 0} matched sessions</small></div>
-      <div><span>Sector</span><strong>{strength?.sector?.available ? 'Available' : 'Not claimed'}</strong><small>{strength?.sector?.available ? strength.sector.symbol : 'Awaiting verified issuer mapping'}</small></div>
-    </div>
-  );
-}
-
-export default function MarketChart({ chart, geometry, scenarioGeometry, ticker, macro = null }) {
+export default function MarketChart({ chart, geometry, scenarioGeometry, ticker }) {
   const containerRef = useRef(null);
   const sectionRef = useRef(null);
   const chartRef = useRef(null);
   const [fullscreen, setFullscreen] = useState(false);
   const [showMovingAverages, setShowMovingAverages] = useState(false);
-  const [showMarket, setShowMarket] = useState(true);
   const [themeVersion, setThemeVersion] = useState(0);
   const [hoverBar, setHoverBar] = useState(null);
 
@@ -243,21 +226,11 @@ export default function MarketChart({ chart, geometry, scenarioGeometry, ticker,
             : <span>Data through {formatDate(chart.source?.lastDate)} · hover chart for OHLC</span>}
         </div>
         <div className="wb-market-chart__actions">
-          {(macro?.regime || macro?.relativeStrength) && (
-            <button
-              type="button"
-              aria-pressed={showMarket}
-              onClick={() => setShowMarket((visible) => !visible)}
-            >
-              {showMarket ? `Hide ${LABELS.marketVsIhsg.toLowerCase()}` : `Show ${LABELS.marketVsIhsg.toLowerCase()}`}
-            </button>
-          )}
           <button type="button" aria-pressed={showMovingAverages} onClick={() => setShowMovingAverages((visible) => !visible)}>{showMovingAverages ? 'Hide MA lines' : 'Show MA lines'}</button>
           <button type="button" onClick={() => (fullscreen ? document.exitFullscreen() : sectionRef.current?.requestFullscreen())}>{fullscreen ? 'Exit full screen' : 'Full screen'}</button>
           <a href={`https://www.tradingview.com/chart/?symbol=IDX%3A${encodeURIComponent(ticker?.symbol || '')}`} target="_blank" rel="noopener noreferrer">Open full TradingView ↗</a>
         </div>
       </header>
-      {showMarket && <MarketContextStrip macro={macro} />}
       <div className="wb-market-chart__canvas" ref={containerRef} />
       <footer>
         <div className="wb-market-chart__legend">
