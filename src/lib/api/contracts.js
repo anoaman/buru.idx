@@ -683,6 +683,8 @@ export function guardStockBrokerIntelligence(raw) {
         : null,
       flowPersistence: data.flowPersistence && typeof data.flowPersistence === 'object'
         ? {
+            brokerCode: data.flowPersistence.brokerCode || null,
+            brokerNetValue: preserveFiniteOrNull(data.flowPersistence.brokerNetValue),
             observedSessions: preserveFiniteOrZero(data.flowPersistence.observedSessions),
             positiveSessions: preserveFiniteOrZero(data.flowPersistence.positiveSessions),
             negativeSessions: preserveFiniteOrZero(data.flowPersistence.negativeSessions),
