@@ -177,6 +177,23 @@ describe('Cases', () => {
     expect(screen.getByText('Horizon open')).toBeInTheDocument();
   });
 
+  it('shows auditable scenario transition evidence', async () => {
+    getCases.mockResolvedValue({ success: true, data: { items: [caseItem({
+      monitoring: {
+        state: 'no_material_change', material: false, snapshotStale: false,
+        snapshotAgeDays: 1, current: null,
+        lifecycleEvents: [{
+          eventDate: '2026-08-13', eventType: 'profile_drift', severity: 'warning',
+          message: 'BBRI scenario changed from compression_breakout to trend_pullback',
+          evidence: { sourceRunId: 52, currentFitScore: 75 },
+        }],
+      },
+    })] } });
+    renderCases();
+    expect(await screen.findByText(/scenario changed from compression_breakout/i)).toBeInTheDocument();
+    expect(screen.getByText(/scan #52 · 75% current fit/i)).toBeInTheDocument();
+  });
+
   it('renders an empty state when nothing is being tracked', async () => {
     getCases.mockResolvedValue({ success: true, data: { items: [] } });
     renderCases();

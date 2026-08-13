@@ -90,6 +90,9 @@ function CaseCard({ item, onReopen, onActors }) {
           {lifecycleEvent.evidence?.sourceUrl && (
             <a href={lifecycleEvent.evidence.sourceUrl} target="_blank" rel="noreferrer">Official source</a>
           )}
+          {lifecycleEvent.eventType === 'profile_drift' && (
+            <small> · scan #{lifecycleEvent.evidence?.sourceRunId || '—'} · {lifecycleEvent.evidence?.currentFitScore ?? '—'}% current fit</small>
+          )}
         </div>
       )}
 
