@@ -44,6 +44,39 @@ function normalizeTimelineEvent(raw) {
   };
 }
 
+export function normalizeGroundedSynthesis(raw) {
+  const cite = (row) => (
+    row && typeof row.text === 'string' && Array.isArray(row.refs) && row.refs.length
+      ? { text: row.text, refs: row.refs.map(String).slice(0, 8) }
+      : null
+  );
+  if (!raw || typeof raw !== 'object' || raw.available !== true || raw.status === 'failed') {
+    return {
+      available: false,
+      status: raw?.status || 'unavailable',
+      error: typeof raw?.error === 'string' ? raw.error : null,
+      evidenceNarrative: [],
+      changeBrief: [],
+      limitations: normalizeStringList(raw?.limitations, 6),
+      provider: raw?.provider || null,
+      promptVersion: raw?.promptVersion || null,
+    };
+  }
+  return {
+    available: true,
+    status: 'success',
+    error: null,
+    provider: raw.provider || null,
+    model: raw.model || null,
+    promptVersion: raw.promptVersion || null,
+    inputHash: raw.inputHash || null,
+    createdAt: raw.createdAt || null,
+    evidenceNarrative: (raw.evidenceNarrative || []).map(cite).filter(Boolean),
+    changeBrief: (raw.changeBrief || []).map(cite).filter(Boolean),
+    limitations: normalizeStringList(raw.limitations, 6),
+  };
+}
+
 export function normalizeStoryIntelligence(raw) {
   if (!raw || typeof raw !== 'object') {
     return {
@@ -228,6 +261,7 @@ export function guardAnalyze(raw) {
       scenarioGeometry,
       storyIntelligence,
       investigation,
+      groundedSynthesis: normalizeGroundedSynthesis(data.groundedSynthesis),
       dynamicLevels: normalizedDynamicLevels,
       chart: normalizedChart,
       broker,

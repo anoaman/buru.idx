@@ -124,6 +124,40 @@ describe('public Stock Analysis contracts', () => {
     expect(result.data.storyIntelligence.health.freshness).toBe('partial');
   });
 
+  it('drops uncited grounded synthesis and keeps failure from breaking analysis', () => {
+    const failed = guardAnalyze({
+      success: true,
+      data: {
+        ticker: { symbol: 'BBRI' },
+        groundedSynthesis: {
+          available: false,
+          status: 'failed',
+          error: 'uncited',
+          evidenceNarrative: [{ text: 'Buy now', refs: [] }],
+        },
+      },
+    });
+    expect(failed.data.groundedSynthesis.available).toBe(false);
+    expect(failed.data.groundedSynthesis.evidenceNarrative).toEqual([]);
+
+    const ok = guardAnalyze({
+      success: true,
+      data: {
+        ticker: { symbol: 'BBRI' },
+        groundedSynthesis: {
+          available: true,
+          status: 'success',
+          provider: 'deterministic',
+          promptVersion: 'grounded-v1',
+          evidenceNarrative: [{ text: 'BBRI grade is B.', refs: ['grade.grade'] }],
+          changeBrief: [{ text: 'Scenario remains trend_pullback.', refs: ['scenario.scenario'] }],
+        },
+      },
+    });
+    expect(ok.data.groundedSynthesis.available).toBe(true);
+    expect(ok.data.groundedSynthesis.evidenceNarrative[0].refs).toEqual(['grade.grade']);
+  });
+
   it('guards archive health without inventing coverage', () => {
     const result = guardBrokerArchiveHealth({
       success: true,

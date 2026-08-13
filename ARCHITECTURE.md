@@ -87,7 +87,9 @@ capitalization lane. React only renders backend `scenarioGeometry` /
 `levels.framing` and must not treat last close as a confirmation entry.
 Official disclosures are backend-owned Story Intelligence: React renders
 source-attributed events, ingest freshness, unmapped issuers, and timeline
-joins, and never infers broker intent from a filing.
+joins, and never infers broker intent from a filing. Grounded synthesis is
+backend-owned cited prose; React hides it when `available` is false and never
+asks a model for market facts.
 
 ## Routes
 

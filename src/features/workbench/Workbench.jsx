@@ -191,6 +191,33 @@ function WhatChangedPanel({ data }) {
           {health.counts?.unmapped ? ` · ${health.counts.unmapped} unmapped issuers` : ''}
         </p>
       )}
+      {data?.groundedSynthesis?.available && (
+        <section className="wb-grounded" aria-label="Grounded evidence narrative">
+          <h3 className="wb-section__title text-tertiary">Evidence narrative</h3>
+          <ul>
+            {(data.groundedSynthesis.evidenceNarrative || []).map((row) => (
+              <li key={row.text}>
+                <p>{row.text}</p>
+                <small>{(row.refs || []).join(' · ')}</small>
+              </li>
+            ))}
+          </ul>
+          {(data.groundedSynthesis.changeBrief || []).length > 0 && (
+            <>
+              <h3 className="wb-section__title text-tertiary">Change brief</h3>
+              <ul>
+                {data.groundedSynthesis.changeBrief.map((row) => (
+                  <li key={row.text}>
+                    <p>{row.text}</p>
+                    <small>{(row.refs || []).join(' · ')}</small>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          <p className="wb-grounded__limit">{(data.groundedSynthesis.limitations || [])[0]}</p>
+        </section>
+      )}
       <InvestigationBrief investigation={data?.investigation} />
       <EvidenceDebate debate={data?.debate} stance={data?.stance} />
       {contradictions.length > 0 && (
