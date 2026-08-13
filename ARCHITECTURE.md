@@ -118,6 +118,8 @@ frontend build flag `VITE_PRIVATE_WRITES=true` and the Node boundary flag
 `STOCK_ANALYSIS_PRIVATE_WRITES=true`. The Cloudflare Worker remains read-only
 and never forwards workflow writes. The private Node boundary forwards only the
 exact watchlist, trade-plan and journal paths; the raw API remains unexposed.
+Private V2 builds must use `npm run build:private`; the ordinary production
+build intentionally omits Watchlist routes and controls.
 
 ## Platform baseline
 
