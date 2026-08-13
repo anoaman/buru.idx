@@ -50,6 +50,8 @@ and consumes existing backend engines without duplicating their calculations.
   computed. Radar's lane filter only hides rows the backend already ranked.
   Watchlist renders backend-owned lifecycle events and source links; it does not
   infer trigger, invalidation, confirmation, expiry, or notice state in React.
+  It may render backend-owned MFE/MAE and matching-date IHSG excess return, but
+  must label incomplete horizons as open rather than scoring them early.
   Custom Screener uses a split layout (conditions column + results table) and
   forwards broker custom range / lead-broker minimum through the public
   allowlist.

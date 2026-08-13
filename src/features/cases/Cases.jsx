@@ -93,6 +93,14 @@ function CaseCard({ item, onReopen, onActors }) {
         </div>
       )}
 
+      {item.outcome && (
+        <dl className="case-card__outcome">
+          <div><dt>Best excursion</dt><dd>{Number.isFinite(item.outcome.mfePct) ? `${item.outcome.mfePct.toFixed(1)}%` : 'Not triggered'}</dd></div>
+          <div><dt>Worst excursion</dt><dd>{Number.isFinite(item.outcome.maePct) ? `${item.outcome.maePct.toFixed(1)}%` : '—'}</dd></div>
+          <div><dt>vs IHSG</dt><dd>{item.outcome.horizonElapsed && Number.isFinite(item.outcome.excessReturnPct) ? `${item.outcome.excessReturnPct > 0 ? '+' : ''}${item.outcome.excessReturnPct.toFixed(1)}%` : 'Horizon open'}</dd></div>
+        </dl>
+      )}
+
       <div className="case-card__provenance">
         <SnapshotAge monitoring={monitoring} />
         {item.addedAt && <span className="text-tertiary">Opened {formatRelativeDays(item.addedAt)}</span>}

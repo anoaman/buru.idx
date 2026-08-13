@@ -2304,6 +2304,9 @@
 .case-card__event p { margin: 4px 0; color: var(--text-primary); }
 .case-card__event small { color: var(--text-tertiary); }
 .case-card__event a { margin-left: 10px; }
+.case-card__outcome { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0 0 var(--space-3); padding: 10px 0; border-block: 1px solid var(--border-subtle); }
+.case-card__outcome dt { color: var(--text-tertiary); font-size: var(--type-meta); }
+.case-card__outcome dd { margin: 3px 0 0; font-family: var(--font-tabular); }
 .case-card__provenance { display: flex; flex-direction: column; gap: 2px; margin-bottom: var(--space-3); font-size: var(--type-meta); }
 .case-card__actions { margin-top: auto; }
 .case-card__actions button { min-width: 0; white-space: nowrap; }

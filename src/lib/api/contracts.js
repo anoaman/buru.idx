@@ -566,6 +566,7 @@ function normalizeCaseItem(item) {
   // have.
   if (!item || typeof item !== 'object' || !item.ticker || item.id == null) return null;
   const snapshot = item.snapshot && typeof item.snapshot === 'object' ? item.snapshot : {};
+  const outcome = item.outcome && typeof item.outcome === 'object' ? item.outcome : null;
   return {
     id: item.id,
     ticker: String(item.ticker).toUpperCase(),
@@ -583,6 +584,18 @@ function normalizeCaseItem(item) {
       freshness: normalizeOpportunityFreshness(snapshot.freshness),
     },
     monitoring: normalizeCaseMonitoring(item.monitoring),
+    outcome: outcome ? {
+      startDate: outcome.startDate || null,
+      horizonSessions: preserveFiniteOrNull(outcome.horizonSessions),
+      observedSessions: preserveFiniteOrNull(outcome.observedSessions),
+      horizonElapsed: outcome.horizonElapsed === true,
+      triggeredDate: outcome.triggeredDate || null,
+      mfePct: preserveFiniteOrNull(outcome.mfePct),
+      maePct: preserveFiniteOrNull(outcome.maePct),
+      benchmarkReturnPct: preserveFiniteOrNull(outcome.benchmarkReturnPct),
+      excessReturnPct: preserveFiniteOrNull(outcome.excessReturnPct),
+      calculatedThrough: outcome.calculatedThrough || null,
+    } : null,
     addedAt: item.addedAt || null,
     updatedAt: item.updatedAt || null,
   };

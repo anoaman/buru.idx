@@ -159,6 +159,24 @@ describe('Cases', () => {
     );
   });
 
+  it('renders elapsed outcome metrics without grading an open horizon', async () => {
+    getCases.mockResolvedValue({
+      success: true,
+      data: { items: [caseItem({
+        outcome: {
+          startDate: '2026-08-10', horizonSessions: 5, observedSessions: 3,
+          horizonElapsed: false, triggeredDate: '2026-08-11',
+          mfePct: 8.2, maePct: -2.1, benchmarkReturnPct: null,
+          excessReturnPct: null, calculatedThrough: '2026-08-13',
+        },
+      })] },
+    });
+    renderCases();
+    expect(await screen.findByText('8.2%')).toBeInTheDocument();
+    expect(screen.getByText('-2.1%')).toBeInTheDocument();
+    expect(screen.getByText('Horizon open')).toBeInTheDocument();
+  });
+
   it('renders an empty state when nothing is being tracked', async () => {
     getCases.mockResolvedValue({ success: true, data: { items: [] } });
     renderCases();
