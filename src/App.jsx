@@ -5,6 +5,7 @@ import BrokerIntelligence from './features/broker-intelligence/BrokerIntelligenc
 import Workbench from './features/workbench/Workbench.jsx';
 import Radar from './features/radar/Radar.jsx';
 import Cases from './features/cases/Cases.jsx';
+import Fundamentals from './features/fundamentals/Fundamentals.jsx';
 import { privateWritesEnabled } from './lib/api/client.js';
 
 export default function App() {
@@ -16,6 +17,7 @@ export default function App() {
             <Route path="/" element={<Navigate to="/workbench" replace />} />
             <Route path="/radar" element={<Radar />} />
             <Route path="/workbench" element={<Workbench />} />
+            <Route path="/fundamentals" element={<Fundamentals />} />
             <Route path="/broker-intelligence" element={<BrokerIntelligence />} />
             {privateWritesEnabled && <Route path="/cases" element={<Cases />} />}
             <Route path="*" element={<Navigate to="/workbench" replace />} />

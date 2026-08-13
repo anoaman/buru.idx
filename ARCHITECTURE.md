@@ -56,6 +56,10 @@ and consumes existing backend engines without duplicating their calculations.
   Custom Screener uses a split layout (conditions column + results table) and
   forwards broker custom range / lead-broker minimum through the public
   allowlist.
+- `src/features/fundamentals/` owns the empty official-source Fundamentals
+  tab. React fetches `/api/fundamentals`, renders backend unavailable
+  reasons, and must not invent ratios, peers, or price targets. The tab is
+  public (not private-writes-only). A populated filing pipeline is future work.
 - `confidence` is a deprecated pre-1.2 alias for source freshness and coverage,
   not outcome probability. The view models expose it as `dataQuality` and drop
   the alias, so no component can render it under the wrong label.
@@ -63,9 +67,9 @@ and consumes existing backend engines without duplicating their calculations.
   backend owns recipes, thresholds, measurements, qualification and ranking;
   React only submits bounded filters and renders the returned evidence,
   component score breakdown, evidence band, and separately labelled near misses.
-- Trader-facing labels use Screener / Market Shortlist / Custom Screener / Stock
-  Analysis / Broker Flow / Watchlist. Internal route names remain stable. The
-  global ticker selection is shared by Stock Analysis and Broker Flow; Screener
+-   Trader-facing labels use Screener / Market Shortlist / Custom Screener / Stock
+  Analysis / Fundamentals / Broker Flow / Watchlist. Internal route names remain stable. The
+  global ticker selection is shared by Stock Analysis, Fundamentals, and Broker Flow; Screener
   handoffs open in new tabs so the originating result set is preserved.
 - Broker Flow and Custom Screener expose named and custom calendar ranges while
   reporting the actual observed trading-day count. Chart defaults show the
@@ -89,11 +93,13 @@ Official disclosures are backend-owned Story Intelligence: React renders
 source-attributed events, ingest freshness, unmapped issuers, and timeline
 joins, and never infers broker intent from a filing. Grounded synthesis is
 backend-owned cited prose; React hides it when `available` is false and never
-asks a model for market facts.
+asks a model for market facts. Fundamentals remain backend-owned; the empty
+tab is an honest unavailable shell until official statement rows exist.
 
 ## Routes
 
 - `/workbench`
+- `/fundamentals`
 - `/broker-intelligence`
 - `/radar`
 - `/cases`

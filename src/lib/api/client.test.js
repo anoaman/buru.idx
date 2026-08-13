@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   analyzeTicker,
+  getFundamentals,
   getStockBrokerIntelligence,
   invalidateBrokerCache,
 } from './client.js';
@@ -160,5 +161,16 @@ describe('Stock Analysis API client', () => {
       getStockBrokerIntelligence({ ticker: 'BMRI', days: 1 }),
     ).resolves.toMatchObject({ data: { refreshed: true } });
     expect(global.fetch).toHaveBeenCalledTimes(3);
+  });
+
+  it('encodes fundamentals requests without inventing a cache key for empty shells', async () => {
+    global.fetch = vi.fn().mockResolvedValue(response({
+      success: true,
+      data: { available: false, ticker: 'BBRI' },
+    }));
+    await expect(getFundamentals('bbri')).resolves.toMatchObject({ success: true });
+    expect(global.fetch.mock.calls[0][0]).toContain('/api/fundamentals?ticker=BBRI');
+    await getFundamentals('BBRI');
+    expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 });

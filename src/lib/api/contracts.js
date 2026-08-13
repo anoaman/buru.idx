@@ -831,6 +831,60 @@ export function guardCases(raw) {
   };
 }
 
+export function guardFundamentals(raw) {
+  if (!raw || raw.success === false) {
+    return { ok: false, error: raw?.error || 'Invalid fundamentals response', data: null };
+  }
+  const data = raw.data;
+  if (!data || typeof data !== 'object') {
+    return { ok: false, error: 'Missing fundamentals data', data: null };
+  }
+  const ticker = typeof data.ticker === 'string' && /^[A-Z]{4}$/.test(data.ticker.toUpperCase())
+    ? data.ticker.toUpperCase()
+    : null;
+  const coverage = data.coverage && typeof data.coverage === 'object' ? data.coverage : {};
+  const emptySection = (section, fallback) => {
+    const row = section && typeof section === 'object' ? section : {};
+    return {
+      available: false,
+      reason: typeof row.reason === 'string' && row.reason.trim()
+        ? row.reason.trim()
+        : fallback,
+    };
+  };
+  const emptyReason = 'Official financial-statement rows are not loaded yet. This section stays empty rather than inventing figures.';
+  return {
+    ok: true,
+    error: null,
+    data: {
+      available: false,
+      ticker,
+      reason: typeof data.reason === 'string' && data.reason.trim()
+        ? data.reason.trim()
+        : 'Official financial-statement rows are not loaded yet.',
+      sections: {
+        performance: emptySection(data.sections?.performance, emptyReason),
+        valuation: emptySection(
+          data.sections?.valuation,
+          'Valuation context is withheld until official, same-period denominators exist. This is not a price target.',
+        ),
+        balanceSheet: emptySection(data.sections?.balanceSheet, emptyReason),
+        dilution: emptySection(data.sections?.dilution, 'Share-count and dilution events are not ingested yet.'),
+        sources: emptySection(
+          data.sections?.sources,
+          'No official statement URL is attached until a filing pipeline is connected.',
+        ),
+      },
+      coverage: {
+        usable: Number.isFinite(coverage.usable) ? coverage.usable : 0,
+        mixedAnnualQuarterly: coverage.mixedAnnualQuarterly === true,
+        recommendation: typeof coverage.recommendation === 'string' ? coverage.recommendation : null,
+      },
+      sourcesConsidered: normalizeStringList(data.sourcesConsidered, 8),
+    },
+  };
+}
+
 export function guardStockBrokerIntelligence(raw) {
   if (!raw || raw.success === false) {
     return { ok: false, error: raw?.error || 'Invalid response', data: null, meta: null };

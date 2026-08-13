@@ -29,6 +29,10 @@ describe('public API allowlist', () => {
       ok: true,
       path: '/api/story-intelligence?ticker=BBRI',
     });
+    expect(resolvePublicApiRequest('GET', '/api/fundamentals?ticker=BBRI')).toEqual({
+      ok: true,
+      path: '/api/fundamentals?ticker=BBRI',
+    });
   });
 
   it('forwards Scout custom broker dates and lead-broker minimum to upstream', () => {
@@ -75,6 +79,8 @@ describe('public API allowlist', () => {
       '/api/broker-intelligence/stock?ticker=BBCA&days=1&from=2026-01-01&to=2026-08-07',
       '/api/broker-intelligence/broker?code=ZP&days=30&limit=25',
       '/api/broker-intelligence/broker?code=ZP&days=7&limit=25&date=2026-08-07',
+      '/api/story-intelligence?ticker=BBRI',
+      '/api/fundamentals?ticker=BBRI',
       '/api/radar/scout?recipe=dominant_broker&brokerSessions=7&consolidationSessions=10&supportSessions=20&maxPrice=1000&minAverageValue=500000000&limit=10&useBroker=true&useSupport=false&useSideways=false&useMaxPrice=true&useLiquidity=true',
       '/api/radar/scout?recipe=quiet_accumulation&brokerPreset=custom&brokerFrom=2026-01-01&brokerTo=2026-08-01&minLeadBrokerValue=1000000&useLeadBrokerValue=true&limit=50',
     ];

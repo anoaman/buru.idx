@@ -15,6 +15,7 @@ function renderShell(path = '/workbench?ticker=BBCA') {
         <AnalysisShell>
           <Routes>
             <Route path="/workbench" element={<div>Investigation page</div>} />
+            <Route path="/fundamentals" element={<div>Fundamentals page</div>} />
             <Route path="/broker-intelligence" element={<div>Broker page</div>} />
             <Route path="/radar" element={<div>Radar page</div>} />
           </Routes>
@@ -49,10 +50,22 @@ describe('AnalysisShell', () => {
     expect(screen.getByText('as of 2026-08-07')).toBeInTheDocument();
   });
 
-  it('exposes all four private workstation destinations', () => {
+  it('keeps the command-bar ticker on Fundamentals instead of bouncing to Stock Analysis', async () => {
+    renderShell('/fundamentals?ticker=BBCA');
+    const input = screen.getByLabelText(/Open ticker investigation/i);
+    fireEvent.change(input, { target: { value: 'tlkm' } });
+    fireEvent.click(screen.getByRole('button', { name: 'OPEN' }));
+    await waitFor(() => {
+      expect(screen.getByLabelText('location')).toHaveTextContent('/fundamentals?ticker=TLKM');
+    });
+    expect(screen.getByText('Fundamentals page')).toBeInTheDocument();
+  });
+
+  it('exposes the public workstation destinations including Fundamentals', () => {
     renderShell('/radar');
     expect(screen.getByRole('link', { name: /Screener/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Stock Analysis/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Fundamentals/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Broker Flow/i })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /Watchlist/i })).not.toBeInTheDocument();
   });

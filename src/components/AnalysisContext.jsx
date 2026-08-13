@@ -47,6 +47,11 @@ export function AnalysisProvider({ children }) {
     return nextTicker ? `/workbench?ticker=${encodeURIComponent(nextTicker)}` : null;
   };
 
+  const fundamentalsUrl = (value = ticker) => {
+    const nextTicker = validTicker(value);
+    return nextTicker ? `/fundamentals?ticker=${encodeURIComponent(nextTicker)}` : null;
+  };
+
   const brokerFlowUrl = (value = ticker, rangeOverride = null) => {
     const nextTicker = validTicker(value);
     if (!nextTicker) return null;
@@ -77,7 +82,13 @@ export function AnalysisProvider({ children }) {
     const nextTicker = validTicker(value);
     if (!nextTicker) return false;
     setTicker(nextTicker);
-    navigate(location.pathname.startsWith('/broker-intelligence') ? brokerFlowUrl(nextTicker) : investigationUrl(nextTicker));
+    if (location.pathname.startsWith('/broker-intelligence')) {
+      navigate(brokerFlowUrl(nextTicker));
+    } else if (location.pathname.startsWith('/fundamentals')) {
+      navigate(fundamentalsUrl(nextTicker));
+    } else {
+      navigate(investigationUrl(nextTicker));
+    }
     return true;
   };
 
@@ -135,6 +146,7 @@ export function AnalysisProvider({ children }) {
     openBrokerFlowTab,
     investigationUrl,
     brokerFlowUrl,
+    fundamentalsUrl,
     updateWindow,
   }), [ticker, days, asOf, brokerRange, location.pathname, location.search]);
 

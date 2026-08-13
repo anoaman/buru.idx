@@ -178,3 +178,9 @@ export function prefetchStockBrokerIntelligence({ ticker, days, date = null }) {
 export function prefetchBrokerStockIntelligence({ code, days, date = null, limit = 25 }) {
   return getBrokerStockIntelligence({ code, days, date, limit });
 }
+
+export function getFundamentals(ticker) {
+  const params = new URLSearchParams();
+  params.set('ticker', String(ticker || '').toUpperCase());
+  return request(`/api/fundamentals?${params.toString()}`);
+}

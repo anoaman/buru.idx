@@ -4,6 +4,7 @@ import {
   guardBrokerArchiveHealth,
   guardBrokerStockIntelligence,
   guardCases,
+  guardFundamentals,
   guardOpportunities,
   guardRadarScout,
   guardStockBrokerIntelligence,
@@ -249,6 +250,8 @@ describe('public Stock Analysis contracts', () => {
     expect(guardOpportunities({ success: false, error: 'scan store unavailable' }).ok).toBe(false);
     expect(guardOpportunities({ success: true }).ok).toBe(false);
     expect(guardCases({ success: false, error: 'offline' }).ok).toBe(false);
+    expect(guardFundamentals({ success: false, error: 'offline' }).ok).toBe(false);
+    expect(guardFundamentals({ success: true }).ok).toBe(false);
   });
 
   it('normalizes a scan run into a view model and drops the deprecated alias', () => {
@@ -530,5 +533,39 @@ describe('Radar Scout contracts', () => {
       failedCondition: 'Missed liquidity floor ≥ Rp500M/day',
       scoreBreakdown: { broker: 20, support: 18, liquidity: null },
     });
+  });
+});
+
+describe('fundamentals contracts', () => {
+  it('renders backend unavailable reasons and drops invented ratio fields', () => {
+    const result = guardFundamentals({
+      success: true,
+      data: {
+        available: true,
+        ticker: 'bbri',
+        reason: 'No official, fully attributed statement rows yet. The Fundamentals tab stays empty until a first-party filing pipeline is connected.',
+        pe: 12.4,
+        ratios: { roe: 0.18 },
+        sections: {
+          performance: { available: true, pe: 12.4, reason: 'Official financial-statement rows are not loaded yet.' },
+          valuation: { available: true, target: 5200 },
+        },
+        coverage: { usable: 0, mixedAnnualQuarterly: false, recommendation: 'stay empty' },
+        sourcesConsidered: ['IDX company disclosures / financial statements (first-party, preferred)'],
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.data.available).toBe(false);
+    expect(result.data.ticker).toBe('BBRI');
+    expect(result.data.pe).toBeUndefined();
+    expect(result.data.ratios).toBeUndefined();
+    expect(result.data.sections.performance.available).toBe(false);
+    expect(result.data.sections.performance.pe).toBeUndefined();
+    expect(result.data.sections.valuation.target).toBeUndefined();
+    expect(result.data.sections.valuation.reason).toMatch(/not a price target/i);
+    expect(result.data.sourcesConsidered).toEqual([
+      'IDX company disclosures / financial statements (first-party, preferred)',
+    ]);
   });
 });

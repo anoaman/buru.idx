@@ -2358,7 +2358,8 @@
 .radar-page,
 .workbench,
 .bi-page,
-.cases-page { max-width: var(--content-max); margin: 0 auto; }
+.cases-page,
+.fd-page { max-width: var(--content-max); margin: 0 auto; }
 
 .radar-view-tabs {
   gap: 18px;
@@ -3226,4 +3227,47 @@
 .bi-show-more:hover {
   color: var(--color-accent);
   border-color: var(--color-accent);
+}
+
+.fd-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+.fd-section {
+  padding: var(--space-4);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+}
+.fd-section h3 {
+  margin: 0 0 var(--space-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+.fd-section p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.55;
+}
+.fd-sources {
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+}
+.fd-sources h3 {
+  margin: 0 0 var(--space-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+.fd-sources ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.55;
 }

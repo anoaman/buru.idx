@@ -6,6 +6,7 @@ import { privateWritesEnabled } from '../lib/api/client.js';
 const NAV = [
   { path: '/radar', label: 'Screener', mark: 'SC' },
   { path: '/workbench', label: 'Stock Analysis', mark: 'SA' },
+  { path: '/fundamentals', label: 'Fundamentals', mark: 'FD' },
   { path: '/broker-intelligence', label: 'Broker Flow', mark: 'BF' },
   ...(privateWritesEnabled ? [{ path: '/cases', label: 'Watchlist', mark: 'WL' }] : []),
 ];
@@ -58,12 +59,14 @@ export default function AnalysisShell({ children }) {
   });
   const location = useLocation();
   const current = NAV.find((item) => location.pathname.startsWith(item.path)) || NAV[1];
-  const { investigationUrl, brokerFlowUrl } = useAnalysisContext();
+  const { investigationUrl, brokerFlowUrl, fundamentalsUrl } = useAnalysisContext();
   const navTarget = (item) => item.path === '/workbench'
     ? investigationUrl()
     : item.path === '/broker-intelligence'
       ? brokerFlowUrl()
-      : item.path;
+      : item.path === '/fundamentals'
+        ? fundamentalsUrl()
+        : item.path;
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;

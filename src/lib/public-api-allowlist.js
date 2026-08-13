@@ -41,6 +41,7 @@ const PUBLIC_ROUTES = new Map([
   ['/api/broker-intelligence/stock', { params: ['ticker', 'days', 'date', 'preset', 'from', 'to'] }],
   ['/api/broker-intelligence/broker', { params: ['code', 'days', 'limit', 'date', 'preset', 'from', 'to'] }],
   ['/api/story-intelligence', { params: ['ticker', 'asOf'] }],
+  ['/api/fundamentals', { params: ['ticker'] }],
 ]);
 
 // Per-IP token bucket. Cheap, in-process, and enough to stop one client hammering
