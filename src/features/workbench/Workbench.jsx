@@ -138,14 +138,21 @@ function MarketContextStrip({ macro }) {
   );
 }
 
-function ScenarioStrip({ scenario }) {
-  if (!scenario) return null;
+function ScenarioStrip({ scenario, geometry }) {
+  const setup = geometry || scenario?.geometry;
+  if (!scenario && !setup) return null;
+  const framing = setup?.framing || 'unavailable';
   return (
     <section className="wb-market-context" aria-label="Scenario and structure">
-      <div><span>Scenario</span><strong>{String(scenario.scenario || 'unclassified').replaceAll('_', ' ')}</strong><small>{scenario.fitScore || 0}% evidence fit</small></div>
-      <div><span>Structure</span><strong>{scenario.structure?.trend || 'unknown'}</strong><small>{scenario.structure?.compression ? 'compressed' : 'not compressed'} · {scenario.structure?.nearSupport ? 'near support' : 'away from support'}</small></div>
-      <div><span>For</span><strong>{scenario.confirmations?.[0] || 'No strong confirmation'}</strong><small>{(scenario.confirmations || []).slice(1).join(' · ')}</small></div>
-      <div><span>Against</span><strong>{scenario.contradictions?.[0] || 'No material contradiction'}</strong><small>{(scenario.contradictions || []).slice(1).join(' · ')}</small></div>
+      <div><span>Scenario</span><strong>{String(scenario?.scenario || 'unclassified').replaceAll('_', ' ')}</strong><small>{scenario?.fitScore || 0}% evidence fit</small></div>
+      <div><span>Structure</span><strong>{scenario?.structure?.trend || 'unknown'}</strong><small>{scenario?.structure?.compression ? 'compressed' : 'not compressed'} · {scenario?.structure?.nearSupport ? 'near support' : 'away from support'}</small></div>
+      <div><span>For</span><strong>{scenario?.confirmations?.[0] || 'No strong confirmation'}</strong><small>{(scenario?.confirmations || []).slice(1).join(' · ')}</small></div>
+      <div><span>Against</span><strong>{scenario?.contradictions?.[0] || 'No material contradiction'}</strong><small>{(scenario?.contradictions || []).slice(1).join(' · ')}</small></div>
+      <div>
+        <span>Setup frame</span>
+        <strong>{String(framing).replaceAll('_', ' ')}</strong>
+        <small>{setup?.labels?.summary || setup?.unavailableReason || 'Geometry awaits classified evidence'}</small>
+      </div>
     </section>
   );
 }
@@ -276,7 +283,7 @@ export default function Workbench() {
       case 'changed':
         return <WhatChangedPanel data={data} />;
       case 'risk':
-        return <RiskSimulator ticker={data.ticker} geometry={data.riskGeometry} atr14Pct={data.priceHistory?.atr14Pct} />;
+        return <RiskSimulator ticker={data.ticker} geometry={data.riskGeometry} scenarioGeometry={data.scenarioGeometry} atr14Pct={data.priceHistory?.atr14Pct} />;
       case 'methodology':
         return (
           <EvidenceSummary
@@ -314,7 +321,7 @@ export default function Workbench() {
           <div className="wb-result" data-displayed-ticker={displayed.ticker}>
             <TickerHeader ticker={displayed.data.ticker} priceHistory={displayed.data.priceHistory} />
             <MarketContextStrip macro={displayed.data.macro} />
-            <ScenarioStrip scenario={displayed.data.scenario} />
+            <ScenarioStrip scenario={displayed.data.scenario} geometry={displayed.data.scenarioGeometry} />
             {privateWritesEnabled && (
               <div className="wb-case-action">
                 <button
@@ -353,16 +360,22 @@ export default function Workbench() {
                   scenario: displayed.data.scenario?.scenario || null,
                   scenarioFitScore: displayed.data.scenario?.fitScore ?? null,
                   structureState: displayed.data.scenario || displayed.data.grade || {},
+                  scenarioGeometry: displayed.data.scenarioGeometry || null,
                 }}
                 defaults={{
-                  confirmation: displayed.data.riskGeometry?.confirmationEntry
-                    ? `Daily close above ${displayed.data.riskGeometry.confirmationEntry}`
-                    : 'Wait for a confirmed daily close above the setup level',
-                  triggerPrice: displayed.data.riskGeometry?.confirmationEntry ?? null,
-                  invalidationPrice: displayed.data.riskGeometry?.invalidation
-                    ?? displayed.data.riskGeometry?.stop
-                    ?? displayed.data.supportResistance?.support,
-                  targetPrice: displayed.data.riskGeometry?.target ?? null,
+                  confirmation: displayed.data.scenarioGeometry?.labels?.confirmation
+                    || (displayed.data.scenarioGeometry?.framing === 'long_setup'
+                      && displayed.data.scenarioGeometry?.trigger?.price
+                      ? `Daily close above ${displayed.data.scenarioGeometry.trigger.price}`
+                      : displayed.data.scenarioGeometry?.unavailableReason
+                        || 'Wait for a confirmed daily close above the setup level'),
+                  triggerPrice: displayed.data.scenarioGeometry?.trigger?.price ?? null,
+                  invalidationPrice: displayed.data.scenarioGeometry?.invalidation?.price
+                    ?? displayed.data.scenarioGeometry?.defensiveExit?.price
+                    ?? displayed.data.supportResistance?.supports?.[0]?.price,
+                  targetPrice: displayed.data.scenarioGeometry?.framing === 'long_setup'
+                    ? displayed.data.scenarioGeometry?.target?.price ?? null
+                    : null,
                 }}
                 onCancel={() => setCapturingCase(false)}
               />
@@ -371,6 +384,7 @@ export default function Workbench() {
               <MarketChart
                 chart={displayed.data.chart}
                 geometry={displayed.data.riskGeometry}
+                scenarioGeometry={displayed.data.scenarioGeometry}
                 ticker={displayed.data.ticker}
               />
             </div>

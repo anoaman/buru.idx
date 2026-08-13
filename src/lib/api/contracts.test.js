@@ -53,6 +53,33 @@ describe('public Stock Analysis contracts', () => {
     expect(result.data.broker.symbol).toBe('BBCA');
   });
 
+  it('normalizes scenario geometry without inventing a last-close entry', () => {
+    const result = guardAnalyze({
+      success: true,
+      data: {
+        ticker: { symbol: 'BBRI', close: 4500 },
+        scenario: { scenario: 'distribution_risk', fitScore: 75 },
+        scenarioGeometry: {
+          scenario: 'distribution_risk',
+          available: true,
+          framing: 'defensive',
+          trigger: null,
+          confirmation: null,
+          invalidation: { price: '4300', event: 'close_below' },
+          labels: { confirmation: 'Not a long entry', summary: 'Defensive only' },
+          reasons: ['observed broker flow is distributing'],
+        },
+      },
+    });
+    expect(result.ok).toBe(true);
+    expect(result.data.scenarioGeometry.framing).toBe('defensive');
+    expect(result.data.scenarioGeometry.trigger).toBeNull();
+    expect(result.data.scenarioGeometry.confirmation).toBeNull();
+    expect(result.data.scenarioGeometry.invalidation.price).toBe(4300);
+    expect(result.data.scenarioGeometry.labels.confirmation).toBe('Not a long entry');
+    expect(result.data.scenario.geometry.framing).toBe('defensive');
+  });
+
   it('guards archive health without inventing coverage', () => {
     const result = guardBrokerArchiveHealth({
       success: true,
@@ -309,6 +336,33 @@ describe('public Stock Analysis contracts', () => {
     expect(item.monitoring.current.dataQuality).toBe('medium');
     expect(result.data.changedCount).toBe(1);
     expect(result.data.staleCount).toBe(1);
+  });
+
+  it('keeps frozen scenario geometry on a saved case without recalculating it', () => {
+    const result = guardCases({
+      success: true,
+      data: {
+        items: [{
+          id: 8,
+          ticker: 'BBRI',
+          triggerPrice: 4550,
+          invalidationPrice: 4180,
+          snapshot: {
+            levels: { trigger: 4550, invalidation: 4180, framing: 'long_setup', target: 5000 },
+            scenarioGeometry: {
+              scenario: 'compression_breakout',
+              available: true,
+              framing: 'long_setup',
+              trigger: { price: 4550 },
+              invalidation: { price: 4180 },
+            },
+          },
+        }],
+      },
+    });
+    expect(result.data.items[0].snapshot.levels.framing).toBe('long_setup');
+    expect(result.data.items[0].snapshot.levels.target).toBe(5000);
+    expect(result.data.items[0].snapshot.scenarioGeometry.trigger.price).toBe(4550);
   });
 
   it('keeps unknown snapshot age distinct from a fresh snapshot', () => {

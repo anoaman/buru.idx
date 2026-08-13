@@ -32,8 +32,18 @@ export default function CaseCapturePanel({ ticker, source, snapshot, defaults = 
       sourceRunId: snapshot?.sourceRunId ?? null,
       setupType: form.setupType.trim(),
       horizonSessions: Number(form.horizonSessions),
-      entryCondition: { text: form.confirmation.trim() },
-      expectedConfirmation: { text: form.confirmation.trim() },
+      entryCondition: {
+        text: form.confirmation.trim(),
+        basis: snapshot?.scenarioGeometry?.confirmation?.basis || snapshot?.scenarioGeometry?.invalidation?.basis || 'close',
+        direction: 'long',
+      },
+      expectedConfirmation: snapshot?.scenarioGeometry?.confirmation
+        ? {
+            ...snapshot.scenarioGeometry.confirmation,
+            level: snapshot.scenarioGeometry.confirmation.level ?? snapshot.scenarioGeometry.confirmation.price,
+            text: form.confirmation.trim(),
+          }
+        : { text: form.confirmation.trim() },
       targets: form.targetPrice ? [Number(form.targetPrice)] : [],
     });
     if (result?.success === false) {

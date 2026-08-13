@@ -52,12 +52,12 @@ function CaseCard({ item, onReopen, onActors }) {
 
       <dl className="case-card__levels">
         <div>
-          <dt>Breakout above</dt>
-          <dd>{formatPrice(item.triggerPrice ?? snapshot.levels.trigger)}</dd>
+          <dt>{item.snapshot.levels?.framing === 'defensive' || item.snapshot.scenarioGeometry?.framing === 'defensive' ? 'Not a long entry' : 'Breakout above'}</dt>
+          <dd>{formatPrice(item.triggerPrice ?? item.snapshot.levels.trigger)}</dd>
         </div>
         <div>
-          <dt>Setup fails below</dt>
-          <dd>{formatPrice(item.invalidationPrice ?? snapshot.levels.invalidation)}</dd>
+          <dt>{item.snapshot.levels?.framing === 'defensive' || item.snapshot.scenarioGeometry?.framing === 'defensive' ? 'Damage if lost' : 'Setup fails below'}</dt>
+          <dd>{formatPrice(item.invalidationPrice ?? item.snapshot.levels.invalidation)}</dd>
         </div>
         <div>
           <dt>Saved score</dt>
@@ -91,7 +91,7 @@ function CaseCard({ item, onReopen, onActors }) {
             <a href={lifecycleEvent.evidence.sourceUrl} target="_blank" rel="noreferrer">Official source</a>
           )}
           {lifecycleEvent.eventType === 'profile_drift' && (
-            <small> · scan #{lifecycleEvent.evidence?.sourceRunId || '—'} · {lifecycleEvent.evidence?.currentFitScore ?? '—'}% current fit</small>
+            <small> · {lifecycleEvent.evidence?.kind || 'scenario'} · scan #{lifecycleEvent.evidence?.sourceRunId || '—'} · {lifecycleEvent.evidence?.currentFitScore ?? '—'}% current fit</small>
           )}
         </div>
       )}

@@ -1,3 +1,55 @@
+const GEOMETRY_FRAMINGS = ['long_setup', 'defensive', 'already_extended', 'late_extension', 'unavailable'];
+
+function normalizeGeometryLevel(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const parsed = Number(raw.price ?? raw.level);
+  const price = Number.isFinite(parsed) ? parsed : null;
+  if (price == null && !raw.reason && !raw.event) return null;
+  return {
+    price,
+    level: preserveFiniteOrNull(raw.level ?? raw.price),
+    event: raw.event || null,
+    basis: raw.basis || null,
+    reason: typeof raw.reason === 'string' ? raw.reason : null,
+    withinSessions: preserveFiniteOrNull(raw.withinSessions),
+    requiresBrokerPersistence: raw.requiresBrokerPersistence === true,
+  };
+}
+
+export function normalizeScenarioGeometry(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const framing = GEOMETRY_FRAMINGS.includes(raw.framing) ? raw.framing : 'unavailable';
+  return {
+    scenario: raw.scenario || 'unclassified',
+    available: raw.available === true,
+    framing,
+    unavailableReason: typeof raw.unavailableReason === 'string' ? raw.unavailableReason : null,
+    trigger: normalizeGeometryLevel(raw.trigger),
+    confirmation: normalizeGeometryLevel(raw.confirmation),
+    invalidation: normalizeGeometryLevel(raw.invalidation),
+    target: normalizeGeometryLevel(raw.target),
+    defensiveExit: normalizeGeometryLevel(raw.defensiveExit),
+    risk: raw.risk && typeof raw.risk === 'object' ? {
+      netRR: preserveFiniteOrNull(raw.risk.netRR),
+      rr: preserveFiniteOrNull(raw.risk.rr),
+      costPct: preserveFiniteOrNull(raw.risk.costPct),
+      stopDistPct: preserveFiniteOrNull(raw.risk.stopDistPct),
+      targetDistPct: preserveFiniteOrNull(raw.risk.targetDistPct),
+      extended: raw.risk.extended === true,
+      extensionAtr: preserveFiniteOrNull(raw.risk.extensionAtr),
+    } : null,
+    labels: raw.labels && typeof raw.labels === 'object' ? {
+      confirmation: raw.labels.confirmation || null,
+      invalidation: raw.labels.invalidation || null,
+      target: raw.labels.target || null,
+      summary: raw.labels.summary || null,
+    } : { confirmation: null, invalidation: null, target: null, summary: null },
+    reasons: normalizeStringList(raw.reasons, 8),
+    limitations: normalizeStringList(raw.limitations, 8),
+    inputs: raw.inputs && typeof raw.inputs === 'object' ? raw.inputs : null,
+  };
+}
+
 export function guardAnalyze(raw) {
   if (!raw || raw.success === false) {
     return { ok: false, error: raw?.error || 'Invalid response', data: null };
@@ -59,11 +111,20 @@ export function guardAnalyze(raw) {
     nearest: dyn.nearest || { support: null, resistance: null },
   } : null;
 
+  const scenarioGeometry = normalizeScenarioGeometry(
+    data.scenarioGeometry || data.scenario?.geometry,
+  );
+  const scenario = data.scenario && typeof data.scenario === 'object'
+    ? { ...data.scenario, geometry: scenarioGeometry }
+    : data.scenario;
+
   return {
     ok: true,
     error: null,
     data: {
       ...data,
+      scenario,
+      scenarioGeometry,
       dynamicLevels: normalizedDynamicLevels,
       chart: normalizedChart,
       broker,
@@ -324,7 +385,10 @@ function normalizeOpportunityLevels(raw, fallbackNetRewardRisk) {
     resistance: preserveFiniteOrNull(levels.resistance),
     trigger: preserveFiniteOrNull(levels.trigger),
     invalidation: preserveFiniteOrNull(levels.invalidation),
+    target: preserveFiniteOrNull(levels.target),
     netRewardRisk: preserveFiniteOrNull(levels.netRewardRisk ?? fallbackNetRewardRisk),
+    framing: GEOMETRY_FRAMINGS.includes(levels.framing) ? levels.framing : null,
+    unavailableReason: typeof levels.unavailableReason === 'string' ? levels.unavailableReason : null,
   };
 }
 
@@ -360,6 +424,9 @@ function normalizeOpportunityRow(row) {
     scenario: row.scenario || features.scenario?.scenario || null,
     scenarioFitScore: preserveFiniteOrNull(row.scenarioFitScore ?? features.scenario?.fitScore),
     structureState: row.structureState || features.scenario || null,
+    scenarioGeometry: normalizeScenarioGeometry(
+      row.scenarioGeometry || row.structureState?.geometry || features.scenario?.geometry,
+    ),
     levels: normalizeOpportunityLevels(row.levels, features.risk?.netRewardRisk),
     freshness: normalizeOpportunityFreshness(row.freshness),
     reasons: normalizeStringList(row.reasons, 6),
@@ -585,6 +652,11 @@ function normalizeCaseItem(item) {
       risks: normalizeStringList(snapshot.risks, 8),
       levels: normalizeOpportunityLevels(snapshot.levels),
       freshness: normalizeOpportunityFreshness(snapshot.freshness),
+      scenarioGeometry: normalizeScenarioGeometry(
+        snapshot.scenarioGeometry
+        || snapshot.frozen?.scenarioGeometry
+        || snapshot.structureState?.geometry,
+      ),
     },
     monitoring: normalizeCaseMonitoring(item.monitoring),
     outcome: outcome ? {

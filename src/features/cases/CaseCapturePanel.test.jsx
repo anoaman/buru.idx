@@ -31,6 +31,34 @@ describe('CaseCapturePanel', () => {
     expect(screen.getByText(/Case saved/i)).toBeInTheDocument();
   });
 
+  it('sends backend geometry confirmation fields without recalculating them', async () => {
+    saveCase.mockResolvedValue({ success: true, data: { id: 18 } });
+    render(
+      <CaseCapturePanel
+        ticker="BBRI"
+        source="Stock Analysis"
+        snapshot={{
+          dataAsOf: '2026-08-12',
+          scenarioGeometry: {
+            confirmation: { price: 4550, event: 'close_above', basis: 'close' },
+            trigger: { price: 4550 },
+            invalidation: { price: 4180 },
+            framing: 'long_setup',
+          },
+        }}
+        defaults={{ confirmation: 'Daily close above 4550', invalidationPrice: 4180, triggerPrice: 4550 }}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Save case' }));
+    await waitFor(() => expect(saveCase).toHaveBeenCalledTimes(1));
+    expect(saveCase.mock.calls[0][0].expectedConfirmation).toMatchObject({
+      event: 'close_above',
+      level: 4550,
+      text: 'Daily close above 4550',
+    });
+    expect(saveCase.mock.calls[0][0].triggerPrice).toBe(4550);
+  });
+
   it('preserves input and exposes an API failure', async () => {
     saveCase.mockResolvedValue({ success: false, error: 'Private API unavailable' });
     render(

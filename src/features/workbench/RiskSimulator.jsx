@@ -3,12 +3,27 @@ import { simulateRisk } from '../../lib/api/client.js';
 import { guardRiskSimulation } from '../../lib/api/contracts.js';
 import { formatIDR, formatNumber, formatPct, formatPrice } from '../../lib/format/market.js';
 
-export default function RiskSimulator({ ticker, geometry, atr14Pct }) {
+export default function RiskSimulator({ ticker, geometry, scenarioGeometry, atr14Pct }) {
   const best = geometry?.bestSetup;
+  const longSetup = scenarioGeometry?.framing === 'long_setup';
+  const defaultEntry = longSetup
+    ? scenarioGeometry?.trigger?.price ?? scenarioGeometry?.confirmation?.price ?? ''
+    : scenarioGeometry
+      ? ''
+      : (ticker?.close || '');
+  const defaultStop = scenarioGeometry?.invalidation?.price
+    ?? scenarioGeometry?.defensiveExit?.price
+    ?? best?.stop
+    ?? '';
+  const defaultTarget = longSetup
+    ? (scenarioGeometry?.target?.price ?? best?.target ?? '')
+    : scenarioGeometry
+      ? ''
+      : (best?.target || '');
   const [form, setForm] = useState({
-    entry: ticker?.close || '',
-    stop: best?.stop || '',
-    target: best?.target || '',
+    entry: defaultEntry,
+    stop: defaultStop,
+    target: defaultTarget,
     capital: 100_000_000,
     maxRiskPct: 1,
   });
@@ -22,15 +37,15 @@ export default function RiskSimulator({ ticker, geometry, atr14Pct }) {
     requestRef.current += 1;
     setForm((current) => ({
       ...current,
-      entry: ticker?.close || '',
-      stop: best?.stop || '',
-      target: best?.target || '',
+      entry: defaultEntry,
+      stop: defaultStop,
+      target: defaultTarget,
     }));
     setState({ loading: false, data: null, error: null });
     return () => { requestRef.current += 1; };
-  }, [ticker?.symbol, ticker?.close, best?.stop, best?.target]);
+  }, [ticker?.symbol, defaultEntry, defaultStop, defaultTarget]);
 
-  if (!ticker || !best) return null;
+  if (!ticker || (!best && !scenarioGeometry)) return null;
 
   const entryNumber = Number(form.entry);
   const stopNumber = Number(form.stop);
@@ -64,15 +79,18 @@ export default function RiskSimulator({ ticker, geometry, atr14Pct }) {
         <span>03</span>
         <div>
           <h3 id="simulator-title">Risk Simulator</h3>
-          <p>Server-calculated position size using IDX ticks, fees, capital, and maximum risk.</p>
+          <p>
+            {scenarioGeometry?.labels?.summary
+              || 'Server-calculated position size using IDX ticks, fees, capital, and maximum risk.'}
+          </p>
         </div>
       </div>
       <div className="inv-simulator__levels" aria-label="Current risk geometry">
-        <div><span>Support</span><strong>{formatPrice(geometry.nearestSupport)}</strong></div>
-        <div><span>Resistance</span><strong>{formatPrice(geometry.nearestResistance)}</strong></div>
-        <div><span>Downside</span><strong>{formatPct(geometry.downsidePct)}</strong></div>
-        <div><span>Upside</span><strong>{formatPct(geometry.upsidePct)}</strong></div>
-        <div><span>Current net R:R</span><strong>{(best.netRR ?? best.rr)?.toFixed(2) || '—'}</strong></div>
+        <div><span>Support</span><strong>{formatPrice(geometry?.nearestSupport)}</strong></div>
+        <div><span>Resistance</span><strong>{formatPrice(geometry?.nearestResistance)}</strong></div>
+        <div><span>Downside</span><strong>{formatPct(geometry?.downsidePct)}</strong></div>
+        <div><span>Upside</span><strong>{formatPct(geometry?.upsidePct)}</strong></div>
+        <div><span>Current net R:R</span><strong>{(longSetup ? (scenarioGeometry?.risk?.netRR ?? best?.netRR ?? best?.rr) : (best?.netRR ?? best?.rr))?.toFixed?.(2) || '—'}</strong></div>
       </div>
       <form onSubmit={submit}>
         {[

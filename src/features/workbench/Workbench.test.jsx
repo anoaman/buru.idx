@@ -70,6 +70,29 @@ describe('Workbench', () => {
     },
     grade: { grade: 'B+', confidence: 0.72, regime: 'trending', structurePhase: 'established' },
     stance: { stance: 'LONG_LEAN', reason: 'Price above all MAs with positive momentum' },
+    scenario: {
+      scenario: 'trend_pullback',
+      fitScore: 75,
+      structure: { trend: 'up', compression: false, nearSupport: true },
+      confirmations: ['moving-average trend is rising', 'price remains near support'],
+      contradictions: [],
+    },
+    scenarioGeometry: {
+      scenario: 'trend_pullback',
+      available: true,
+      framing: 'long_setup',
+      trigger: { price: 4480, event: 'close_above', basis: 'close' },
+      confirmation: { price: 4480, event: 'close_above', basis: 'close' },
+      invalidation: { price: 4300, event: 'close_below', basis: 'close' },
+      target: { price: 4700 },
+      risk: { netRR: 0.85, costPct: 0.3 },
+      labels: {
+        confirmation: 'Hold/reclaim of MA/support/last higher low',
+        invalidation: 'Close below the last defensible higher low',
+        target: 'Next resistance',
+        summary: 'Hold the pullback structure; last close is not the entry',
+      },
+    },
     scorecard: {
       factors: [
         { factor: 'Momentum', signal: 1, reason: 'RSI above 50' },
@@ -243,6 +266,47 @@ describe('Workbench', () => {
 
     expect(await screen.findByText(/Cost drag/i)).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /^Levels$/i })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('does not treat last close as a confirmation entry for distribution risk', async () => {
+    analyzeTicker.mockResolvedValue({
+      success: true,
+      data: {
+        ...mockData,
+        scenario: {
+          scenario: 'distribution_risk',
+          fitScore: 75,
+          structure: { trend: 'down', compression: false, nearSupport: false },
+          confirmations: [],
+          contradictions: ['observed broker flow is distributing'],
+        },
+        scenarioGeometry: {
+          scenario: 'distribution_risk',
+          available: true,
+          framing: 'defensive',
+          trigger: null,
+          confirmation: null,
+          invalidation: { price: 4300 },
+          target: null,
+          defensiveExit: { price: 4300 },
+          risk: { netRR: null },
+          labels: {
+            confirmation: 'Not a long entry',
+            invalidation: 'Damage if this structure is lost',
+            target: 'No long target under distribution risk',
+            summary: 'Distribution risk is avoid/exit framing only; it is not a green long setup',
+          },
+        },
+      },
+    });
+    render(
+      <MemoryRouter initialEntries={['/?ticker=BBRI']}>
+        <Workbench />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText(/not a long entry/i)).toBeInTheDocument();
+    expect(screen.getByText(/not a green long setup/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Breakout above last close/i)).not.toBeInTheDocument();
   });
 
   it('uses one TradingView-powered NALAR market chart', async () => {

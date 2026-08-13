@@ -136,6 +136,7 @@ function shortlistSnapshot(row, run) {
     scenario: row.scenario || null,
     scenarioFitScore: row.scenarioFitScore ?? null,
     structureState: row.structureState || null,
+    scenarioGeometry: row.scenarioGeometry || row.structureState?.geometry || null,
     score: row.score,
     dataQuality: row.dataQuality,
     reasons: row.reasons,
@@ -177,9 +178,9 @@ function ShortlistRow({ row, run, onInvestigate, onActors }) {
       </td>
       <td className="tabular">
         <div className="radar-cell-levels">
-          <span>Breakout above <strong>{formatPrice(row.levels.trigger)}</strong></span>
-          <span>Setup fails below <strong>{formatPrice(row.levels.invalidation)}</strong></span>
-          <span>Reward / risk <strong>{formatRatio(row.levels.netRewardRisk)}</strong></span>
+          <span>{row.levels?.framing === 'defensive' ? 'Not a long entry' : 'Breakout above'} <strong>{formatPrice(row.levels.trigger)}</strong></span>
+          <span>{row.levels?.framing === 'defensive' ? 'Damage if lost' : 'Setup fails below'} <strong>{formatPrice(row.levels.invalidation)}</strong></span>
+          <span>Reward / risk <strong>{row.levels?.framing === 'long_setup' || !row.levels?.framing ? formatRatio(row.levels.netRewardRisk) : '—'}</strong></span>
         </div>
       </td>
       <td>
@@ -202,7 +203,8 @@ function ShortlistRow({ row, run, onInvestigate, onActors }) {
           snapshot={shortlistSnapshot(row, run)}
           defaults={{
             setupType: row.scenario || 'qualified shortlist setup',
-            confirmation: row.levels?.trigger ? `Daily close above ${row.levels.trigger}` : '',
+            confirmation: row.scenarioGeometry?.labels?.confirmation
+              || (row.levels?.trigger ? `Daily close above ${row.levels.trigger}` : ''),
             triggerPrice: row.levels?.trigger,
             invalidationPrice: row.levels?.invalidation,
             targetPrice: row.levels?.target,

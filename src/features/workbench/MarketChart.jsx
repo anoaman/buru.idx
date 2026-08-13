@@ -38,7 +38,7 @@ function readChartTheme(element) {
   };
 }
 
-export default function MarketChart({ chart, geometry, ticker }) {
+export default function MarketChart({ chart, geometry, scenarioGeometry, ticker }) {
   const containerRef = useRef(null);
   const sectionRef = useRef(null);
   const chartRef = useRef(null);
@@ -167,9 +167,19 @@ export default function MarketChart({ chart, geometry, ticker }) {
       addOverlayLine(ticker.high, { color: colors.stop, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: `DAY HIGH · UNCONFIRMED ${formatPrice(ticker.high)}` });
     }
     const best = geometry?.bestSetup;
-    const tradeLines = [
-      [best?.stop, colors.stop, 'SETUP FAILS BELOW'], [best?.target, colors.target, `TARGET · R:R ${(best?.netRR ?? best?.rr)?.toFixed(2) || '—'}`],
-    ];
+    const longSetup = scenarioGeometry?.framing === 'long_setup';
+    const failPrice = scenarioGeometry?.invalidation?.price
+      ?? scenarioGeometry?.defensiveExit?.price
+      ?? best?.stop;
+    const targetPrice = longSetup ? scenarioGeometry?.target?.price ?? best?.target : null;
+    const triggerPrice = longSetup ? scenarioGeometry?.trigger?.price ?? scenarioGeometry?.confirmation?.price : null;
+    const tradeLines = scenarioGeometry?.framing === 'defensive'
+      ? [[failPrice, colors.stop, 'DAMAGE IF LOST']]
+      : [
+          triggerPrice ? [triggerPrice, colors.resistance, 'CONFIRMATION'] : null,
+          [failPrice, colors.stop, 'SETUP FAILS BELOW'],
+          targetPrice ? [targetPrice, colors.target, `TARGET · R:R ${(scenarioGeometry?.risk?.netRR ?? best?.netRR ?? best?.rr)?.toFixed(2) || '—'}`] : null,
+        ].filter(Boolean);
     tradeLines.forEach(([price, color, title]) => addOverlayLine(price, { color, lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title }));
 
     const lockScale = () => applyCandleOnlyScale(instance, candles, candleScale);
@@ -199,7 +209,7 @@ export default function MarketChart({ chart, geometry, ticker }) {
       chartRef.current = null;
       instance.remove();
     };
-  }, [chart, geometry, ticker, showMovingAverages, themeVersion]);
+  }, [chart, geometry, scenarioGeometry, ticker, showMovingAverages, themeVersion]);
 
   if (!chart?.candles?.length) return <div className="wb-market-chart wb-market-chart--empty">Chart history unavailable.</div>;
 
@@ -227,10 +237,10 @@ export default function MarketChart({ chart, geometry, ticker }) {
           <span><i style={{ background: legendColors.support }} />Support</span><span><i style={{ background: legendColors.resistance }} />Resistance</span>
         </div>
         <div className="wb-market-chart__setup">
-          <span>Confirmation entry <strong className="tabular">{formatPrice(geometry?.bestSetup?.entry ?? ticker?.close)}</strong></span>
-          <span>Setup fails below <strong className="tabular">{formatPrice(geometry?.bestSetup?.stop)}</strong></span>
-          <span>Target <strong className="tabular">{formatPrice(geometry?.bestSetup?.target)}</strong></span>
-          <span>Reward / risk <strong className="tabular">{(geometry?.bestSetup?.netRR ?? geometry?.bestSetup?.rr)?.toFixed(2) || '—'}</strong></span>
+          <span>Confirmation <strong className="tabular">{formatPrice(scenarioGeometry?.framing === 'long_setup' ? (scenarioGeometry?.confirmation?.price ?? scenarioGeometry?.trigger?.price) : null)}</strong></span>
+          <span>{scenarioGeometry?.framing === 'defensive' ? 'Damage if lost' : 'Setup fails below'} <strong className="tabular">{formatPrice(scenarioGeometry?.invalidation?.price ?? scenarioGeometry?.defensiveExit?.price ?? geometry?.bestSetup?.stop)}</strong></span>
+          <span>Target <strong className="tabular">{formatPrice(scenarioGeometry?.framing === 'long_setup' ? scenarioGeometry?.target?.price : null)}</strong></span>
+          <span>Reward / risk <strong className="tabular">{scenarioGeometry?.framing === 'long_setup' ? ((scenarioGeometry?.risk?.netRR ?? scenarioGeometry?.risk?.rr)?.toFixed(2) || '—') : '—'}</strong></span>
         </div>
       </footer>
     </section>
