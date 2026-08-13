@@ -9,10 +9,12 @@ and consumes existing backend engines without duplicating their calculations.
 ## Boundaries
 
 - `src/features/workbench/` owns ticker analysis presentation and chart views.
-  Layout order is market overview, full-width market chart, then a docked
-  accessible `DetailDrawer` with tabs: Levels · Indicators · Broker Flow ·
-  What Changed · Risk Simulator · Methodology. The chart uses TradingView
-  Lightweight Charts so first-party levels remain auditable. Nothing on the
+  Layout order is setup overview (setup type, clears above, fails below,
+  upside to), full-width market chart, then a docked accessible `DetailDrawer`
+  with tabs: Levels · Indicators · Broker Flow · What Changed · Risk Simulator ·
+  Methodology. Market vs IHSG lives inside the chart card behind a default-on
+  toggle; moving-average overlays stay a separate toggle. The chart uses
+  TradingView Lightweight Charts so first-party levels remain auditable. Nothing on the
   page may be labelled from a stale request: cold loads use skeletons; warm
   ticker switches keep the previous completed frame (still labelled with its
   own ticker) dimmed under a non-blocking “Loading {ticker}…” overlay; a
@@ -25,7 +27,10 @@ and consumes existing backend engines without duplicating their calculations.
 - `src/features/broker-intelligence/` owns stock/broker lenses, the merged
   signed ranking table (frontend display merge of accumulation + distribution
   arrays only), inventory curve presentation, and backend-owned multi-session
-  flow-persistence/divergence presentation.
+  flow-persistence/divergence presentation. Stock windows always show three
+  summary cards: window net, lead-broker stay, and concentration. Foreign/local
+  source class stays in the ranking table. Incomplete windows badge the
+  summary line rather than adding a fourth card.
 - `src/lib/api/client.js` is the only first-party network boundary and prefixes
   every API path with `VITE_API_BASE`. Successful GET responses for
   `/api/broker-intelligence/*` and `/api/analyze` are cached ~45s with
@@ -34,6 +39,11 @@ and consumes existing backend engines without duplicating their calculations.
 - `src/lib/api/contracts.js` normalizes only the contracts consumed by these
   features. Scout candidates keep `evidenceBand`, `failedCondition`, and
   `scoreBreakdown`.
+- `src/lib/copy/terms.js` owns trader-facing labels and glossary groups.
+  Backend keys stay snake_case; React only maps them for display. Recipe fit,
+  data quality, and grade remain separate labels.
+- `src/features/glossary/` renders that study room. It must not invent live
+  PE, prices, or recommendations.
 - `src/lib/format/market.js` owns only the market formatters they consume.
 - `src/components/AnalysisShell.jsx` owns private navigation and the global
   ticker command bar. Broker date windows are owned by Broker Flow, not the
@@ -42,7 +52,10 @@ and consumes existing backend engines without duplicating their calculations.
   Ledger (`dark`); Paper Ledger is the redesigned `light` theme. Chart canvas
   follows the active theme (light chart in Paper, dark chart in Graphite).
   Stock Analysis uses the global command-bar ticker field only — there is no
-  page-level duplicate search.
+  page-level duplicate search. Main-pane route changes fade on
+  `.app-shell__content > *` using motion tokens; ticker query changes do not
+  remount Stock Analysis and must not replay the fade. Glossary sits last in
+  the rail.
 - `src/components/AnalysisContext.jsx` owns cross-route ticker, window and as-of
   context. Feature pages remain responsible for their own network state.
 - `src/features/radar/` and `src/features/cases/` read the scan and case
@@ -55,7 +68,7 @@ and consumes existing backend engines without duplicating their calculations.
   must label incomplete horizons as open rather than scoring them early.
   Custom Screener uses a split layout (conditions column + results table) and
   forwards broker custom range / lead-broker minimum through the public
-  allowlist.
+  allowlist. Named 1M broker windows send 22 sessions; the API accepts 3–60.
 - `src/features/fundamentals/` owns the empty official-source Fundamentals
   tab. React fetches `/api/fundamentals`, renders backend unavailable
   reasons, and must not invent ratios, peers, or price targets. The tab is
@@ -68,7 +81,7 @@ and consumes existing backend engines without duplicating their calculations.
   React only submits bounded filters and renders the returned evidence,
   component score breakdown, evidence band, and separately labelled near misses.
 -   Trader-facing labels use Screener / Market Shortlist / Custom Screener / Stock
-  Analysis / Fundamentals / Broker Flow / Watchlist. Internal route names remain stable. The
+  Analysis / Fundamentals / Broker Flow / Watchlist / Glossary. Internal route names remain stable. The
   global ticker selection is shared by Stock Analysis, Fundamentals, and Broker Flow; Screener
   handoffs open in new tabs so the originating result set is preserved.
 - Broker Flow and Custom Screener expose named and custom calendar ranges while
@@ -103,8 +116,11 @@ tab is an honest unavailable shell until official statement rows exist.
 - `/broker-intelligence`
 - `/radar`
 - `/cases`
+- `/glossary`
 
-The root and unknown routes redirect to `/workbench`.
+The root and unknown routes redirect to `/workbench`. Glossary is a study
+room for trader-facing words from `src/lib/copy/terms.js`; OPEN from that
+page still loads Stock Analysis.
 
 ## Deployment boundary
 

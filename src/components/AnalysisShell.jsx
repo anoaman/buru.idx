@@ -9,6 +9,7 @@ const NAV = [
   { path: '/fundamentals', label: 'Fundamentals', mark: 'FD' },
   { path: '/broker-intelligence', label: 'Broker Flow', mark: 'BF' },
   ...(privateWritesEnabled ? [{ path: '/cases', label: 'Watchlist', mark: 'WL' }] : []),
+  { path: '/glossary', label: 'Glossary', mark: 'GL' },
 ];
 
 function CommandBar() {
@@ -128,7 +129,11 @@ export default function AnalysisShell({ children }) {
             {theme === 'light' ? 'Graphite' : 'Paper'}
           </button>
         </header>
-        <main className="app-shell__content">{children}</main>
+        <main className="app-shell__content">
+          <div key={location.pathname} className="app-shell__page">
+            {children}
+          </div>
+        </main>
       </div>
     </div>
   );

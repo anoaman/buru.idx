@@ -52,11 +52,11 @@ function CaseCard({ item, onReopen, onActors }) {
 
       <dl className="case-card__levels">
         <div>
-          <dt>{item.snapshot.levels?.framing === 'defensive' || item.snapshot.scenarioGeometry?.framing === 'defensive' ? 'Not a long entry' : 'Breakout above'}</dt>
+          <dt>{item.snapshot.levels?.framing === 'defensive' || item.snapshot.scenarioGeometry?.framing === 'defensive' ? 'Not a long entry' : 'Clears above'}</dt>
           <dd>{formatPrice(item.triggerPrice ?? item.snapshot.levels.trigger)}</dd>
         </div>
         <div>
-          <dt>{item.snapshot.levels?.framing === 'defensive' || item.snapshot.scenarioGeometry?.framing === 'defensive' ? 'Damage if lost' : 'Setup fails below'}</dt>
+          <dt>{item.snapshot.levels?.framing === 'defensive' || item.snapshot.scenarioGeometry?.framing === 'defensive' ? 'Damage if lost' : 'Fails below'}</dt>
           <dd>{formatPrice(item.invalidationPrice ?? item.snapshot.levels.invalidation)}</dd>
         </div>
         <div>

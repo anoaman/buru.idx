@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getOpportunities, getRadarScout, privateWritesEnabled } from '../../lib/api/client.js';
 import { guardOpportunities, guardRadarScout } from '../../lib/api/contracts.js';
 import { formatDate, formatIDR, formatPct, formatPrice, formatRatio, formatRelativeDays } from '../../lib/format/market.js';
+import { LABELS, priceLevelCaption, recipeFitLabel, setupTypeLabel } from '../../lib/copy/terms.js';
 import EmptyState from '../../components/EmptyState.jsx';
 import ErrorState from '../../components/ErrorState.jsx';
 import Skeleton from '../../components/Skeleton.jsx';
@@ -94,7 +95,7 @@ const RECIPE_CONDITIONS = Object.freeze({
   dominant_broker: { useBroker: true, useSupport: false, useSideways: false },
   support_compression: { useBroker: false, useSupport: true, useSideways: true },
 });
-const EVIDENCE_BAND_LABEL = { high: 'High signal', medium: 'Medium signal', low: 'Low signal' };
+const EVIDENCE_BAND_LABEL = { high: recipeFitLabel('high'), medium: recipeFitLabel('medium'), low: recipeFitLabel('low') };
 const EVIDENCE_BAND_TONE = { high: 'badge-positive', medium: 'badge-info', low: 'badge-neutral' };
 
 function numericText(value) {
@@ -163,7 +164,7 @@ function ShortlistRow({ row, run, onInvestigate, onActors }) {
             {row.isFca ? ' · FCA' : ''}
             {row.ineligible ? ' · gated' : ''}
           </span>
-          {row.scenario && <small>{row.scenario.replaceAll('_', ' ')} · {row.scenarioFitScore ?? 0}% fit</small>}
+          {row.scenario && <small>{setupTypeLabel(row.scenario)} · {row.scenarioFitScore ?? 0}% fit</small>}
         </div>
       </td>
       <td className="tabular">
@@ -178,9 +179,9 @@ function ShortlistRow({ row, run, onInvestigate, onActors }) {
       </td>
       <td className="tabular">
         <div className="radar-cell-levels">
-          <span>{row.levels?.framing === 'defensive' ? 'Not a long entry' : 'Breakout above'} <strong>{formatPrice(row.levels.trigger)}</strong></span>
-          <span>{row.levels?.framing === 'defensive' ? 'Damage if lost' : 'Setup fails below'} <strong>{formatPrice(row.levels.invalidation)}</strong></span>
-          <span>Reward / risk <strong>{row.levels?.framing === 'long_setup' || !row.levels?.framing ? formatRatio(row.levels.netRewardRisk) : '—'}</strong></span>
+          <span>{priceLevelCaption(row.levels?.framing, { longLabel: LABELS.clearsAbove, defensiveLabel: 'Not a long entry' })} <strong>{formatPrice(row.levels.trigger)}</strong></span>
+          <span>{priceLevelCaption(row.levels?.framing, { longLabel: LABELS.failsBelow, defensiveLabel: LABELS.damageIfLost })} <strong>{formatPrice(row.levels.invalidation)}</strong></span>
+          <span>{LABELS.rewardRisk} <strong>{row.levels?.framing === 'long_setup' || !row.levels?.framing ? formatRatio(row.levels.netRewardRisk) : '—'}</strong></span>
         </div>
       </td>
       <td>
@@ -466,7 +467,7 @@ function ScoutNearMissSection({ rows, onInvestigate, onActors }) {
   if (rows.length === 0) return null;
   return (
     <section className="scout-near-miss" aria-label="Almost matched stocks">
-      <h3 className="scout-near-miss__title">Almost Matched</h3>
+      <h3 className="scout-near-miss__title">Almost matched</h3>
       <p className="scout-near-miss__intro">These stocks missed one enabled condition.</p>
       <div className="ui-table-wrap">
         <table className="ui-table ui-table--near-miss" aria-label="Almost matched stocks">

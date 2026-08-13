@@ -339,10 +339,16 @@ describe('BrokerIntelligence', () => {
     }
   });
 
-  it('promotes preferred-broker share and has no consistent-buyer flag', async () => {
+  it('shows window net, lead broker stay, and concentration instead of investor type', async () => {
     renderAt('/broker-intelligence?lens=stock&ticker=BBCA&days=30');
-    expect(await screen.findByText('60.0%')).toBeInTheDocument();
-    expect(screen.getByText('Preferred-broker share')).toBeInTheDocument();
+    expect(await screen.findByText('Window net')).toBeInTheDocument();
+    expect(screen.getByText('Lead broker')).toBeInTheDocument();
+    expect(screen.getByText('How concentrated')).toBeInTheDocument();
+    expect(screen.getByText('YP stayed on the buy')).toBeInTheDocument();
+    expect(screen.getByText('8 of 10 days')).toBeInTheDocument();
+    expect(screen.getByText('60.0%')).toBeInTheDocument();
+    expect(screen.queryByText('Preferred-broker share')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Observed investor type/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/consistent buyer/i)).not.toBeInTheDocument();
   });
 

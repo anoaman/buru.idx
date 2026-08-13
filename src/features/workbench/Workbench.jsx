@@ -18,6 +18,13 @@ import RiskSimulator from './RiskSimulator.jsx';
 import DetailDrawer from './DetailDrawer.jsx';
 import LevelsPanel from './LevelsPanel.jsx';
 import CaseCapturePanel from '../cases/CaseCapturePanel.jsx';
+import {
+  LABELS,
+  framingLabel,
+  leanLabel,
+  priceLevelCaption,
+  setupTypeLabel,
+} from '../../lib/copy/terms.js';
 
 function TickerHeader({ ticker, priceHistory, storyIntelligence }) {
   if (!ticker) return null;
@@ -88,10 +95,9 @@ function EvidenceSummary({ grade, stance, scorecard, dataQuality }) {
   return (
     <section className="wb-method">
       <div className="wb-evidence-summary">
-        <div><span>Grade <InfoTip title="Grade">Weighted broker-flow, momentum, structure and risk score. A ≥82%, B ≥68%, C ≥54%, D ≥40%.</InfoTip></span><strong>{grade?.grade || '—'}</strong></div>
-        <div><span>Regime <InfoTip title="Regime">Trending when MA separation, returns and distance from MA20 produce strength ≥7; otherwise rangebound.</InfoTip></span><strong>{grade?.regime || 'Unknown'}</strong></div>
-        <div><span>Pattern <InfoTip title="Pattern">Uses the 60-day range, returns, volume trend, and moving-average alignment.</InfoTip></span><strong>{grade?.structurePhase || 'Unknown'}</strong></div>
-        <div><span>Bias <InfoTip title="Bias">Summarizes whether the current setup leans constructive, defensive, or neutral.</InfoTip></span><strong>{stance?.stance ? stance.stance.replace('_', ' ').toLowerCase() : 'neutral'}</strong></div>
+        <div><span>{LABELS.grade} <InfoTip title={LABELS.grade}>Weighted broker-flow, momentum, structure and risk score. A ≥82%, B ≥68%, C ≥54%, D ≥40%. It is not a win probability.</InfoTip></span><strong>{grade?.grade || '—'}</strong></div>
+        <div><span>{LABELS.priceTrend} <InfoTip title={LABELS.priceTrend}>Trending when moving-average separation, returns and distance from MA20 produce strength ≥7; otherwise range-bound. This is not IHSG.</InfoTip></span><strong>{grade?.regime || 'Unknown'}</strong></div>
+        <div><span>{LABELS.lean} <InfoTip title={LABELS.lean}>Whether the evidence leans constructive, defensive, or mixed. Not a buy or sell call.</InfoTip></span><strong>{leanLabel(stance?.stance)}</strong></div>
         {warnings.length > 0 && <div><span>Data warning</span><strong className="text-warning">Check data</strong></div>}
         {warnings.map((warning) => <p key={warning} className="text-warning">⚠ {warning}</p>)}
       </div>
@@ -133,36 +139,42 @@ function EvidenceSummary({ grade, stance, scorecard, dataQuality }) {
   );
 }
 
-function MarketContextStrip({ macro }) {
-  const regime = macro?.regime;
-  const strength = macro?.relativeStrength;
-  if (!regime && !strength) return null;
-  const excess20 = strength?.periods?.[20]?.excessReturnPct;
-  const excess60 = strength?.periods?.[60]?.excessReturnPct;
-  return (
-    <section className="wb-market-context" aria-label="Market and relative strength context">
-      <div><span>IHSG regime</span><strong>{String(regime?.state || 'unknown').replace('_', ' ')}</strong><small>as of {regime?.asOf || '—'}</small></div>
-      <div><span>Relative strength vs IHSG</span><strong>{Number.isFinite(excess20) ? `${excess20 >= 0 ? '+' : ''}${excess20.toFixed(1)}% · 20 sessions` : 'Unavailable'}</strong><small>{Number.isFinite(excess60) ? `${excess60 >= 0 ? '+' : ''}${excess60.toFixed(1)}% over 60 sessions` : '60-session history unavailable'}</small></div>
-      <div><span>RS line</span><strong>{strength?.lineState || 'unavailable'}</strong><small>{strength?.matchedSessions || 0} matched sessions</small></div>
-      <div><span>Sector comparison</span><strong>{strength?.sector?.available ? 'Available' : 'Not claimed'}</strong><small>{strength?.sector?.available ? strength.sector.symbol : 'Awaiting verified issuer mapping'}</small></div>
-    </section>
-  );
-}
-
-function ScenarioStrip({ scenario, geometry }) {
+function SetupOverview({ scenario, geometry, question }) {
   const setup = geometry || scenario?.geometry;
   if (!scenario && !setup) return null;
   const framing = setup?.framing || 'unavailable';
+  const longSetup = framing === 'long_setup';
+  const clearsPrice = longSetup ? setup?.confirmation?.price ?? setup?.trigger?.price : null;
+  const failsPrice = setup?.invalidation?.price ?? setup?.defensiveExit?.price;
+  const upsidePrice = longSetup ? setup?.target?.price : null;
   return (
-    <section className="wb-market-context" aria-label="Scenario and structure">
-      <div><span>Scenario</span><strong>{String(scenario?.scenario || 'unclassified').replaceAll('_', ' ')}</strong><small>{scenario?.fitScore || 0}% evidence fit</small></div>
-      <div><span>Structure</span><strong>{scenario?.structure?.trend || 'unknown'}</strong><small>{scenario?.structure?.compression ? 'compressed' : 'not compressed'} · {scenario?.structure?.nearSupport ? 'near support' : 'away from support'}</small></div>
-      <div><span>For</span><strong>{scenario?.confirmations?.[0] || 'No strong confirmation'}</strong><small>{(scenario?.confirmations || []).slice(1).join(' · ')}</small></div>
-      <div><span>Against</span><strong>{scenario?.contradictions?.[0] || 'No material contradiction'}</strong><small>{(scenario?.contradictions || []).slice(1).join(' · ')}</small></div>
-      <div>
-        <span>Setup frame</span>
-        <strong>{String(framing).replaceAll('_', ' ')}</strong>
-        <small>{setup?.labels?.summary || setup?.unavailableReason || 'Geometry awaits classified evidence'}</small>
+    <section className="wb-setup-overview" aria-label="Setup overview">
+      {question?.title && <p className="wb-setup-overview__question">{question.title}</p>}
+      <div className="wb-overview-grid">
+        <div>
+          <span>{LABELS.setupType}</span>
+          <strong>{setupTypeLabel(scenario?.scenario)}</strong>
+          <small className="text-tertiary">
+            {setup?.labels?.summary || `${framingLabel(framing)} · ${scenario?.fitScore || 0}% evidence fit`}
+          </small>
+        </div>
+        <div>
+          <span>{priceLevelCaption(framing, { longLabel: LABELS.clearsAbove, defensiveLabel: LABELS.longEntry })}</span>
+          <strong className="tabular">{formatPrice(clearsPrice)}</strong>
+          <small className="text-tertiary">{setup?.labels?.confirmation || setup?.unavailableReason || 'No fabricated last-close entry'}</small>
+        </div>
+        <div>
+          <span>{priceLevelCaption(framing, { longLabel: LABELS.failsBelow, defensiveLabel: LABELS.damageIfLost })}</span>
+          <strong className="tabular">{formatPrice(failsPrice)}</strong>
+          <small className="text-tertiary">{setup?.labels?.invalidation || (longSetup ? 'Daily close through this price ends the setup' : 'Unavailable')}</small>
+        </div>
+        <div>
+          <span>{LABELS.upsideTo}</span>
+          <strong className={`tabular ${upsidePrice != null ? 'text-positive' : ''}`}>{formatPrice(upsidePrice)}</strong>
+          <small className={upsidePrice != null ? 'text-positive' : 'text-tertiary'}>
+            {setup?.labels?.target || (upsidePrice != null ? 'Geometry aim, not a forecast' : 'No long upside')}
+          </small>
+        </div>
       </div>
     </section>
   );
@@ -171,10 +183,9 @@ function ScenarioStrip({ scenario, geometry }) {
 function CompactGrade({ grade, stance }) {
   return (
     <div className="wb-evidence-summary" aria-label="Score summary">
-      <div><span>Grade</span><strong>{grade?.grade || '—'}</strong></div>
-      <div><span>Regime</span><strong>{grade?.regime || 'Unknown'}</strong></div>
-      <div><span>Pattern</span><strong>{grade?.structurePhase || 'Unknown'}</strong></div>
-      <div><span>Bias</span><strong>{stance?.stance ? stance.stance.replace('_', ' ').toLowerCase() : 'neutral'}</strong></div>
+      <div><span>{LABELS.grade}</span><strong>{grade?.grade || '—'}</strong></div>
+      <div><span>{LABELS.priceTrend}</span><strong>{grade?.regime || 'Unknown'}</strong></div>
+      <div><span>{LABELS.lean}</span><strong>{leanLabel(stance?.stance)}</strong></div>
     </div>
   );
 }
@@ -370,8 +381,11 @@ export default function Workbench() {
               priceHistory={displayed.data.priceHistory}
               storyIntelligence={displayed.data.storyIntelligence}
             />
-            <MarketContextStrip macro={displayed.data.macro} />
-            <ScenarioStrip scenario={displayed.data.scenario} geometry={displayed.data.scenarioGeometry} />
+            <SetupOverview
+              scenario={displayed.data.scenario}
+              geometry={displayed.data.scenarioGeometry}
+              question={displayed.data.investigation?.question}
+            />
             {privateWritesEnabled && (
               <div className="wb-case-action">
                 <button
@@ -436,6 +450,7 @@ export default function Workbench() {
                 geometry={displayed.data.riskGeometry}
                 scenarioGeometry={displayed.data.scenarioGeometry}
                 ticker={displayed.data.ticker}
+                macro={displayed.data.macro}
               />
             </div>
             <DetailDrawer

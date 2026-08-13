@@ -158,7 +158,6 @@ describe('Workbench', () => {
       bull: [{ factor: 'Trend', reason: 'Above all MAs' }],
       bear: [{ factor: 'Valuation', reason: 'P/E above sector median' }],
     },
-    dataQuality: { sources: ['primary-market-data', 'secondary-market-data'], warnings: [] },
     investigation: {
       question: { code: 'CONFIRMATION_TEST', title: 'What confirms the structure?', detail: 'Trending with usable geometry.' },
       timeline: [
@@ -186,6 +185,18 @@ describe('Workbench', () => {
         sourceRef: 'idx:ca:dividend:BBRI:20260717',
       }],
       health: { available: true, freshness: 'healthy', warnings: [], counts: { events: 1, unmapped: 0, superseded: 0 } },
+    },
+    macro: {
+      regime: { state: 'risk_on', asOf: '2026-07-17' },
+      relativeStrength: {
+        lineState: 'outperforming',
+        matchedSessions: 60,
+        periods: {
+          20: { excessReturnPct: 2.4 },
+          60: { excessReturnPct: 5.1 },
+        },
+        sector: { available: false },
+      },
     },
   };
 
@@ -236,7 +247,13 @@ describe('Workbench', () => {
 
     expect(await screen.findByText('BBRI')).toBeInTheDocument();
     expect(screen.getByText(/Bank Rakyat Indonesia/i)).toBeInTheDocument();
+    expect(screen.getByText('Setup type')).toBeInTheDocument();
+    expect(screen.getByText('Pullback in an uptrend')).toBeInTheDocument();
+    expect(screen.getAllByText('Clears above').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Fails below').length).toBeGreaterThan(0);
+    expect(screen.getByText('What confirms the structure?')).toBeInTheDocument();
     expect(screen.getByText('Price & volume')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Hide market vs ihsg/i })).toBeInTheDocument();
     expect(screen.getByText(/Cost drag/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('tab', { name: /Indicators/i }));
@@ -252,8 +269,9 @@ describe('Workbench', () => {
     expect(await screen.findByRole('heading', { name: /^Broker Flow$/i })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('tab', { name: /Methodology/i }));
-    expect(screen.getAllByText('Regime').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Pattern').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Price trend').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Lean').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Pattern')).not.toBeInTheDocument();
     expect(screen.getAllByText('B+').length).toBeGreaterThan(0);
     expect(screen.queryByText('Data')).not.toBeInTheDocument();
 
@@ -328,7 +346,7 @@ describe('Workbench', () => {
         <Workbench />
       </MemoryRouter>,
     );
-    expect(await screen.findByText(/not a long entry/i)).toBeInTheDocument();
+    expect((await screen.findAllByText(/not a long entry/i)).length).toBeGreaterThan(0);
     expect(screen.getByText(/not a green long setup/i)).toBeInTheDocument();
     expect(screen.queryByText(/Breakout above last close/i)).not.toBeInTheDocument();
   });
@@ -342,6 +360,9 @@ describe('Workbench', () => {
     );
 
     expect(await screen.findByText('Price & volume')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Hide market vs ihsg/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Hide market vs ihsg/i }));
+    expect(screen.getByRole('button', { name: /Show market vs ihsg/i })).toBeInTheDocument();
     expect(screen.queryByText('MA5')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Show MA lines' }));
     expect(screen.getAllByText('MA5').length).toBeGreaterThan(0);
@@ -635,7 +656,7 @@ describe('Workbench', () => {
     const { rerender } = render(
       <RiskSimulator ticker={mockData.ticker} geometry={mockData.riskGeometry} />
     );
-    fireEvent.click(screen.getByRole('button', { name: /CALCULATE SIZE/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Calculate size/i }));
 
     rerender(
       <RiskSimulator ticker={{ ...mockData.ticker, close: 4600 }} geometry={mockData.riskGeometry} />
@@ -659,9 +680,9 @@ describe('Workbench', () => {
     simulateRisk.mockRejectedValue(new Error('risk service unavailable'));
     render(<RiskSimulator ticker={mockData.ticker} geometry={mockData.riskGeometry} />);
 
-    fireEvent.click(screen.getByRole('button', { name: /CALCULATE SIZE/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Calculate size/i }));
 
     expect(await screen.findByText(/risk service unavailable/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /CALCULATE SIZE/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /Calculate size/i })).toBeEnabled();
   });
 });

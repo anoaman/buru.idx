@@ -94,7 +94,7 @@ export default function RiskSimulator({ ticker, geometry, scenarioGeometry, atr1
       </div>
       <form onSubmit={submit}>
         {[
-          ['entry', 'Entry'], ['stop', 'Invalidation'], ['target', 'Target'],
+          ['entry', 'Entry'], ['stop', 'Fails below'], ['target', 'Upside to'],
           ['capital', 'Capital'], ['maxRiskPct', 'Max risk %'],
         ].map(([key, label]) => (
           <label key={key}>
@@ -102,13 +102,13 @@ export default function RiskSimulator({ ticker, geometry, scenarioGeometry, atr1
             <input type="number" min="0" step="any" value={form[key]} onChange={(event) => update(key, event.target.value)} />
           </label>
         ))}
-        <button type="submit" disabled={state.loading}>{state.loading ? 'CALCULATING' : 'CALCULATE SIZE'}</button>
+        <button type="submit" disabled={state.loading}>{state.loading ? 'Calculating' : 'Calculate size'}</button>
       </form>
       {Number.isFinite(stopAtrMultiple) && stopAtrMultiple < 1 && (
-        <p className="inv-simulator__error">Invalidation is {stopAtrMultiple.toFixed(1)} ATR from entry—inside the recent daily noise range.</p>
+        <p className="inv-simulator__error">Fails below is {stopAtrMultiple.toFixed(1)} ATR from entry—inside the recent daily noise range.</p>
       )}
       {Number.isFinite(stopAtrMultiple) && stopAtrMultiple > 3 && (
-        <p className="text-warning">Invalidation is {stopAtrMultiple.toFixed(1)} ATR from entry; position sizing may become unusually thin.</p>
+        <p className="text-warning">Fails below is {stopAtrMultiple.toFixed(1)} ATR from entry; position sizing may become unusually thin.</p>
       )}
       {state.error && <p className="inv-simulator__error">{state.error}</p>}
       {state.data && (

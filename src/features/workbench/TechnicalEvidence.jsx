@@ -134,8 +134,8 @@ export default function TechnicalEvidence({ priceHistory, ticker, supportResista
         <div className="wb-tech-evidence__section">
           <span className="wb-tech-evidence__label text-tertiary">Risk / reward</span>
           <div className="wb-tech-evidence__rows">
-            <div className="wb-tech-evidence__row"><span className="text-secondary">Setup fails below</span><span className="tabular text-negative">{formatPrice(best?.stop)}</span></div>
-            <div className="wb-tech-evidence__row"><span className="text-secondary">Target</span><span className="tabular text-positive">{formatPrice(best?.target)}</span></div>
+            <div className="wb-tech-evidence__row"><span className="text-secondary">Fails below</span><span className="tabular text-negative">{formatPrice(best?.stop)}</span></div>
+            <div className="wb-tech-evidence__row"><span className="text-secondary">Upside to</span><span className="tabular text-positive">{formatPrice(best?.target)}</span></div>
             <div className="wb-tech-evidence__row"><span className="text-secondary">Reward / risk</span><span className="tabular text-secondary">{(best?.netRR ?? best?.rr)?.toFixed(2) || '—'}</span></div>
           </div>
         </div>

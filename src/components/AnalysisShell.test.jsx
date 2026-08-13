@@ -16,6 +16,7 @@ function renderShell(path = '/workbench?ticker=BBCA') {
           <Routes>
             <Route path="/workbench" element={<div>Investigation page</div>} />
             <Route path="/fundamentals" element={<div>Fundamentals page</div>} />
+            <Route path="/glossary" element={<div>Glossary page</div>} />
             <Route path="/broker-intelligence" element={<div>Broker page</div>} />
             <Route path="/radar" element={<div>Radar page</div>} />
           </Routes>
@@ -67,7 +68,20 @@ describe('AnalysisShell', () => {
     expect(screen.getByRole('link', { name: /Stock Analysis/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Fundamentals/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Broker Flow/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Glossary/i })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /Watchlist/i })).not.toBeInTheDocument();
+  });
+
+  it('places Glossary last in the rail and opens tickers into Stock Analysis', async () => {
+    renderShell('/glossary');
+    const nav = screen.getByRole('navigation', { name: 'Primary' });
+    const links = nav.querySelectorAll('a');
+    expect(links[links.length - 1]).toHaveTextContent('Glossary');
+    fireEvent.change(screen.getByLabelText(/Open ticker investigation/i), { target: { value: 'bbca' } });
+    fireEvent.click(screen.getByRole('button', { name: 'OPEN' }));
+    await waitFor(() => {
+      expect(screen.getByLabelText('location')).toHaveTextContent('/workbench?ticker=BBCA');
+    });
   });
 
   it('defaults to Graphite Ledger when no preference is saved', () => {

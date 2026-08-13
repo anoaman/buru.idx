@@ -11,6 +11,7 @@ import {
   guardBrokerStockIntelligence,
 } from '../../lib/api/contracts.js';
 import { formatDate, formatIDR, formatNumber, formatPrice } from '../../lib/format/market.js';
+import { LABELS } from '../../lib/copy/terms.js';
 import EmptyState from '../../components/EmptyState.jsx';
 import ErrorState from '../../components/ErrorState.jsx';
 import InventoryCurve from './InventoryCurve.jsx';
@@ -64,13 +65,62 @@ function interpretationTiers(window = {}) {
   };
 }
 
-function factualInvestorRollup(rows = []) {
-  return rows.reduce((totals, row) => {
-    const type = String(row.sourceType || '').toLowerCase();
-    const key = type.includes('foreign') ? 'foreign' : type.includes('local') || type.includes('domestic') ? 'local' : null;
-    if (key) totals[key] += Number.isFinite(row.netValue) ? row.netValue : 0;
-    return totals;
-  }, { foreign: 0, local: 0 });
+function signedIdr(value) {
+  if (!Number.isFinite(value)) return '—';
+  const text = formatIDR(value, true);
+  return value > 0 ? `+${text}` : text;
+}
+
+function stockHeadlineCards(stockData) {
+  const net = stockData.observedFlow?.netValue;
+  const buyers = [...(stockData.accumulation || [])]
+    .filter((row) => Number.isFinite(row.netValue))
+    .sort((a, b) => b.netValue - a.netValue);
+  const lead = buyers[0] || null;
+  const second = buyers[1] || null;
+  const persist = stockData.flowPersistence && typeof stockData.flowPersistence === 'object'
+    ? stockData.flowPersistence
+    : null;
+  const leadCode = persist?.brokerCode || lead?.code || null;
+  const staySide = persist?.dominantSide === 'distribution' || persist?.streakSide === 'sell'
+    ? 'sell'
+    : 'buy';
+  const stayCount = persist?.positiveSessions
+    ?? (staySide === 'buy' ? lead?.consistency?.buySessions : lead?.consistency?.sellSessions);
+  const stayObserved = persist?.observedSessions ?? lead?.consistency?.observedSessions;
+  let leadHeadline = 'Unavailable';
+  let leadDetail = 'No lead broker in this window.';
+  if (leadCode) {
+    if (Number.isFinite(stayCount) && Number.isFinite(stayObserved) && stayObserved > 0) {
+      leadHeadline = `${leadCode} stayed on the ${staySide}`;
+      leadDetail = `${stayCount} of ${stayObserved} days`;
+    } else {
+      leadHeadline = leadCode;
+      leadDetail = Number.isFinite(lead?.netValue) ? signedIdr(lead.netValue) : 'Lead in this window';
+    }
+  }
+  const ratio = lead && second && second.netValue > 0 ? lead.netValue / second.netValue : null;
+  const watched = stockData.preferredBroker;
+  const watchedCodes = (watched?.observedCodes || []).join(', ') || 'AK, BK, CC, ZP';
+  const watchedShare = Number.isFinite(watched?.share) && watched.share > 0
+    ? `${LABELS.watchedBrokersShare} (${watchedCodes})`
+    : null;
+  let concentrationHeadline = 'Unavailable';
+  let concentrationDetail = 'Need a second buyer to compare.';
+  if (Number.isFinite(ratio) && second?.code) {
+    concentrationHeadline = `${ratio.toFixed(1)}× vs ${second.code}`;
+    concentrationDetail = watchedShare || 'Lead net versus the next buyer';
+  } else if (Number.isFinite(watched?.share) && watched.share > 0) {
+    concentrationHeadline = `${(watched.share * 100).toFixed(1)}%`;
+    concentrationDetail = watchedShare || LABELS.watchedBrokersShare;
+  }
+  return {
+    net,
+    leadHeadline,
+    leadDetail,
+    concentrationHeadline,
+    concentrationDetail,
+  };
 }
 
 // Phase 6: the two default accumulation/distribution panel lists are merged, on the
@@ -469,7 +519,7 @@ const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
 
   const accumulation = viewData?.accumulation || [];
   const distribution = viewData?.distribution || [];
-  const investorRollup = stockData ? factualInvestorRollup(stockData.brokers) : null;
+  const headlines = stockData ? stockHeadlineCards(stockData) : null;
 
   // Display-only merge: sort buyers by net value descending and sellers by
   // absolute net value descending. No backend/calculation changes.
@@ -645,41 +695,26 @@ const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
                 {meta?.archive?.calendarCoverage?.status === 'degraded' && (
                   <span className="badge badge-warning">Calendar degraded</span>
                 )}
+                {stockTiers.persistence !== 'full' && (
+                  <span className="badge badge-warning">{stockTiers.persistence === 'early' ? 'Early read' : 'Raw totals only'}</span>
+                )}
               </div>
               <div className="bi-summary__metrics">
-                {investorRollup && (
-                  <div className="bi-summary__primary">
-                    <span className="text-tertiary">Observed investor type</span>
-                    <strong className="tabular">Foreign {signedValue(investorRollup.foreign)} · Local {signedValue(investorRollup.local)}</strong>
-                    <small className="text-tertiary">Factual broker source type; not investor identity or intent.</small>
-                  </div>
-                )}
-                {stockTiers.persistence !== 'full' && (
-                  <div className="bi-summary__primary">
-                    <span className="text-tertiary">Interpretation</span>
-                    <strong>{stockTiers.persistence === 'early' ? 'Early read' : 'Raw totals only'}</strong>
-                    <small className="text-tertiary">{stockTiers.observed} observed sessions · {Math.round(stockTiers.completeness * 100)}% complete</small>
-                  </div>
-                )}
-                {stockTiers.preferredShare === 'full' && (stockData.preferredBroker.observedCodes || []).length > 0 && stockData.preferredBroker.share > 0 && (
-                  <div className="bi-summary__primary">
-                    <span className="text-tertiary">Preferred-broker share</span>
-                    <strong className="tabular">{`${(stockData.preferredBroker.share * 100).toFixed(1)}%`}</strong>
-                    <small className="text-tertiary">{stockData.preferredBroker.observedCodes.join(', ')}</small>
-                  </div>
-                )}
-                {stockTiers.persistence === 'full' && stockData.flowPersistence?.meaningful && (
-                  <div className="bi-summary__primary">
-                    <span className="text-tertiary">{stockData.flowPersistence.brokerCode || 'Lead broker'} persistence</span>
-                    <strong>{stockData.flowPersistence.dominantSide.replaceAll('_', ' ')}</strong>
-                    <small className="text-tertiary">
-                      {Math.round(stockData.flowPersistence.persistenceRatio * 100)}% of its observed sessions
-                      {stockData.flowPersistence.divergence !== 'aligned' && stockData.flowPersistence.divergence !== 'mixed_flow'
-                        ? ` · ${stockData.flowPersistence.divergence.replaceAll('_', ' ')}` : ''}
-                    </small>
-                  </div>
-                )}
-
+                <div className="bi-summary__primary">
+                  <span className="text-tertiary">{LABELS.windowNet}</span>
+                  <strong className="tabular">{signedIdr(headlines.net)}</strong>
+                  <small className="text-tertiary">Observed buy minus sell in this range.</small>
+                </div>
+                <div className="bi-summary__primary">
+                  <span className="text-tertiary">{LABELS.leadBroker}</span>
+                  <strong>{headlines.leadHeadline}</strong>
+                  <small className="text-tertiary">{headlines.leadDetail}</small>
+                </div>
+                <div className="bi-summary__primary">
+                  <span className="text-tertiary">{LABELS.howConcentrated}</span>
+                  <strong className="tabular">{headlines.concentrationHeadline}</strong>
+                  <small className="text-tertiary">{headlines.concentrationDetail}</small>
+                </div>
               </div>
               {stockTiers.rotation === 'full' && stockData.rotationHandoff && (
                 <div className="bi-rotation" role="status">

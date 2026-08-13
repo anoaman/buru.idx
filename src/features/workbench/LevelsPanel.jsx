@@ -1,5 +1,6 @@
 import { formatPct, formatPrice, formatRatio } from '../../lib/format/market.js';
 import DynamicLevels from './DynamicLevels.jsx';
+import { LABELS, priceLevelCaption } from '../../lib/copy/terms.js';
 
 export default function LevelsPanel({ data }) {
   const setup = data?.scenarioGeometry;
@@ -22,12 +23,12 @@ export default function LevelsPanel({ data }) {
     <div className="wb-levels-panel">
       <div className="wb-overview-grid" aria-label="Setup levels">
         <div>
-          <span>{longSetup ? 'Confirmation' : setup?.framing === 'defensive' ? 'Long entry' : 'Confirmation'}</span>
+          <span>{priceLevelCaption(setup?.framing, { longLabel: LABELS.clearsAbove, defensiveLabel: LABELS.longEntry })}</span>
           <strong className="tabular">{formatPrice(confirmationPrice)}</strong>
           <small className="text-tertiary">{setup?.labels?.confirmation || setup?.unavailableReason || 'No fabricated last-close entry'}</small>
         </div>
         <div>
-          <span>{setup?.framing === 'defensive' ? 'Damage if lost' : 'Setup fails below'}</span>
+          <span>{priceLevelCaption(setup?.framing, { longLabel: LABELS.failsBelow, defensiveLabel: LABELS.damageIfLost })}</span>
           <strong className="tabular">{formatPrice(failPrice)}</strong>
           {longSetup && geometry?.downsidePct != null && (
             <small className="text-warning">{formatPct(geometry.downsidePct)} under last close</small>
@@ -37,7 +38,7 @@ export default function LevelsPanel({ data }) {
           )}
         </div>
         <div>
-          <span>Target</span>
+          <span>{LABELS.upsideTo}</span>
           <strong className={`tabular ${targetPrice != null ? 'text-positive' : ''}`}>{formatPrice(targetPrice)}</strong>
           <small className={targetPrice != null ? 'text-positive' : 'text-tertiary'}>
             {setup?.labels?.target || (targetPrice != null && geometry?.upsidePct != null ? `${formatPct(geometry.upsidePct)} upside` : 'No long target')}
@@ -58,7 +59,7 @@ export default function LevelsPanel({ data }) {
           </small>
         </div>
         <div>
-          <span>Reward / risk</span>
+          <span>{LABELS.rewardRisk}</span>
           <strong className="tabular">{formatRatio(reward)}</strong>
           {longSetup && Number.isFinite(setup?.risk?.costPct ?? best?.costPct) && (
             <small className="text-tertiary">Cost drag {formatPct(setup?.risk?.costPct ?? best?.costPct)}</small>

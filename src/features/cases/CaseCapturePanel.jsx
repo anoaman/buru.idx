@@ -75,9 +75,9 @@ export default function CaseCapturePanel({ ticker, source, snapshot, defaults = 
           {state.error && <p className="case-capture__error" role="alert">{state.error}</p>}
           <label>Setup label<input ref={firstField} required value={form.setupType} onChange={update('setupType')} /></label>
           <label>Horizon (sessions)<input required min="1" max="120" type="number" value={form.horizonSessions} onChange={update('horizonSessions')} /></label>
-          <label className="case-capture__wide">Confirmation / entry condition<input required value={form.confirmation} onChange={update('confirmation')} placeholder="Daily close above the confirmation level" /></label>
-          <label>Invalidation price<input required min="1" inputMode="decimal" value={form.invalidationPrice} onChange={update('invalidationPrice')} /></label>
-          <label>Target price (optional)<input min="1" inputMode="decimal" value={form.targetPrice} onChange={update('targetPrice')} /></label>
+          <label className="case-capture__wide">Clears-above condition<input required value={form.confirmation} onChange={update('confirmation')} placeholder="Daily close above the setup level" /></label>
+          <label>Fails-below price<input required min="1" inputMode="decimal" value={form.invalidationPrice} onChange={update('invalidationPrice')} /></label>
+          <label>Upside-to price (optional)<input min="1" inputMode="decimal" value={form.targetPrice} onChange={update('targetPrice')} /></label>
           <label className="case-capture__wide">Your thesis (optional)<textarea rows="2" value={form.thesis} onChange={update('thesis')} /></label>
           <div className="case-capture__actions">
             <button className="ui-btn ui-btn--primary" type="submit" disabled={state.saving}>{state.saving ? 'Saving…' : 'Save case'}</button>

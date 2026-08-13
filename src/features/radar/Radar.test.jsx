@@ -312,7 +312,7 @@ describe('Radar', () => {
     })));
   });
 
-  it('renders the evidence band as a signal-strength badge on every qualified row', async () => {
+  it('renders the evidence band as a recipe-fit badge on every qualified row', async () => {
     getOpportunities.mockResolvedValue({ success: true, data: { run: RUN, opportunities: [] } });
     getRadarScout.mockResolvedValue(scoutResponse({ candidates: [scoutCandidate({ evidenceBand: 'medium' })] }));
 
@@ -320,7 +320,7 @@ describe('Radar', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
     fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
-    expect(await screen.findByText('Medium signal')).toBeInTheDocument();
+    expect(await screen.findByText('Medium recipe fit')).toBeInTheDocument();
   });
 
   it('renders the score breakdown behind the row disclosure without dropping it', async () => {
@@ -359,7 +359,7 @@ describe('Radar', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
     fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
-    expect(await screen.findByText('Almost Matched')).toBeInTheDocument();
+    expect(await screen.findByText('Almost matched')).toBeInTheDocument();
     expect(screen.getByText('ELSA')).toBeInTheDocument();
     expect(screen.getByText('Missed: liquidity floor ≥ Rp500M/day')).toBeInTheDocument();
     // A near-miss keeps its own table (fewer columns, no lead-broker/support
