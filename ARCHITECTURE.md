@@ -81,7 +81,8 @@ and consumes existing backend engines without duplicating their calculations.
   structure but must not create independent visual systems.
 
 The frontend performs no analysis, ranking, broker inventory, or coverage
-calculation. Those remain backend responsibilities.
+calculation. Scenario classification and fit evidence also remain backend
+responsibilities and never overload the legacy capitalization lane.
 
 ## Routes
 

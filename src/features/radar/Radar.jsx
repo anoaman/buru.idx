@@ -134,6 +134,8 @@ function shortlistSnapshot(row, run) {
     tradingProfile: row.tradingProfile || null,
     isFca: row.isFca === true,
     scenario: row.scenario || null,
+    scenarioFitScore: row.scenarioFitScore ?? null,
+    structureState: row.structureState || null,
     score: row.score,
     dataQuality: row.dataQuality,
     reasons: row.reasons,
@@ -160,6 +162,7 @@ function ShortlistRow({ row, run, onInvestigate, onActors }) {
             {row.isFca ? ' · FCA' : ''}
             {row.ineligible ? ' · gated' : ''}
           </span>
+          {row.scenario && <small>{row.scenario.replaceAll('_', ' ')} · {row.scenarioFitScore ?? 0}% fit</small>}
         </div>
       </td>
       <td className="tabular">

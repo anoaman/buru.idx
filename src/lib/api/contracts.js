@@ -357,6 +357,9 @@ function normalizeOpportunityRow(row) {
     // eligible rows, so only an explicit false may be shown as a gate failure.
     ineligible: row.eligible === false,
     isFca: features.isFca === true,
+    scenario: row.scenario || features.scenario?.scenario || null,
+    scenarioFitScore: preserveFiniteOrNull(row.scenarioFitScore ?? features.scenario?.fitScore),
+    structureState: row.structureState || features.scenario || null,
     levels: normalizeOpportunityLevels(row.levels, features.risk?.netRewardRisk),
     freshness: normalizeOpportunityFreshness(row.freshness),
     reasons: normalizeStringList(row.reasons, 6),

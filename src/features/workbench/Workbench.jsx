@@ -138,6 +138,18 @@ function MarketContextStrip({ macro }) {
   );
 }
 
+function ScenarioStrip({ scenario }) {
+  if (!scenario) return null;
+  return (
+    <section className="wb-market-context" aria-label="Scenario and structure">
+      <div><span>Scenario</span><strong>{String(scenario.scenario || 'unclassified').replaceAll('_', ' ')}</strong><small>{scenario.fitScore || 0}% evidence fit</small></div>
+      <div><span>Structure</span><strong>{scenario.structure?.trend || 'unknown'}</strong><small>{scenario.structure?.compression ? 'compressed' : 'not compressed'} · {scenario.structure?.nearSupport ? 'near support' : 'away from support'}</small></div>
+      <div><span>For</span><strong>{scenario.confirmations?.[0] || 'No strong confirmation'}</strong><small>{(scenario.confirmations || []).slice(1).join(' · ')}</small></div>
+      <div><span>Against</span><strong>{scenario.contradictions?.[0] || 'No material contradiction'}</strong><small>{(scenario.contradictions || []).slice(1).join(' · ')}</small></div>
+    </section>
+  );
+}
+
 function CompactGrade({ grade, stance }) {
   return (
     <div className="wb-evidence-summary" aria-label="Score summary">
@@ -302,6 +314,7 @@ export default function Workbench() {
           <div className="wb-result" data-displayed-ticker={displayed.ticker}>
             <TickerHeader ticker={displayed.data.ticker} priceHistory={displayed.data.priceHistory} />
             <MarketContextStrip macro={displayed.data.macro} />
+            <ScenarioStrip scenario={displayed.data.scenario} />
             {privateWritesEnabled && (
               <div className="wb-case-action">
                 <button
@@ -337,7 +350,9 @@ export default function Workbench() {
                   contradictions: displayed.data.investigation?.contradictions || [],
                   levels: displayed.data.riskGeometry || {},
                   brokerSummary: displayed.data.broker || {},
-                  structureState: displayed.data.grade || {},
+                  scenario: displayed.data.scenario?.scenario || null,
+                  scenarioFitScore: displayed.data.scenario?.fitScore ?? null,
+                  structureState: displayed.data.scenario || displayed.data.grade || {},
                 }}
                 defaults={{
                   confirmation: displayed.data.riskGeometry?.confirmationEntry
