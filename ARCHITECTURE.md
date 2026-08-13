@@ -85,6 +85,9 @@ calculation. Scenario classification, scenario-specific geometry, and fit
 evidence remain backend responsibilities and never overload the legacy
 capitalization lane. React only renders backend `scenarioGeometry` /
 `levels.framing` and must not treat last close as a confirmation entry.
+Official disclosures are backend-owned Story Intelligence: React renders
+source-attributed events, ingest freshness, unmapped issuers, and timeline
+joins, and never infers broker intent from a filing.
 
 ## Routes
 

@@ -16,6 +16,98 @@ function normalizeGeometryLevel(raw) {
   };
 }
 
+function officialSourceUrl(url) {
+  const text = typeof url === 'string' ? url.trim() : '';
+  return /^https:\/\/([^/]+\.)?idx\.co\.id\//i.test(text) ? text : null;
+}
+
+function normalizeTimelineEvent(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const title = typeof raw.title === 'string' ? raw.title : '';
+  if (!title && !raw.date) return null;
+  const broker = raw.brokerContext && typeof raw.brokerContext === 'object' ? raw.brokerContext : null;
+  return {
+    date: raw.date || null,
+    sessionsAgo: preserveFiniteOrNull(raw.sessionsAgo),
+    type: raw.type || 'state',
+    category: raw.category || null,
+    title,
+    detail: typeof raw.detail === 'string' ? raw.detail : '',
+    sourceUrl: officialSourceUrl(raw.sourceUrl),
+    sourceRef: typeof raw.sourceRef === 'string' ? raw.sourceRef : null,
+    mappingStatus: raw.mappingStatus || null,
+    brokerContext: broker ? {
+      available: broker.available === true,
+      netValue: preserveFiniteOrNull(broker.netValue),
+      note: typeof broker.note === 'string' ? broker.note : null,
+    } : null,
+  };
+}
+
+export function normalizeStoryIntelligence(raw) {
+  if (!raw || typeof raw !== 'object') {
+    return {
+      available: false,
+      events: [],
+      timeline: [],
+      health: {
+        available: false,
+        freshness: 'unknown',
+        lastRun: null,
+        counts: { events: 0, unmapped: 0, superseded: 0 },
+        unmapped: [],
+        warnings: [],
+      },
+    };
+  }
+  const health = raw.health && typeof raw.health === 'object' ? raw.health : {};
+  return {
+    available: raw.available === true,
+    ticker: raw.ticker || null,
+    asOf: raw.asOf || null,
+    events: Array.isArray(raw.events)
+      ? raw.events.map((item) => ({
+          eventId: item?.eventId || null,
+          ticker: item?.ticker || null,
+          category: item?.category || 'other_material',
+          categoryLabel: item?.categoryLabel || item?.category || 'Disclosure',
+          title: item?.title || '',
+          summary: item?.summary || null,
+          publishedAt: item?.publishedAt || null,
+          effectiveDate: item?.effectiveDate || null,
+          sourceUrl: officialSourceUrl(item?.sourceUrl),
+          sourceRef: item?.sourceRef || null,
+          mappingStatus: item?.mappingStatus || null,
+          status: item?.status || 'current',
+        })).filter((item) => item.title && item.sourceUrl)
+      : [],
+    timeline: Array.isArray(raw.timeline)
+      ? raw.timeline.map(normalizeTimelineEvent).filter(Boolean)
+      : [],
+    health: {
+      available: health.available === true,
+      freshness: health.freshness || 'unknown',
+      lastRun: health.lastRun && typeof health.lastRun === 'object' ? {
+        id: health.lastRun.id ?? null,
+        status: health.lastRun.status || null,
+        finishedAt: health.lastRun.finishedAt || null,
+        inserted: preserveFiniteOrNull(health.lastRun.inserted),
+        duplicates: preserveFiniteOrNull(health.lastRun.duplicates),
+        unmapped: preserveFiniteOrNull(health.lastRun.unmapped),
+        failed: preserveFiniteOrNull(health.lastRun.failed),
+        error: health.lastRun.error || null,
+      } : null,
+      counts: {
+        events: preserveFiniteOrNull(health.counts?.events) || 0,
+        unmapped: preserveFiniteOrNull(health.counts?.unmapped) || 0,
+        superseded: preserveFiniteOrNull(health.counts?.superseded) || 0,
+      },
+      unmapped: Array.isArray(health.unmapped) ? health.unmapped.slice(0, 20) : [],
+      warnings: normalizeStringList(health.warnings, 8),
+    },
+  };
+}
+
 export function normalizeScenarioGeometry(raw) {
   if (!raw || typeof raw !== 'object') return null;
   const framing = GEOMETRY_FRAMINGS.includes(raw.framing) ? raw.framing : 'unavailable';
@@ -117,6 +209,15 @@ export function guardAnalyze(raw) {
   const scenario = data.scenario && typeof data.scenario === 'object'
     ? { ...data.scenario, geometry: scenarioGeometry }
     : data.scenario;
+  const storyIntelligence = normalizeStoryIntelligence(data.storyIntelligence);
+  const investigation = data.investigation && typeof data.investigation === 'object'
+    ? {
+        ...data.investigation,
+        timeline: Array.isArray(data.investigation.timeline)
+          ? data.investigation.timeline.map(normalizeTimelineEvent).filter(Boolean)
+          : [],
+      }
+    : data.investigation;
 
   return {
     ok: true,
@@ -125,6 +226,8 @@ export function guardAnalyze(raw) {
       ...data,
       scenario,
       scenarioGeometry,
+      storyIntelligence,
+      investigation,
       dynamicLevels: normalizedDynamicLevels,
       chart: normalizedChart,
       broker,

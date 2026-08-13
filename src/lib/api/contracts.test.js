@@ -80,6 +80,50 @@ describe('public Stock Analysis contracts', () => {
     expect(result.data.scenario.geometry.framing).toBe('defensive');
   });
 
+  it('keeps official disclosure source URLs and drops social links', () => {
+    const result = guardAnalyze({
+      success: true,
+      data: {
+        ticker: { symbol: 'BBRI' },
+        storyIntelligence: {
+          available: true,
+          events: [{
+            category: 'rights_issue',
+            categoryLabel: 'Rights issue',
+            title: 'HMETD',
+            publishedAt: '2026-08-11',
+            sourceUrl: 'https://www.idx.co.id/id/berita/pengumuman/',
+            sourceRef: 'idx:announcement:1',
+          }, {
+            title: 'Rumor',
+            sourceUrl: 'https://t.me/rumor',
+            sourceRef: 'social:1',
+          }],
+          health: {
+            available: true,
+            freshness: 'partial',
+            warnings: ['Official disclosure ingest completed with gaps'],
+            counts: { events: 2, unmapped: 1, superseded: 0 },
+          },
+        },
+        investigation: {
+          timeline: [{
+            date: '2026-08-11',
+            type: 'official',
+            title: 'Rights issue: HMETD',
+            detail: 'Official IDX disclosure.',
+            sourceUrl: 'https://www.idx.co.id/id/berita/pengumuman/',
+            brokerContext: { available: true, netValue: 1, note: 'Observed broker net buying.' },
+          }],
+        },
+      },
+    });
+    expect(result.data.storyIntelligence.events).toHaveLength(1);
+    expect(result.data.storyIntelligence.events[0].sourceUrl).toMatch(/idx\.co\.id/);
+    expect(result.data.investigation.timeline[0].sourceUrl).toMatch(/idx\.co\.id/);
+    expect(result.data.storyIntelligence.health.freshness).toBe('partial');
+  });
+
   it('guards archive health without inventing coverage', () => {
     const result = guardBrokerArchiveHealth({
       success: true,

@@ -19,7 +19,7 @@ import DetailDrawer from './DetailDrawer.jsx';
 import LevelsPanel from './LevelsPanel.jsx';
 import CaseCapturePanel from '../cases/CaseCapturePanel.jsx';
 
-function TickerHeader({ ticker, priceHistory }) {
+function TickerHeader({ ticker, priceHistory, storyIntelligence }) {
   if (!ticker) return null;
   const changeColor = ticker.changePct > 0 ? 'text-positive' : ticker.changePct < 0 ? 'text-negative' : 'text-secondary';
   return (
@@ -63,6 +63,17 @@ function TickerHeader({ ticker, priceHistory }) {
               <strong>{notice.noticeType.toUpperCase()}</strong>
               <span>{notice.title}</span>
               <small>{notice.noticeDate} · Official IDX source ↗</small>
+            </a>
+          ))}
+        </div>
+      )}
+      {(storyIntelligence?.events || []).length > 0 && (
+        <div className="wb-regulatory-notices" aria-label="Official IDX disclosures">
+          {storyIntelligence.events.slice(0, 6).map((event) => (
+            <a key={event.sourceRef || event.eventId} href={event.sourceUrl} target="_blank" rel="noopener noreferrer">
+              <strong>{event.categoryLabel || event.category}</strong>
+              <span>{event.title}</span>
+              <small>{event.effectiveDate || event.publishedAt} · Official IDX source ↗</small>
             </a>
           ))}
         </div>
@@ -170,8 +181,16 @@ function CompactGrade({ grade, stance }) {
 
 function WhatChangedPanel({ data }) {
   const contradictions = data?.investigation?.contradictions || [];
+  const health = data?.storyIntelligence?.health;
   return (
     <div className="wb-changed-panel">
+      {health?.warnings?.length > 0 && (
+        <p className="wb-story-health text-warning" role="status">
+          Official disclosures: {health.freshness || 'unknown'}
+          {health.lastRun?.error ? ` · ${health.lastRun.error}` : ''}
+          {health.counts?.unmapped ? ` · ${health.counts.unmapped} unmapped issuers` : ''}
+        </p>
+      )}
       <InvestigationBrief investigation={data?.investigation} />
       <EvidenceDebate debate={data?.debate} stance={data?.stance} />
       {contradictions.length > 0 && (
@@ -319,7 +338,11 @@ export default function Workbench() {
             </div>
           )}
           <div className="wb-result" data-displayed-ticker={displayed.ticker}>
-            <TickerHeader ticker={displayed.data.ticker} priceHistory={displayed.data.priceHistory} />
+            <TickerHeader
+              ticker={displayed.data.ticker}
+              priceHistory={displayed.data.priceHistory}
+              storyIntelligence={displayed.data.storyIntelligence}
+            />
             <MarketContextStrip macro={displayed.data.macro} />
             <ScenarioStrip scenario={displayed.data.scenario} geometry={displayed.data.scenarioGeometry} />
             {privateWritesEnabled && (

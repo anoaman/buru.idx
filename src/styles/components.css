@@ -1952,6 +1952,23 @@
 
 .wb-regulatory-notices small { color: var(--color-text-muted); }
 
+.wb-story-health {
+  margin: 0 0 var(--space-3);
+  font-size: 12px;
+}
+
+.inv-timeline__official a {
+  display: inline-block;
+  margin-top: 4px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.inv-timeline__broker {
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
 @media (max-width: 760px) {
   .wb-market-context { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

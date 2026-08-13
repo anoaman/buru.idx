@@ -25,6 +25,10 @@ describe('public API allowlist', () => {
       path: '/api/radar/scout?recipe=quiet_accumulation&brokerSessions=7',
     });
     expect(resolvePublicApiRequest('GET', '/api/watchlist').ok).toBe(true);
+    expect(resolvePublicApiRequest('GET', '/api/story-intelligence?ticker=BBRI')).toEqual({
+      ok: true,
+      path: '/api/story-intelligence?ticker=BBRI',
+    });
   });
 
   it('forwards Scout custom broker dates and lead-broker minimum to upstream', () => {
@@ -106,6 +110,7 @@ describe('public API allowlist', () => {
       '/api/market-overview',
       '/api/data-health',
       '/api/fca',
+      '/api/story-intelligence/health',
     ]) {
       const result = resolvePublicApiRequest('GET', path);
       expect(result.ok).toBe(false);

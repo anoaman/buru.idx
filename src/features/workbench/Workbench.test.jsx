@@ -161,8 +161,31 @@ describe('Workbench', () => {
     dataQuality: { sources: ['primary-market-data', 'secondary-market-data'], warnings: [] },
     investigation: {
       question: { code: 'CONFIRMATION_TEST', title: 'What confirms the structure?', detail: 'Trending with usable geometry.' },
-      timeline: [{ date: '2026-07-17', type: 'state', title: 'Current phase', detail: 'Evidence aligned.' }],
+      timeline: [
+        { date: '2026-07-17', type: 'state', title: 'Current phase', detail: 'Evidence aligned.' },
+        {
+          date: '2026-07-17',
+          type: 'official',
+          category: 'dividend',
+          title: 'Dividend: Cash dividend',
+          detail: 'Official IDX disclosure.',
+          sourceUrl: 'https://www.idx.co.id/id/berita/pengumuman/',
+          brokerContext: { available: false, note: 'Broker summary unavailable for this session.' },
+        },
+      ],
       contradictions: [{ code: 'NO_MAJOR_CONTRADICTION', title: 'No dominant contradiction', evidence: ['Recheck tomorrow'] }],
+    },
+    storyIntelligence: {
+      available: true,
+      events: [{
+        category: 'dividend',
+        categoryLabel: 'Dividend',
+        title: 'Cash dividend',
+        publishedAt: '2026-07-17',
+        sourceUrl: 'https://www.idx.co.id/id/berita/pengumuman/',
+        sourceRef: 'idx:ca:dividend:BBRI:20260717',
+      }],
+      health: { available: true, freshness: 'healthy', warnings: [], counts: { events: 1, unmapped: 0, superseded: 0 } },
     },
   };
 
@@ -236,6 +259,7 @@ describe('Workbench', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: /What Changed/i }));
     expect(screen.getByText(/What supports or challenges the setup/i)).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: /Official IDX source/i }).length).toBeGreaterThan(0);
   });
 
   it('exposes analysis detail tabs', async () => {

@@ -26,13 +26,20 @@ export default function InvestigationBrief({ investigation }) {
           ))}
         </div>
       </div>
-      <p className="inv-timeline__intro">Material price, volume, moving-average, and broker-flow changes in the selected period.</p>
+      <p className="inv-timeline__intro">Material price, volume, moving-average, broker-flow, and official IDX disclosure changes in the selected period.</p>
       {timeline.length ? (
         <ol>
           {timeline.map((event, index) => (
-            <li key={`${event.date}-${event.type}-${index}`}>
+            <li key={`${event.date}-${event.type}-${index}`} className={event.type === 'official' ? 'inv-timeline__official' : undefined}>
               <time>{event.date}</time>
-              <div><strong>{event.title}</strong><p>{event.detail}</p></div>
+              <div>
+                <strong>{event.title}</strong>
+                <p>{event.detail}</p>
+                {event.brokerContext?.note && <p className="inv-timeline__broker">{event.brokerContext.note}</p>}
+                {event.sourceUrl && (
+                  <a href={event.sourceUrl} target="_blank" rel="noopener noreferrer">Official IDX source ↗</a>
+                )}
+              </div>
             </li>
           ))}
         </ol>
