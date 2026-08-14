@@ -4,9 +4,15 @@ import {
   guardBrokerArchiveHealth,
   guardBrokerStockIntelligence,
   guardCases,
+  guardCollectorHealth,
+  guardDisclosureAnomalies,
+  guardDisclosureDetail,
+  guardDisclosures,
+  guardFundamentalStatements,
   guardOpportunities,
   guardRadarScout,
   guardStockBrokerIntelligence,
+  officialIdxUrl,
   normalizeServing,
 } from './contracts.js';
 
@@ -400,3 +406,83 @@ describe('Radar Scout contracts', () => {
     });
   });
 });
+
+describe('Keterbukaan and Fundamentals contracts', () => {
+  it('keeps official IDX URLs and drops filesystem paths', () => {
+    expect(officialIdxUrl('https://www.idx.co.id/news/a')).toBe('https://www.idx.co.id/news/a');
+    expect(officialIdxUrl('/home/kibz66/.openclaw/workspace/trading-db/idx.db')).toBeNull();
+  });
+
+  it('normalizes the disclosure feed and unavailable tables', () => {
+    const ready = guardDisclosures({
+      success: true,
+      data: {
+        items: [{
+          eventId: 'div-1',
+          ticker: 'bbca',
+          title: 'Dividend',
+          sourceUrl: 'https://www.idx.co.id/news/div-1',
+          hasCorrection: true,
+        }],
+        nextCursor: 25,
+        total: 40,
+      },
+    });
+    expect(ready.ok).toBe(true);
+    expect(ready.data.items[0].ticker).toBe('BBCA');
+    expect(ready.data.items[0].sourceUrl).toBe('https://www.idx.co.id/news/div-1');
+
+    const missing = guardDisclosures({
+      success: true,
+      data: { available: false, status: 'unavailable', reason: 'disclosure tables are not present.' },
+    });
+    expect(missing.ok).toBe(true);
+    expect(missing.data.available).toBe(false);
+    expect(missing.data.items).toEqual([]);
+    expect(guardDisclosures({ success: false, error: 'offline' }).ok).toBe(false);
+  });
+
+  it('strips leaked paths from detail evidence and documents', () => {
+    const result = guardDisclosureDetail({
+      success: true,
+      data: {
+        eventId: 'div-1',
+        ticker: 'BBCA',
+        sourceUrl: '/tmp/secret.pdf',
+        signals: [{
+          type: 'correction',
+          evidence: { snippet: 'koreksi', officialUrl: 'file:///tmp/x' },
+        }],
+        documents: [{ documentId: 1, sourceUrl: 'https://www.idx.co.id/a.pdf' }],
+      },
+    });
+    expect(result.ok).toBe(true);
+    expect(result.data.sourceUrl).toBeNull();
+    expect(result.data.signals[0].evidence.officialUrl).toBeNull();
+    expect(result.data.documents[0].sourceUrl).toBe('https://www.idx.co.id/a.pdf');
+  });
+
+  it('keeps statement periods separate and drops inferred facts', () => {
+    const result = guardFundamentalStatements({
+      success: true,
+      data: {
+        items: [{
+          periodLabel: 'FY2025',
+          sourceUrl: 'https://www.idx.co.id/fs.pdf',
+          parserStatus: 'ok',
+          facts: [
+            { fieldKey: 'revenue', valueNumeric: 1, statementType: 'income_statement' },
+            { fieldKey: 'pe', valueNumeric: 12, valueKind: 'inferred' },
+          ],
+        }],
+      },
+    });
+    expect(result.data.items[0].facts.map((row) => row.fieldKey)).toEqual(['revenue']);
+    expect(guardDisclosureAnomalies({ success: false, error: 'offline' }).ok).toBe(false);
+    expect(guardCollectorHealth({
+      success: true,
+      data: { available: true, status: 'ready', feeds: [{ feed: 'idx', lastSuccessAt: '2026-08-14T00:00:00Z' }] },
+    }).data.status).toBe('ready');
+  });
+});
+

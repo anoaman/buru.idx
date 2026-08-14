@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   analyzeTicker,
+  getDisclosures,
   getStockBrokerIntelligence,
   invalidateBrokerCache,
 } from './client.js';
@@ -160,5 +161,27 @@ describe('Stock Analysis API client', () => {
       getStockBrokerIntelligence({ ticker: 'BMRI', days: 1 }),
     ).resolves.toMatchObject({ data: { refreshed: true } });
     expect(global.fetch).toHaveBeenCalledTimes(3);
+  });
+
+  it('encodes disclosure filters without extra query keys', async () => {
+    global.fetch = vi.fn().mockResolvedValue(response({ success: true, data: { items: [] } }));
+    await getDisclosures({
+      ticker: 'BBCA',
+      from: '2026-08-01',
+      category: 'dividend',
+      severity: 'high',
+      signal: 'correction',
+      limit: 25,
+    });
+    const url = global.fetch.mock.calls[0][0];
+    expect(url).toContain('/api/disclosures?');
+    expect(url).toContain('ticker=BBCA');
+    expect(url).toContain('from=2026-08-01');
+    expect(url).toContain('category=dividend');
+    expect(url).toContain('severity=high');
+    expect(url).toContain('signal=correction');
+    expect(url).toContain('limit=25');
+    expect(url).not.toContain('passwd');
+    expect(url).not.toContain('sql=');
   });
 });

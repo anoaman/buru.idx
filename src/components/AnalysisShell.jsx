@@ -6,6 +6,7 @@ const NAV = [
   { path: '/radar', label: 'Screener', mark: 'SC' },
   { path: '/workbench', label: 'Stock Analysis', mark: 'SA' },
   { path: '/broker-intelligence', label: 'Broker Flow', mark: 'BF' },
+  { path: '/keterbukaan', label: 'Keterbukaan Informasi', mark: 'KI' },
 ];
 
 function CommandBar() {

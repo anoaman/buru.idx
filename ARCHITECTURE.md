@@ -11,7 +11,10 @@ case tracking from the retiring cockpit without duplicating backend engines.
 - `src/features/workbench/` owns ticker analysis presentation and chart views.
   Layout order is market overview, full-width market chart, then a docked
   accessible `DetailDrawer` with tabs: Levels · Indicators · Broker Flow ·
-  What Changed · Risk Simulator · Methodology. The chart uses TradingView
+  What Changed · Risk Simulator · Methodology · Fundamentals. Fundamentals
+  mounts only when selected and renders parsed statement periods, facts,
+  parser status, confidence, and evidence. It does not compute ratios or
+  inferred values. The chart uses TradingView
   Lightweight Charts so first-party levels remain auditable. Nothing on the
   page may be labelled from a stale request: cold loads use skeletons; warm
   ticker switches keep the previous completed frame (still labelled with its
@@ -21,7 +24,12 @@ case tracking from the retiring cockpit without duplicating backend engines.
   a prior good frame.
 - `src/features/workbench/DetailDrawer.jsx` owns tablist/tab/tabpanel
   semantics and keyboard Left/Right/Home/End navigation. Network-triggering
-  panels (BrokerEvidence) mount only when their tab is selected.
+  panels (BrokerEvidence, FundamentalsPanel) mount only when their tab is
+  selected.
+- `src/features/keterbukaan/` owns the standalone Keterbukaan Informasi feed,
+  filters, event/signal cards, anomaly indicators, correction timeline,
+  evidence, official IDX links, and Collector freshness. Story Intelligence
+  remains a backend engine and has no user-facing tab.
 - `src/features/broker-intelligence/` owns stock/broker lenses, the merged
   signed ranking table (frontend display merge of accumulation + distribution
   arrays only), and inventory curve presentation.
@@ -59,7 +67,8 @@ case tracking from the retiring cockpit without duplicating backend engines.
   React only submits bounded filters and renders the returned evidence,
   component score breakdown, evidence band, and separately labelled near misses.
 - Trader-facing labels use Screener / Market Shortlist / Custom Screener / Stock
-  Analysis / Broker Flow / Watchlist. Internal route names remain stable. The
+  Analysis / Broker Flow / Keterbukaan Informasi / Watchlist. Internal route
+  names remain stable. The
   global ticker selection is shared by Stock Analysis and Broker Flow; Screener
   handoffs open in new tabs so the originating result set is preserved.
 - Broker Flow and Custom Screener expose named and custom calendar ranges while
@@ -83,6 +92,7 @@ calculation. Those remain backend responsibilities.
 - `/workbench`
 - `/broker-intelligence`
 - `/radar`
+- `/keterbukaan`
 - `/cases`
 
 The root and unknown routes redirect to `/workbench`.

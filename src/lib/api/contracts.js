@@ -716,3 +716,330 @@ export function guardBrokerStockIntelligence(raw) {
     },
   };
 }
+
+const IDX_SOURCE = /^https:\/\/([^/]+\.)?idx\.co\.id\//i;
+
+export function officialIdxUrl(url) {
+  const text = String(url || '').trim();
+  return IDX_SOURCE.test(text) ? text : null;
+}
+
+function failEnvelope(raw, fallback) {
+  return { ok: false, error: raw?.error || fallback, data: null };
+}
+
+function normalizeEvidence(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return { page: null, snippet: null, officialUrl: null };
+  }
+  const snippet = raw.snippet ?? raw.text ?? '';
+  return {
+    page: raw.page ?? raw.pageNumber ?? null,
+    snippet: String(snippet).trim() || null,
+    officialUrl: officialIdxUrl(raw.officialUrl || raw.sourceUrl),
+  };
+}
+
+function unavailablePage(data) {
+  return {
+    available: false,
+    status: data?.status || 'unavailable',
+    reason: data?.reason || null,
+    items: [],
+    nextCursor: null,
+    cursor: 0,
+    limit: 0,
+    total: 0,
+    partial: false,
+  };
+}
+
+function pagedUnavailable(raw, fallback) {
+  if (!raw || raw.success === false) return failEnvelope(raw, fallback);
+  const data = raw.data;
+  if (!data || typeof data !== 'object') return failEnvelope(raw, fallback);
+  if (data.available === false) {
+    return { ok: true, error: null, data: unavailablePage(data) };
+  }
+  return null;
+}
+
+function normalizeFeedItem(row) {
+  if (!row || typeof row !== 'object' || !row.eventId) return null;
+  return {
+    eventId: String(row.eventId),
+    ticker: row.ticker ? String(row.ticker).toUpperCase() : null,
+    issuerName: row.issuerName || null,
+    category: row.category || null,
+    title: row.title || null,
+    publishedAt: row.publishedAt || null,
+    effectiveDate: row.effectiveDate || null,
+    sourceUrl: officialIdxUrl(row.sourceUrl || row.officialUrl),
+    status: row.status || null,
+    correctionOf: row.correctionOf || null,
+    mappingStatus: row.mappingStatus || null,
+    groupId: row.groupId || null,
+    eventFamily: row.eventFamily || null,
+    hasCorrection: row.hasCorrection === true,
+  };
+}
+
+function normalizeSignal(row) {
+  if (!row || typeof row !== 'object') return null;
+  const type = row.type || row.signalType;
+  if (!type) return null;
+  return {
+    anomalyId: row.anomalyId || null,
+    type: String(type),
+    severity: row.severity || null,
+    confidence: preserveFiniteOrNull(row.confidence),
+    reason: row.reason || null,
+    ruleVersion: row.ruleVersion || null,
+    evidence: normalizeEvidence(row.evidence),
+    detectedAt: row.detectedAt || null,
+    ticker: row.ticker ? String(row.ticker).toUpperCase() : null,
+    groupId: row.groupId || null,
+  };
+}
+
+function normalizeDocument(row) {
+  if (!row || typeof row !== 'object' || row.documentId == null) return null;
+  return {
+    documentId: row.documentId,
+    eventId: row.eventId || null,
+    sourceUrl: officialIdxUrl(row.sourceUrl),
+    contentHash: row.contentHash || null,
+    mimeType: row.mimeType || null,
+    byteSize: Number.isFinite(row.byteSize) ? row.byteSize : null,
+    downloadStatus: row.downloadStatus || null,
+    observedAt: row.observedAt || null,
+    extraction: row.extraction && typeof row.extraction === 'object'
+      ? {
+          processorVersion: row.extraction.processorVersion || null,
+          method: row.extraction.method || null,
+          status: row.extraction.status || null,
+          qualityScore: preserveFiniteOrNull(row.extraction.qualityScore),
+          pageCount: Number.isFinite(row.extraction.pageCount) ? row.extraction.pageCount : null,
+        }
+      : null,
+  };
+}
+
+function isInferredFact(row) {
+  const kind = String(row?.valueKind || row?.factKind || '').toLowerCase();
+  if (kind === 'inferred' || kind === 'derived' || kind === 'ratio' || kind === 'valuation') return true;
+  return row?.inferred === true || row?.isInferred === true;
+}
+
+function normalizeStatementFact(row) {
+  if (!row || typeof row !== 'object' || isInferredFact(row)) return null;
+  const fieldKey = row.fieldKey || row.metricKey;
+  if (!fieldKey && row.valueNumeric == null && !row.valueText) return null;
+  return {
+    statementType: row.statementType || null,
+    fieldKey: fieldKey || null,
+    label: row.label || fieldKey || null,
+    valueNumeric: preserveFiniteOrNull(row.valueNumeric),
+    valueText: row.valueText || null,
+    unit: row.unit || null,
+    confidence: preserveFiniteOrNull(row.confidence),
+    evidence: normalizeEvidence(row.evidence),
+  };
+}
+
+function normalizePeriod(row) {
+  if (!row || typeof row !== 'object') return null;
+  const facts = Array.isArray(row.facts)
+    ? row.facts.map(normalizeStatementFact).filter(Boolean)
+    : [];
+  return {
+    periodLabel: row.periodLabel || row.period || 'unspecified',
+    eventId: row.eventId || null,
+    title: row.title || null,
+    publishedAt: row.publishedAt || null,
+    sourceUrl: officialIdxUrl(row.sourceUrl || row.officialUrl),
+    parserStatus: row.parserStatus || null,
+    parserMethod: row.parserMethod || null,
+    parserVersion: row.parserVersion || null,
+    facts,
+  };
+}
+
+export function guardDisclosures(raw) {
+  const unavailable = pagedUnavailable(raw, 'Disclosure feed is unavailable.');
+  if (unavailable) return unavailable;
+  const data = raw.data;
+  return {
+    ok: true,
+    error: null,
+    data: {
+      available: true,
+      items: Array.isArray(data.items) ? data.items.map(normalizeFeedItem).filter(Boolean) : [],
+      nextCursor: data.nextCursor ?? null,
+      cursor: Number.isFinite(data.cursor) ? data.cursor : 0,
+      limit: Number.isFinite(data.limit) ? data.limit : 0,
+      total: Number.isFinite(data.total) ? data.total : 0,
+      partial: data.partial === true,
+    },
+  };
+}
+
+export function guardDisclosureDetail(raw) {
+  if (!raw || raw.success === false) {
+    return failEnvelope(raw, 'Disclosure detail is unavailable.');
+  }
+  const data = raw.data;
+  if (!data || typeof data !== 'object' || !data.eventId) {
+    return failEnvelope(raw, 'Disclosure not found.');
+  }
+  return {
+    ok: true,
+    error: null,
+    data: {
+      ...normalizeFeedItem(data),
+      summary: data.summary || null,
+      supersededBy: data.supersededBy || null,
+      destination: data.destination || 'keterbukaan',
+      correctionChain: Array.isArray(data.correctionChain) ? data.correctionChain : [],
+      facts: Array.isArray(data.facts)
+        ? data.facts.map((fact) => ({
+            key: fact.key,
+            valueText: fact.valueText || null,
+            valueNumeric: preserveFiniteOrNull(fact.valueNumeric),
+            valueDate: fact.valueDate || null,
+            unit: fact.unit || null,
+            confidence: preserveFiniteOrNull(fact.confidence),
+            ruleVersion: fact.ruleVersion || null,
+            evidence: normalizeEvidence(fact.evidence),
+          }))
+        : [],
+      signals: Array.isArray(data.signals) ? data.signals.map(normalizeSignal).filter(Boolean) : [],
+      documents: Array.isArray(data.documents) ? data.documents.map(normalizeDocument).filter(Boolean) : [],
+    },
+  };
+}
+
+export function guardDisclosureTimeline(raw) {
+  const unavailable = pagedUnavailable(raw, 'Disclosure timeline is unavailable.');
+  if (unavailable) return unavailable;
+  const data = raw.data;
+  const items = Array.isArray(data.items)
+    ? data.items.map((group) => {
+      if (!group || typeof group !== 'object' || !group.groupId) return null;
+      return {
+        groupId: group.groupId,
+        ticker: group.ticker ? String(group.ticker).toUpperCase() : null,
+        eventFamily: group.eventFamily || null,
+        anchorDate: group.anchorDate || null,
+        effectiveDate: group.effectiveDate || null,
+        publishedAt: group.publishedAt || null,
+        memberCount: Number.isFinite(group.memberCount) ? group.memberCount : 0,
+        hasCorrection: group.hasCorrection === true,
+        ruleVersion: group.ruleVersion || null,
+        members: Array.isArray(group.members)
+          ? group.members.map((member) => ({
+              eventId: member.eventId,
+              role: member.role || null,
+              title: member.title || null,
+              publishedAt: member.publishedAt || null,
+              sourceUrl: officialIdxUrl(member.sourceUrl),
+              status: member.status || null,
+            }))
+          : [],
+        anomalies: Array.isArray(group.anomalies) ? group.anomalies.map(normalizeSignal).filter(Boolean) : [],
+      };
+    }).filter(Boolean)
+    : [];
+  return {
+    ok: true,
+    error: null,
+    data: {
+      available: true,
+      items,
+      nextCursor: data.nextCursor ?? null,
+      total: Number.isFinite(data.total) ? data.total : items.length,
+    },
+  };
+}
+
+export function guardDisclosureAnomalies(raw) {
+  const unavailable = pagedUnavailable(raw, 'Disclosure anomalies are unavailable.');
+  if (unavailable) return unavailable;
+  const data = raw.data;
+  return {
+    ok: true,
+    error: null,
+    data: {
+      available: true,
+      items: Array.isArray(data.items) ? data.items.map(normalizeSignal).filter(Boolean) : [],
+      nextCursor: data.nextCursor ?? null,
+      total: Number.isFinite(data.total) ? data.total : 0,
+      partial: data.partial === true,
+    },
+  };
+}
+
+export function guardDisclosureDocuments(raw) {
+  if (!raw || raw.success === false) {
+    return failEnvelope(raw, 'Document metadata is unavailable.');
+  }
+  const data = raw.data;
+  if (!data || typeof data !== 'object') {
+    return failEnvelope(raw, 'Document not found.');
+  }
+  if (Array.isArray(data.items) || data.documentId == null) {
+    const items = Array.isArray(data.items)
+      ? data.items.map(normalizeDocument).filter(Boolean)
+      : [];
+    return { ok: true, error: null, data: { items } };
+  }
+  const document = normalizeDocument(data);
+  if (!document) return failEnvelope(raw, 'Document not found.');
+  return { ok: true, error: null, data: document };
+}
+
+export function guardFundamentalStatements(raw) {
+  const unavailable = pagedUnavailable(raw, 'Fundamental statements are unavailable.');
+  if (unavailable) return unavailable;
+  const data = raw.data;
+  return {
+    ok: true,
+    error: null,
+    data: {
+      available: true,
+      items: Array.isArray(data.items) ? data.items.map(normalizePeriod).filter(Boolean) : [],
+      nextCursor: data.nextCursor ?? null,
+      total: Number.isFinite(data.total) ? data.total : 0,
+      partial: data.partial === true,
+    },
+  };
+}
+
+export function guardCollectorHealth(raw) {
+  if (!raw || raw.success === false) {
+    return failEnvelope(raw, 'Collector health is unavailable.');
+  }
+  const data = raw.data && typeof raw.data === 'object' ? raw.data : {};
+  const feeds = Array.isArray(data.feeds)
+    ? data.feeds.map((feed) => ({
+        feed: feed.feed || null,
+        dateFrom: feed.dateFrom || null,
+        dateTo: feed.dateTo || null,
+        lastSuccessAt: feed.lastSuccessAt || null,
+        lastPartialAt: feed.lastPartialAt || null,
+        lastFailureAt: feed.lastFailureAt || null,
+        exhausted: feed.exhausted === true,
+        lastError: feed.lastError || null,
+        updatedAt: feed.updatedAt || null,
+      }))
+    : [];
+  return {
+    ok: true,
+    error: null,
+    data: {
+      available: data.available === true,
+      status: data.status || 'unavailable',
+      feeds,
+    },
+  };
+}

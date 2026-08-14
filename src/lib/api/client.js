@@ -166,3 +166,41 @@ export function prefetchStockBrokerIntelligence({ ticker, days, date = null }) {
 export function prefetchBrokerStockIntelligence({ code, days, date = null, limit = 25 }) {
   return getBrokerStockIntelligence({ code, days, date, limit });
 }
+
+function withQuery(path, params = {}) {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value == null || value === '') continue;
+    search.set(key, String(value));
+  }
+  const qs = search.toString();
+  return qs ? `${path}?${qs}` : path;
+}
+
+export function getDisclosures(filters = {}) {
+  return request(withQuery('/api/disclosures', filters));
+}
+
+export function getDisclosureDetail(eventId) {
+  return request(withQuery('/api/disclosures/detail', { eventId }));
+}
+
+export function getDisclosureTimeline(filters = {}) {
+  return request(withQuery('/api/disclosures/timeline', filters));
+}
+
+export function getDisclosureAnomalies(filters = {}) {
+  return request(withQuery('/api/disclosures/anomalies', filters));
+}
+
+export function getDisclosureDocuments(filters = {}) {
+  return request(withQuery('/api/disclosures/documents', filters));
+}
+
+export function getFundamentalStatements(filters = {}) {
+  return request(withQuery('/api/fundamentals/statements', filters));
+}
+
+export function getCollectorHealth() {
+  return request('/api/collector/health');
+}

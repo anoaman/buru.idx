@@ -7,6 +7,7 @@ const DEFAULT_TABS = [
   { id: 'changed', label: 'What Changed' },
   { id: 'risk', label: 'Risk Simulator' },
   { id: 'methodology', label: 'Methodology' },
+  { id: 'fundamentals', label: 'Fundamentals' },
 ];
 
 function readStoredTab(storageKey, tabItems) {

@@ -17,6 +17,7 @@ import EvidenceDebate from './EvidenceDebate.jsx';
 import RiskSimulator from './RiskSimulator.jsx';
 import DetailDrawer from './DetailDrawer.jsx';
 import LevelsPanel from './LevelsPanel.jsx';
+import { FundamentalsPanel } from './FundamentalsPanel.jsx';
 
 function TickerHeader({ ticker, priceHistory }) {
   if (!ticker) return null;
@@ -230,6 +231,8 @@ export default function Workbench() {
             dataQuality={data.dataQuality}
           />
         );
+      case 'fundamentals':
+        return <FundamentalsPanel ticker={displayed.ticker} />;
       default:
         return null;
     }

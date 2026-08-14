@@ -30,9 +30,10 @@ vi.mock('../../lib/api/client.js', () => ({
   analyzeTicker: vi.fn(),
   simulateRisk: vi.fn(),
   getStockBrokerIntelligence: vi.fn(),
+  getFundamentalStatements: vi.fn(),
 }));
 
-import { analyzeTicker, getStockBrokerIntelligence, simulateRisk } from '../../lib/api/client.js';
+import { analyzeTicker, getFundamentalStatements, getStockBrokerIntelligence, simulateRisk } from '../../lib/api/client.js';
 
 describe('Workbench', () => {
   const mockData = {
@@ -144,6 +145,7 @@ describe('Workbench', () => {
 
   beforeEach(() => {
     sessionStorage.clear();
+    getFundamentalStatements.mockResolvedValue({ success: true, data: { items: [], total: 0 } });
     getStockBrokerIntelligence.mockResolvedValue({
       success: true,
       data: {
@@ -230,6 +232,7 @@ describe('Workbench', () => {
     expect(within(tablist).getByRole('tab', { name: /^What Changed$/i })).toBeInTheDocument();
     expect(within(tablist).getByRole('tab', { name: /^Risk Simulator$/i })).toBeInTheDocument();
     expect(within(tablist).getByRole('tab', { name: /^Methodology$/i })).toBeInTheDocument();
+    expect(within(tablist).getByRole('tab', { name: /^Fundamentals$/i })).toBeInTheDocument();
   });
 
   it('shows cost drag on the Levels tab', async () => {
