@@ -34,9 +34,12 @@ private Radar and Cases workflows.
 All first-party requests are made through `src/lib/api/client.js` and are
 prefixed with `VITE_API_BASE`. Leave `VITE_API_BASE` empty for same-origin
 dev/`npm start`. Keterbukaan and Fundamentals GETs are served locally from
-`trading-db` (fixture `fixtures/keterbukaan-demo.sqlite` when `TRADING_DB_PATH`
-is unset; never production `idx.db` as a side effect). Analyze and Broker Flow
-still proxy to the delayed analysis API on `:8787`.
+`trading-db` when `TRADING_DB_PATH` is set. Production `server.js` fails
+closed if that path is missing. The demo fixture
+`fixtures/keterbukaan-demo.sqlite` is created only when
+`STOCK_ANALYSIS_DISCLOSURE_FIXTURE=1` is set for Vite; never production
+`idx.db` as a side effect. Analyze and Broker Flow still proxy to the
+delayed analysis API on `:8787`.
 
 `server.js` serves the production build and proxies a strict read-only subset of
 the loopback API. It is not an internet edge and must remain on the private

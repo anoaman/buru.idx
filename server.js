@@ -9,12 +9,13 @@ import {
   UPSTREAM_TIMEOUT_MS,
 } from './src/lib/public-api-allowlist.js';
 import { handleDisclosureHttp } from './src/lib/disclosures/http.js';
-import { pythonDisclosureStore } from './src/lib/disclosures/local-store.js';
+import { createPythonDisclosureStore } from './src/lib/disclosures/local-store.js';
 
 const ROOT = fileURLToPath(new URL('./dist/', import.meta.url));
 const HOST = process.env.STOCK_ANALYSIS_HOST || '127.0.0.1';
 const PORT = Number(process.env.STOCK_ANALYSIS_PORT || 8792);
 const API_ORIGIN = new URL(process.env.STOCK_ANALYSIS_API_ORIGIN || 'http://127.0.0.1:8787');
+const disclosureStore = createPythonDisclosureStore({ allowFixture: false });
 
 const contentTypes = {
   '.css': 'text/css; charset=utf-8',
@@ -54,7 +55,7 @@ function proxyApi(req, res) {
   }
 
   if (DISCLOSURE_PATHS.has(new URL(decision.path, 'http://internal').pathname)) {
-    const handled = handleDisclosureHttp(req.method, req.url, pythonDisclosureStore);
+    const handled = handleDisclosureHttp(req.method, req.url, disclosureStore);
     return sendJson(res, handled.status, handled.body);
   }
 

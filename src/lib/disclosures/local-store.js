@@ -7,14 +7,26 @@ const TRADING_DB_ROOT = fileURLToPath(new URL('../../../../../trading-db/', impo
 export const DISCLOSURE_API = `${TRADING_DB_ROOT}disclosure_api.py`;
 export const SEED_SCRIPT = `${TRADING_DB_ROOT}seed_keterbukaan_fixture.py`;
 export const FIXTURE_DB = `${TRADING_DB_ROOT}fixtures/keterbukaan-demo.sqlite`;
+export const DISCLOSURE_FIXTURE_FLAG = 'STOCK_ANALYSIS_DISCLOSURE_FIXTURE';
 
-export function resolveDisclosureDb() {
-  return process.env.TRADING_DB_PATH || FIXTURE_DB;
+export function disclosureFixtureEnabled(env = process.env) {
+  const value = String(env[DISCLOSURE_FIXTURE_FLAG] || '').toLowerCase();
+  return value === '1' || value === 'true';
 }
 
-export function ensureDisclosureDb(dbPath = resolveDisclosureDb()) {
+export function resolveDisclosureDb({ allowFixture = false, env = process.env } = {}) {
+  if (env.TRADING_DB_PATH) return env.TRADING_DB_PATH;
+  if (allowFixture && disclosureFixtureEnabled(env)) return FIXTURE_DB;
+  return null;
+}
+
+export function ensureDisclosureDb({ allowFixture = false, env = process.env } = {}) {
+  const dbPath = resolveDisclosureDb({ allowFixture, env });
+  if (!dbPath) {
+    throw new Error('Disclosure database is not available.');
+  }
   if (existsSync(dbPath)) return dbPath;
-  if (dbPath !== FIXTURE_DB) {
+  if (!allowFixture || !disclosureFixtureEnabled(env) || dbPath !== FIXTURE_DB) {
     throw new Error('Disclosure database is not available.');
   }
   mkdirSync(dirname(FIXTURE_DB), { recursive: true });
@@ -29,10 +41,10 @@ export function ensureDisclosureDb(dbPath = resolveDisclosureDb()) {
   return FIXTURE_DB;
 }
 
-export function pythonDisclosureStore(path, filters) {
+export function pythonDisclosureStore(path, filters, options = {}) {
   let dbPath;
   try {
-    dbPath = ensureDisclosureDb();
+    dbPath = ensureDisclosureDb(options);
   } catch {
     return { status: 503, error: 'Disclosure data is temporarily unavailable.' };
   }
@@ -59,4 +71,8 @@ export function pythonDisclosureStore(path, filters) {
   } catch {
     return { status: 503, error: 'Disclosure data is temporarily unavailable.' };
   }
+}
+
+export function createPythonDisclosureStore({ allowFixture = false } = {}) {
+  return (path, filters) => pythonDisclosureStore(path, filters, { allowFixture });
 }

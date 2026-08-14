@@ -5,14 +5,22 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { dirname } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { pythonDisclosureStore, SEED_SCRIPT } from './local-store.js';
+import {
+  DISCLOSURE_FIXTURE_FLAG,
+  pythonDisclosureStore,
+  resolveDisclosureDb,
+  SEED_SCRIPT,
+} from './local-store.js';
 
 describe('local disclosure store', () => {
-  const previous = process.env.TRADING_DB_PATH;
+  const previousDb = process.env.TRADING_DB_PATH;
+  const previousFlag = process.env[DISCLOSURE_FIXTURE_FLAG];
 
   afterEach(() => {
-    if (previous == null) delete process.env.TRADING_DB_PATH;
-    else process.env.TRADING_DB_PATH = previous;
+    if (previousDb == null) delete process.env.TRADING_DB_PATH;
+    else process.env.TRADING_DB_PATH = previousDb;
+    if (previousFlag == null) delete process.env[DISCLOSURE_FIXTURE_FLAG];
+    else process.env[DISCLOSURE_FIXTURE_FLAG] = previousFlag;
   });
 
   it('serves fixture disclosures without the analysis API or production idx.db', () => {
@@ -40,5 +48,23 @@ describe('local disclosure store', () => {
     expect(statements.status).toBe(200);
     const labels = statements.body.data.items.map((item) => item.periodLabel);
     expect(labels).toEqual(expect.arrayContaining(['FY2025', 'FY2024']));
+  });
+
+  it('fails closed in production when TRADING_DB_PATH is missing', () => {
+    delete process.env.TRADING_DB_PATH;
+    delete process.env[DISCLOSURE_FIXTURE_FLAG];
+    expect(resolveDisclosureDb({ allowFixture: false })).toBeNull();
+    const result = pythonDisclosureStore('/api/disclosures', { limit: 25 }, { allowFixture: false });
+    expect(result.status).toBe(503);
+    expect(result.error).toBe('Disclosure data is temporarily unavailable.');
+    expect(result.body).toBeUndefined();
+  });
+
+  it('does not fall back to the demo fixture without an explicit flag', () => {
+    delete process.env.TRADING_DB_PATH;
+    delete process.env[DISCLOSURE_FIXTURE_FLAG];
+    expect(resolveDisclosureDb({ allowFixture: true })).toBeNull();
+    const result = pythonDisclosureStore('/api/disclosures', { limit: 25 }, { allowFixture: true });
+    expect(result.status).toBe(503);
   });
 });

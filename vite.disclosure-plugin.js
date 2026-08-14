@@ -1,6 +1,8 @@
 import { DISCLOSURE_PATHS } from './src/lib/public-api-allowlist.js';
 import { handleDisclosureHttp } from './src/lib/disclosures/http.js';
-import { pythonDisclosureStore } from './src/lib/disclosures/local-store.js';
+import { createPythonDisclosureStore } from './src/lib/disclosures/local-store.js';
+
+const disclosureStore = createPythonDisclosureStore({ allowFixture: true });
 
 export function disclosureLocalApi() {
   return {
@@ -10,7 +12,7 @@ export function disclosureLocalApi() {
         const url = req.url || '/';
         const pathname = url.split('?')[0];
         if (!DISCLOSURE_PATHS.has(pathname)) return next();
-        const handled = handleDisclosureHttp(req.method || 'GET', url, pythonDisclosureStore);
+        const handled = handleDisclosureHttp(req.method || 'GET', url, disclosureStore);
         res.statusCode = handled.status;
         res.setHeader('content-type', 'application/json; charset=utf-8');
         res.setHeader('cache-control', 'no-store');
