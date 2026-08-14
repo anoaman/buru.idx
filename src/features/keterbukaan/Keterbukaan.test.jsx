@@ -173,19 +173,50 @@ describe('Keterbukaan', () => {
   it('sends validated ticker, date, category, severity, and signal filters', async () => {
     render(<Keterbukaan />);
     await screen.findByTestId('disclosure-card');
+    expect(screen.getByLabelText('Signal').textContent).toMatch(/Rights issue/);
+    expect(screen.getByLabelText('Signal').textContent).toMatch(/UMA/);
     fireEvent.change(screen.getByLabelText('Ticker'), { target: { value: 'bbca' } });
     fireEvent.change(screen.getByLabelText('Category'), { target: { value: 'dividend' } });
     fireEvent.change(screen.getByLabelText('Severity'), { target: { value: 'high' } });
-    fireEvent.change(screen.getByLabelText('Signal'), { target: { value: 'correction' } });
+    fireEvent.change(screen.getByLabelText('Signal'), { target: { value: 'uma' } });
     fireEvent.submit(screen.getByTestId('keterbukaan-filters'));
     await waitFor(() => {
       expect(getDisclosures).toHaveBeenCalledWith(expect.objectContaining({
         ticker: 'BBCA',
         category: 'dividend',
         severity: 'high',
-        signal: 'correction',
+        signal: 'uma',
         limit: 25,
       }));
     });
+  });
+
+  it('renders a retryable error when disclosure requests reject', async () => {
+    getDisclosures.mockReturnValue(Promise.reject(new Error('network down')));
+    getDisclosureAnomalies.mockReturnValue(Promise.reject(new Error('network down')));
+    getCollectorHealth.mockReturnValue(Promise.reject(new Error('network down')));
+    render(<Keterbukaan />);
+    expect(await screen.findByText('Could not load disclosures')).toBeInTheDocument();
+    expect(screen.getByText('Disclosure feed is unavailable.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
+    expect(screen.getByTestId('collector-unavailable')).toBeInTheDocument();
+    getDisclosures.mockResolvedValue(page([EVENT]));
+    getDisclosureAnomalies.mockResolvedValue(page([]));
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+    expect(await screen.findByTestId('disclosure-card')).toBeInTheDocument();
+  });
+
+  it('renders a retryable error when disclosure detail rejects', async () => {
+    getDisclosureDetail.mockReturnValue(Promise.reject(new Error('network down')));
+    render(<Keterbukaan />);
+    fireEvent.click(await screen.findByTestId('disclosure-card'));
+    expect(await screen.findByText('Detail unavailable')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
+    getDisclosureDetail.mockResolvedValue({
+      success: true,
+      data: { ...EVENT, signals: [], facts: [], documents: [], correctionChain: [] },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+    expect(await screen.findByText('Dividend notice')).toBeInTheDocument();
   });
 });

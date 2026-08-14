@@ -6,6 +6,9 @@ import { getFundamentalStatements } from '../../lib/api/client.js';
 import { guardFundamentalStatements } from '../../lib/api/contracts.js';
 import { evidencePage, evidenceSnippet, officialSourceHref } from '../keterbukaan/links.js';
 
+const STATEMENT_PAGE_LIMIT = 50;
+const MAX_STATEMENT_PAGES = 20;
+
 function isInferredValue(row) {
   const kind = String(row.valueKind || row.factKind || '').toLowerCase();
   if (kind === 'inferred' || kind === 'derived' || kind === 'ratio' || kind === 'valuation') return true;
@@ -40,6 +43,42 @@ export function groupStatementsByPeriod(items) {
   return [...groups.entries()].map(([period, facts]) => ({ period, facts }));
 }
 
+export async function loadStatementPages(ticker, fetchPage = getFundamentalStatements) {
+  const items = [];
+  let cursor = 0;
+  let partial = false;
+  let truncated = false;
+  for (let page = 0; page < MAX_STATEMENT_PAGES; page += 1) {
+    const raw = await fetchPage({
+      ticker,
+      limit: STATEMENT_PAGE_LIMIT,
+      cursor,
+    });
+    const result = guardFundamentalStatements(raw);
+    if (!result.ok) {
+      const error = new Error(result.error || 'Fundamental statements are unavailable.');
+      error.retryable = true;
+      throw error;
+    }
+    if (result.data.available === false) {
+      return {
+        items: [],
+        partial: false,
+        unavailable: result.data.reason || 'Fundamental statement tables are not present.',
+      };
+    }
+    items.push(...result.data.items);
+    if (result.data.partial) partial = true;
+    const next = result.data.nextCursor;
+    if (next == null || next === cursor) {
+      return { items, partial, unavailable: null };
+    }
+    cursor = next;
+    if (page === MAX_STATEMENT_PAGES - 1) truncated = true;
+  }
+  return { items, partial: partial || truncated, unavailable: null, truncated };
+}
+
 function OfficialLink({ href }) {
   const safe = officialSourceHref(href);
   if (!safe) return <span className="ki-link-missing">Official source unavailable</span>;
@@ -55,6 +94,7 @@ export function FundamentalsPanel({ ticker }) {
   const [error, setError] = useState('');
   const [items, setItems] = useState([]);
   const [partial, setPartial] = useState(false);
+  const [retryToken, setRetryToken] = useState(0);
 
   useEffect(() => {
     if (!ticker) {
@@ -65,29 +105,29 @@ export function FundamentalsPanel({ ticker }) {
     let cancelled = false;
     setStatus('loading');
     setError('');
-    getFundamentalStatements({ ticker, limit: 50 }).then((raw) => {
-      if (cancelled) return;
-      const result = guardFundamentalStatements(raw);
-      if (!result.ok) {
+    loadStatementPages(ticker)
+      .then((result) => {
+        if (cancelled) return;
+        if (result.unavailable) {
+          setItems([]);
+          setStatus('unavailable');
+          setError(result.unavailable);
+          return;
+        }
+        setItems(result.items);
+        setPartial(Boolean(result.partial || result.truncated));
+        setStatus('ready');
+      })
+      .catch((caught) => {
+        if (cancelled) return;
         setItems([]);
         setStatus('error');
-        setError(result.error || 'Fundamental statements are unavailable.');
-        return;
-      }
-      if (result.data.available === false) {
-        setItems([]);
-        setStatus('unavailable');
-        setError(result.data.reason || 'Fundamental statement tables are not present.');
-        return;
-      }
-      setItems(result.data.items);
-      setPartial(Boolean(result.data.partial));
-      setStatus('ready');
-    });
+        setError(caught?.message || 'Fundamental statements are unavailable.');
+      });
     return () => {
       cancelled = true;
     };
-  }, [ticker]);
+  }, [ticker, retryToken]);
 
   const periods = useMemo(() => groupStatementsByPeriod(items), [items]);
 
@@ -102,7 +142,13 @@ export function FundamentalsPanel({ ticker }) {
     );
   }
   if (status === 'error' || status === 'unavailable') {
-    return <ErrorState title="Fundamentals unavailable" error={error} />;
+    return (
+      <ErrorState
+        title="Fundamentals unavailable"
+        error={error}
+        onRetry={status === 'error' ? () => setRetryToken((n) => n + 1) : null}
+      />
+    );
   }
   if (periods.length === 0) {
     return (

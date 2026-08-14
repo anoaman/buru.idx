@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { FundamentalsPanel, groupStatementsByPeriod } from './FundamentalsPanel.jsx';
 
 vi.mock('../../lib/api/client.js', () => ({
@@ -117,5 +117,45 @@ describe('FundamentalsPanel', () => {
     ]);
     expect(grouped.map((row) => row.period)).toEqual(['FY2025', 'FY2024']);
     expect(grouped[0].facts.map((row) => row.fieldKey)).toEqual(['revenue']);
+  });
+
+  it('follows statement pages so periods are not truncated', async () => {
+    getFundamentalStatements
+      .mockResolvedValueOnce({
+        success: true,
+        data: { items: [PERIODS[0]], total: 2, nextCursor: 1, limit: 1, cursor: 0 },
+      })
+      .mockResolvedValueOnce({
+        success: true,
+        data: { items: [PERIODS[1]], total: 2, nextCursor: null, limit: 1, cursor: 1 },
+      });
+    render(<FundamentalsPanel ticker="BBCA" />);
+    expect(await screen.findByText('FY2025')).toBeInTheDocument();
+    expect(await screen.findByText('FY2024')).toBeInTheDocument();
+    expect(getFundamentalStatements).toHaveBeenCalledTimes(2);
+    expect(getFundamentalStatements).toHaveBeenNthCalledWith(1, {
+      ticker: 'BBCA',
+      limit: 50,
+      cursor: 0,
+    });
+    expect(getFundamentalStatements).toHaveBeenNthCalledWith(2, {
+      ticker: 'BBCA',
+      limit: 50,
+      cursor: 1,
+    });
+  });
+
+  it('renders a retryable error when statement requests reject', async () => {
+    getFundamentalStatements.mockReturnValue(Promise.reject(new Error('network down')));
+    render(<FundamentalsPanel ticker="BBCA" />);
+    expect(await screen.findByText('Fundamentals unavailable')).toBeInTheDocument();
+    expect(screen.getByText('network down')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
+    getFundamentalStatements.mockResolvedValue({
+      success: true,
+      data: { items: PERIODS, total: 2, partial: false },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+    expect(await screen.findByTestId('fundamentals-panel')).toBeInTheDocument();
   });
 });

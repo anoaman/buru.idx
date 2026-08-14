@@ -30,6 +30,11 @@ const SIGNAL_OPTIONS = [
   { value: 'repeat_filing', label: 'Repeated filing' },
   { value: 'contradictory_state', label: 'Contradictory state' },
   { value: 'unusual_frequency', label: 'Unusual frequency' },
+  { value: 'rights_issue', label: 'Rights issue' },
+  { value: 'private_placement', label: 'Private placement' },
+  { value: 'dividend', label: 'Dividend' },
+  { value: 'suspension', label: 'Suspension' },
+  { value: 'uma', label: 'UMA' },
 ];
 const SEVERITY_OPTIONS = [
   { value: '', label: 'All severities' },
@@ -192,57 +197,69 @@ export default function Keterbukaan() {
   const [timelineGroup, setTimelineGroup] = useState(null);
   const [detailStatus, setDetailStatus] = useState('idle');
   const [detailError, setDetailError] = useState('');
+  const [detailRetry, setDetailRetry] = useState(0);
 
   const loadHealth = useCallback(async () => {
     setHealthStatus('loading');
-    const result = guardCollectorHealth(await getCollectorHealth());
-    if (!result.ok) {
+    try {
+      const result = guardCollectorHealth(await getCollectorHealth());
+      if (!result.ok) {
+        setHealth(null);
+        setHealthStatus('error');
+        return;
+      }
+      setHealth(result.data);
+      setHealthStatus('ready');
+    } catch {
       setHealth(null);
       setHealthStatus('error');
-      return;
     }
-    setHealth(result.data);
-    setHealthStatus('ready');
   }, []);
 
   const loadFeed = useCallback(async (cursor = null, append = false) => {
     setFeedStatus(append ? 'loading-more' : 'loading');
     setFeedError('');
     const params = { ...queryFilters(applied), cursor: cursor ?? undefined };
-    const [feedRaw, anomalyRaw] = await Promise.all([
-      getDisclosures(params),
-      append ? Promise.resolve(null) : getDisclosureAnomalies(queryFilters(applied)),
-    ]);
-    const feed = guardDisclosures(feedRaw);
-    if (!feed.ok) {
-      if (!append) setItems([]);
-      setFeedStatus('error');
-      setFeedError(feed.error || 'Disclosure feed is unavailable.');
-      return;
-    }
-    if (feed.data.available === false) {
-      if (!append) setItems([]);
-      setFeedStatus('unavailable');
-      setFeedError(feed.data.reason || 'Disclosure tables are not present.');
-      return;
-    }
-    const page = feed.data.items;
-    setItems((prev) => (append ? [...prev, ...page] : page));
-    setNextCursor(feed.data.nextCursor || null);
-    let nextPartial = feed.data.partial === true;
-    if (!append) {
-      if (anomalyRaw) {
-        const anomaly = guardDisclosureAnomalies(anomalyRaw);
-        if (!anomaly.ok || anomaly.data.available === false) {
-          setAnomalies([]);
-          nextPartial = true;
-        } else {
-          setAnomalies(anomaly.data.items);
+    try {
+      const [feedRaw, anomalyRaw] = await Promise.all([
+        getDisclosures(params),
+        append ? Promise.resolve(null) : getDisclosureAnomalies(queryFilters(applied)),
+      ]);
+      const feed = guardDisclosures(feedRaw);
+      if (!feed.ok) {
+        if (!append) setItems([]);
+        setFeedStatus('error');
+        setFeedError(feed.error || 'Disclosure feed is unavailable.');
+        return;
+      }
+      if (feed.data.available === false) {
+        if (!append) setItems([]);
+        setFeedStatus('unavailable');
+        setFeedError(feed.data.reason || 'Disclosure tables are not present.');
+        return;
+      }
+      const page = feed.data.items;
+      setItems((prev) => (append ? [...prev, ...page] : page));
+      setNextCursor(feed.data.nextCursor || null);
+      let nextPartial = feed.data.partial === true;
+      if (!append) {
+        if (anomalyRaw) {
+          const anomaly = guardDisclosureAnomalies(anomalyRaw);
+          if (!anomaly.ok || anomaly.data.available === false) {
+            setAnomalies([]);
+            nextPartial = true;
+          } else {
+            setAnomalies(anomaly.data.items);
+          }
         }
       }
+      setPartial(nextPartial);
+      setFeedStatus('ready');
+    } catch {
+      if (!append) setItems([]);
+      setFeedStatus('error');
+      setFeedError('Disclosure feed is unavailable.');
     }
-    setPartial(nextPartial);
-    setFeedStatus('ready');
   }, [applied]);
 
   useEffect(() => {
@@ -275,22 +292,32 @@ export default function Keterbukaan() {
       }
       setDetail(result.data);
       if (result.data.ticker) {
-        const timeline = guardDisclosureTimeline(await getDisclosureTimeline({
-          ticker: result.data.ticker,
-          limit: PAGE_LIMIT,
-        }));
-        if (!cancelled && timeline.ok && timeline.data.available !== false) {
-          setTimelineGroup(
-            timeline.data.items.find((group) => group.groupId === result.data.groupId) || timeline.data.items[0] || null,
-          );
+        try {
+          const timeline = guardDisclosureTimeline(await getDisclosureTimeline({
+            ticker: result.data.ticker,
+            limit: PAGE_LIMIT,
+          }));
+          if (!cancelled && timeline.ok && timeline.data.available !== false) {
+            setTimelineGroup(
+              timeline.data.items.find((group) => group.groupId === result.data.groupId) || timeline.data.items[0] || null,
+            );
+          }
+        } catch {
+          if (!cancelled) setTimelineGroup(null);
         }
       }
       setDetailStatus('ready');
+    }).catch(() => {
+      if (cancelled) return;
+      setDetail(null);
+      setTimelineGroup(null);
+      setDetailStatus('error');
+      setDetailError('Disclosure detail is unavailable.');
     });
     return () => {
       cancelled = true;
     };
-  }, [selectedId]);
+  }, [selectedId, detailRetry]);
 
   const selected = useMemo(
     () => items.find((item) => item.eventId === selectedId) || null,
@@ -447,7 +474,11 @@ export default function Keterbukaan() {
           ) : null}
           {detailStatus === 'loading' ? <Skeleton label="Loading disclosure…" /> : null}
           {detailStatus === 'error' ? (
-            <ErrorState title="Detail unavailable" error={detailError} />
+            <ErrorState
+              title="Detail unavailable"
+              error={detailError}
+              onRetry={() => setDetailRetry((n) => n + 1)}
+            />
           ) : null}
           {detailStatus === 'ready' && detail ? (
             <div>
