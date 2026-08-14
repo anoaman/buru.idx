@@ -119,6 +119,35 @@ describe('FundamentalsPanel', () => {
     expect(grouped[0].facts.map((row) => row.fieldKey)).toEqual(['revenue']);
   });
 
+  it('keeps two filings for the same period as separate source sections', async () => {
+    getFundamentalStatements.mockResolvedValue({
+      success: true,
+      data: {
+        items: [
+          {
+            periodLabel: 'FY2025',
+            eventId: 'bbca-lk-fy2025-restated',
+            title: 'Restated financial statements FY2025',
+            facts: [{ statementType: 'income_statement', fieldKey: 'revenue', valueNumeric: 110000 }],
+          },
+          {
+            periodLabel: 'FY2025',
+            eventId: 'bbca-lk-fy2025',
+            title: 'Financial statements FY2025',
+            facts: [{ statementType: 'income_statement', fieldKey: 'revenue', valueNumeric: 108500 }],
+          },
+        ],
+        total: 2,
+      },
+    });
+    render(<FundamentalsPanel ticker="BBCA" />);
+    expect(await screen.findAllByTestId('statement-period')).toHaveLength(2);
+    expect(screen.getByText('Restated financial statements FY2025')).toBeInTheDocument();
+    expect(screen.getByText('Financial statements FY2025')).toBeInTheDocument();
+    expect(screen.getByText('110000')).toBeInTheDocument();
+    expect(screen.getByText('108500')).toBeInTheDocument();
+  });
+
   it('follows statement pages so periods are not truncated', async () => {
     getFundamentalStatements.mockImplementation(async ({ cursor = 0 } = {}) => {
       if (cursor === 0) {

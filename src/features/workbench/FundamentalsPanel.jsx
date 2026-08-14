@@ -21,6 +21,7 @@ export function groupStatementsByPeriod(items) {
     return items
       .map((period) => ({
         period: period.periodLabel || period.period || 'Unspecified period',
+        eventId: period.eventId || null,
         parserStatus: period.parserStatus || null,
         parserMethod: period.parserMethod || null,
         parserVersion: period.parserVersion || null,
@@ -168,8 +169,13 @@ export function FundamentalsPanel({ ticker }) {
         </p>
       ) : null}
       {periods.map((group) => (
-        <section key={group.period} className="fundamentals-period" data-testid="statement-period">
+        <section
+          key={`${group.eventId || 'evt'}-${group.period}`}
+          className="fundamentals-period"
+          data-testid="statement-period"
+        >
           <h4>{group.period}</h4>
+          {group.title ? <p className="text-secondary">{group.title}</p> : null}
           {group.parserStatus ? (
             <p className="text-tertiary">
               Parser {group.parserStatus}
