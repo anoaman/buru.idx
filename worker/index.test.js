@@ -42,4 +42,22 @@ describe('public Worker API boundary', () => {
     expect(write.status).toBe(405);
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it('forwards disclosure reads and drops path-like query parameters', async () => {
+    let upstream;
+    vi.stubGlobal('fetch', vi.fn(async (request) => {
+      upstream = request;
+      return Response.json({ success: true, data: { items: [] } });
+    }));
+
+    const response = await worker.fetch(new Request(
+      'https://analysis.example.test/api/disclosures?ticker=BBCA&path=/etc/passwd',
+    ), env);
+
+    expect(response.status).toBe(200);
+    const url = new URL(upstream.url);
+    expect(url.pathname).toBe('/api/disclosures');
+    expect(url.searchParams.get('ticker')).toBe('BBCA');
+    expect(url.searchParams.has('path')).toBe(false);
+  });
 });

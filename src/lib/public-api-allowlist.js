@@ -40,6 +40,23 @@ const PUBLIC_ROUTES = new Map([
   ['/api/broker-intelligence/health', { params: [] }],
   ['/api/broker-intelligence/stock', { params: ['ticker', 'days', 'date', 'preset', 'from', 'to'] }],
   ['/api/broker-intelligence/broker', { params: ['code', 'days', 'limit', 'date', 'preset', 'from', 'to'] }],
+  ['/api/disclosures', { params: ['ticker', 'from', 'to', 'category', 'severity', 'signal', 'cursor', 'limit'] }],
+  ['/api/disclosures/detail', { params: ['eventId'] }],
+  ['/api/disclosures/timeline', { params: ['ticker', 'from', 'to', 'limit'] }],
+  ['/api/disclosures/anomalies', { params: ['ticker', 'severity', 'signal', 'from', 'to', 'cursor', 'limit'] }],
+  ['/api/disclosures/documents', { params: ['documentId', 'eventId'] }],
+  ['/api/fundamentals/statements', { params: ['ticker', 'period', 'statementType', 'cursor', 'limit'] }],
+  ['/api/collector/health', { params: [] }],
+]);
+
+export const DISCLOSURE_PATHS = new Set([
+  '/api/disclosures',
+  '/api/disclosures/detail',
+  '/api/disclosures/timeline',
+  '/api/disclosures/anomalies',
+  '/api/disclosures/documents',
+  '/api/fundamentals/statements',
+  '/api/collector/health',
 ]);
 
 // Per-IP token bucket. Cheap, in-process, and enough to stop one client hammering

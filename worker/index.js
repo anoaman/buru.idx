@@ -10,6 +10,13 @@ const PUBLIC_ROUTES = new Map([
     'useMaxPrice', 'useLiquidity', 'useLeadBrokerValue',
   ] }],
   ['/api/risk-simulation', { params: ['entry', 'stop', 'target', 'capital', 'maxRiskPct'] }],
+  ['/api/disclosures', { params: ['ticker', 'from', 'to', 'category', 'severity', 'signal', 'cursor', 'limit'] }],
+  ['/api/disclosures/detail', { params: ['eventId'] }],
+  ['/api/disclosures/timeline', { params: ['ticker', 'from', 'to', 'limit'] }],
+  ['/api/disclosures/anomalies', { params: ['ticker', 'severity', 'signal', 'from', 'to', 'cursor', 'limit'] }],
+  ['/api/disclosures/documents', { params: ['documentId', 'eventId'] }],
+  ['/api/fundamentals/statements', { params: ['ticker', 'period', 'statementType', 'cursor', 'limit'] }],
+  ['/api/collector/health', { params: [] }],
 ]);
 
 const PRIVATE_KEYS = new Set([

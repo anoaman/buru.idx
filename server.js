@@ -1,17 +1,22 @@
 import { createReadStream, existsSync, statSync } from 'fs';
+import { spawnSync } from 'child_process';
 import { createServer, request as httpRequest } from 'http';
 import { extname, join, normalize } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import {
   checkRateLimit,
+  DISCLOSURE_PATHS,
   resolvePublicApiRequest,
   UPSTREAM_TIMEOUT_MS,
 } from './src/lib/public-api-allowlist.js';
+import { handleDisclosureHttp } from './src/lib/disclosures/http.js';
 
 const ROOT = fileURLToPath(new URL('./dist/', import.meta.url));
 const HOST = process.env.STOCK_ANALYSIS_HOST || '127.0.0.1';
 const PORT = Number(process.env.STOCK_ANALYSIS_PORT || 8792);
 const API_ORIGIN = new URL(process.env.STOCK_ANALYSIS_API_ORIGIN || 'http://127.0.0.1:8787');
+const TRADING_DB_PATH = process.env.TRADING_DB_PATH || '';
+const DISCLOSURE_API = fileURLToPath(new URL('../../trading-db/disclosure_api.py', import.meta.url));
 
 const contentTypes = {
   '.css': 'text/css; charset=utf-8',
@@ -37,6 +42,28 @@ function clientKey(req) {
   return req.socket.remoteAddress || 'unknown';
 }
 
+function pythonDisclosureStore(path, filters) {
+  const result = spawnSync('python3', [
+    DISCLOSURE_API,
+    '--db', TRADING_DB_PATH,
+    '--path', path,
+    '--query', JSON.stringify(filters),
+  ], { encoding: 'utf8', timeout: 15_000 });
+  if (result.status !== 0) {
+    return { status: 503, error: 'Disclosure data is temporarily unavailable.' };
+  }
+  try {
+    const parsed = JSON.parse(result.stdout);
+    return {
+      status: parsed.status,
+      body: parsed.body,
+      error: parsed.body?.success === false ? parsed.body.error : undefined,
+    };
+  } catch {
+    return { status: 503, error: 'Disclosure data is temporarily unavailable.' };
+  }
+}
+
 function proxyApi(req, res) {
   const limit = checkRateLimit(clientKey(req), Date.now());
   if (!limit.allowed) {
@@ -48,6 +75,14 @@ function proxyApi(req, res) {
   const decision = resolvePublicApiRequest(req.method, req.url || '/');
   if (!decision.ok) {
     return sendJson(res, decision.status, { success: false, error: decision.error });
+  }
+
+  if (TRADING_DB_PATH) {
+    const localPath = new URL(decision.path, 'http://internal').pathname;
+    if (DISCLOSURE_PATHS.has(localPath)) {
+      const handled = handleDisclosureHttp(req.method, req.url, pythonDisclosureStore);
+      return sendJson(res, handled.status, handled.body);
+    }
   }
 
   const upstream = httpRequest({

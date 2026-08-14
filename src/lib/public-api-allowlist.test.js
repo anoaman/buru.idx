@@ -25,6 +25,13 @@ describe('public API allowlist', () => {
       path: '/api/radar/scout?recipe=quiet_accumulation&brokerSessions=7',
     });
     expect(resolvePublicApiRequest('GET', '/api/watchlist').ok).toBe(true);
+    expect(resolvePublicApiRequest('GET', '/api/disclosures?ticker=BBCA').ok).toBe(true);
+    expect(resolvePublicApiRequest('GET', '/api/disclosures/detail?eventId=div-1').ok).toBe(true);
+    expect(resolvePublicApiRequest('GET', '/api/disclosures/timeline?ticker=BBCA').ok).toBe(true);
+    expect(resolvePublicApiRequest('GET', '/api/disclosures/anomalies?severity=high').ok).toBe(true);
+    expect(resolvePublicApiRequest('GET', '/api/disclosures/documents?eventId=div-1').ok).toBe(true);
+    expect(resolvePublicApiRequest('GET', '/api/fundamentals/statements?ticker=BBCA').ok).toBe(true);
+    expect(resolvePublicApiRequest('GET', '/api/collector/health').ok).toBe(true);
   });
 
   it('forwards Scout custom broker dates and lead-broker minimum to upstream', () => {
@@ -71,6 +78,9 @@ describe('public API allowlist', () => {
       '/api/broker-intelligence/stock?ticker=BBCA&days=1&from=2026-01-01&to=2026-08-07',
       '/api/broker-intelligence/broker?code=ZP&days=30&limit=25',
       '/api/broker-intelligence/broker?code=ZP&days=7&limit=25&date=2026-08-07',
+      '/api/disclosures?ticker=BBCA&from=2026-08-01&to=2026-08-14&category=dividend&severity=high&signal=correction&cursor=0&limit=25',
+      '/api/fundamentals/statements?ticker=BBCA&period=2026-Q1&statementType=income_statement',
+      '/api/collector/health',
       '/api/radar/scout?recipe=dominant_broker&brokerSessions=7&consolidationSessions=10&supportSessions=20&maxPrice=1000&minAverageValue=500000000&limit=10&useBroker=true&useSupport=false&useSideways=false&useMaxPrice=true&useLiquidity=true',
       '/api/radar/scout?recipe=quiet_accumulation&brokerPreset=custom&brokerFrom=2026-01-01&brokerTo=2026-08-01&minLeadBrokerValue=1000000&useLeadBrokerValue=true&limit=50',
     ];
@@ -114,8 +124,10 @@ describe('public API allowlist', () => {
   });
 
   it('drops query parameters that are not part of the route', () => {
-    const result = resolvePublicApiRequest('GET', '/api/analyze?ticker=BBCA&mode=live&debug=1&dbPath=/etc/passwd');
-    expect(result.path).toBe('/api/analyze?ticker=BBCA&mode=delayed');
+    expect(resolvePublicApiRequest('GET', '/api/analyze?ticker=BBCA&mode=live&debug=1&dbPath=/etc/passwd').path).toBe('/api/analyze?ticker=BBCA&mode=delayed');
+    const disclosure = resolvePublicApiRequest('GET', '/api/disclosures?ticker=BBCA&sql=drop%20table&path=/etc/passwd');
+    expect(disclosure.ok).toBe(true);
+    expect(disclosure.path).toBe('/api/disclosures?ticker=BBCA');
   });
 
   it('does not treat a prefix match as the allowlisted route', () => {

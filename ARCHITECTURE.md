@@ -100,6 +100,16 @@ and rate limiting remain as defense in depth. Radar and Cases may add private
 read/write routes only after their exact contracts are reviewed; they must not
 turn the proxy into a wildcard forwarder.
 
+Keterbukaan Informasi and Fundamentals are allowlisted GET pathnames only:
+`/api/disclosures`, `/api/disclosures/detail`, `/api/disclosures/timeline`,
+`/api/disclosures/anomalies`, `/api/disclosures/documents`,
+`/api/fundamentals/statements`, and `/api/collector/health`. Validated
+ticker/date/category/severity/signal filters and bounded pagination are
+forwarded; filesystem paths, SQL, and PDF blobs are never exposed. When
+`TRADING_DB_PATH` is set, `server.js` serves those routes from
+`trading-db/disclosure_api.py`. Otherwise they proxy to the analysis API.
+The Worker forwards the same allowlist and does not open SQLite.
+
 Cloudflare production uses `worker/index.js` as the same-origin static asset and
 API boundary. The public hostname is deployment configuration, not product
 identity, so a later rename changes Cloudflare routes without moving data or
