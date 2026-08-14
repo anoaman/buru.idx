@@ -20,6 +20,20 @@ export function resolveDisclosureDb({ allowFixture = false, env = process.env } 
   return null;
 }
 
+function parseJsonStdout(stdout) {
+  const line = String(stdout || '')
+    .trim()
+    .split('\n')
+    .filter(Boolean)
+    .at(-1);
+  if (!line) return null;
+  try {
+    return JSON.parse(line);
+  } catch {
+    return null;
+  }
+}
+
 export function ensureDisclosureDb({ allowFixture = false, env = process.env } = {}) {
   const dbPath = resolveDisclosureDb({ allowFixture, env });
   if (!dbPath) {
@@ -58,19 +72,15 @@ export function pythonDisclosureStore(path, filters, options = {}) {
     cwd: TRADING_DB_ROOT,
     timeout: 15_000,
   });
-  if (result.status !== 0) {
+  const parsed = parseJsonStdout(result.stdout);
+  if (result.status !== 0 || !parsed) {
     return { status: 503, error: 'Disclosure data is temporarily unavailable.' };
   }
-  try {
-    const parsed = JSON.parse(result.stdout);
-    return {
-      status: parsed.status,
-      body: parsed.body,
-      error: parsed.body?.success === false ? parsed.body.error : undefined,
-    };
-  } catch {
-    return { status: 503, error: 'Disclosure data is temporarily unavailable.' };
-  }
+  return {
+    status: parsed.status,
+    body: parsed.body,
+    error: parsed.body?.success === false ? parsed.body.error : undefined,
+  };
 }
 
 export function createPythonDisclosureStore({ allowFixture = false } = {}) {

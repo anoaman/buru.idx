@@ -252,8 +252,10 @@ export default function Keterbukaan() {
             setAnomalies(anomaly.data.items);
           }
         }
+        setPartial(nextPartial);
+      } else {
+        setPartial((prev) => prev || nextPartial);
       }
-      setPartial(nextPartial);
       setFeedStatus('ready');
     } catch {
       if (!append) setItems([]);
