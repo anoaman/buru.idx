@@ -485,4 +485,3 @@ describe('Keterbukaan and Fundamentals contracts', () => {
     }).data.status).toBe('ready');
   });
 });
-
