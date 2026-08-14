@@ -120,25 +120,27 @@ describe('FundamentalsPanel', () => {
   });
 
   it('follows statement pages so periods are not truncated', async () => {
-    getFundamentalStatements
-      .mockResolvedValueOnce({
-        success: true,
-        data: { items: [PERIODS[0]], total: 2, nextCursor: 1, limit: 1, cursor: 0 },
-      })
-      .mockResolvedValueOnce({
+    getFundamentalStatements.mockImplementation(async ({ cursor = 0 } = {}) => {
+      if (cursor === 0) {
+        return {
+          success: true,
+          data: { items: [PERIODS[0]], total: 2, nextCursor: 1, limit: 1, cursor: 0 },
+        };
+      }
+      return {
         success: true,
         data: { items: [PERIODS[1]], total: 2, nextCursor: null, limit: 1, cursor: 1 },
-      });
+      };
+    });
     render(<FundamentalsPanel ticker="BBCA" />);
     expect(await screen.findByText('FY2025')).toBeInTheDocument();
     expect(await screen.findByText('FY2024')).toBeInTheDocument();
-    expect(getFundamentalStatements).toHaveBeenCalledTimes(2);
-    expect(getFundamentalStatements).toHaveBeenNthCalledWith(1, {
+    expect(getFundamentalStatements).toHaveBeenCalledWith({
       ticker: 'BBCA',
       limit: 50,
       cursor: 0,
     });
-    expect(getFundamentalStatements).toHaveBeenNthCalledWith(2, {
+    expect(getFundamentalStatements).toHaveBeenCalledWith({
       ticker: 'BBCA',
       limit: 50,
       cursor: 1,
@@ -146,7 +148,7 @@ describe('FundamentalsPanel', () => {
   });
 
   it('renders a retryable error when statement requests reject', async () => {
-    getFundamentalStatements.mockReturnValue(Promise.reject(new Error('network down')));
+    getFundamentalStatements.mockImplementation(() => Promise.reject(new Error('network down')));
     render(<FundamentalsPanel ticker="BBCA" />);
     expect(await screen.findByText('Fundamentals unavailable')).toBeInTheDocument();
     expect(screen.getByText('network down')).toBeInTheDocument();

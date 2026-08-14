@@ -192,9 +192,9 @@ describe('Keterbukaan', () => {
   });
 
   it('renders a retryable error when disclosure requests reject', async () => {
-    getDisclosures.mockReturnValue(Promise.reject(new Error('network down')));
-    getDisclosureAnomalies.mockReturnValue(Promise.reject(new Error('network down')));
-    getCollectorHealth.mockReturnValue(Promise.reject(new Error('network down')));
+    getDisclosures.mockImplementation(() => Promise.reject(new Error('network down')));
+    getDisclosureAnomalies.mockImplementation(() => Promise.reject(new Error('network down')));
+    getCollectorHealth.mockImplementation(() => Promise.reject(new Error('network down')));
     render(<Keterbukaan />);
     expect(await screen.findByText('Could not load disclosures')).toBeInTheDocument();
     expect(screen.getByText('Disclosure feed is unavailable.')).toBeInTheDocument();
@@ -207,7 +207,7 @@ describe('Keterbukaan', () => {
   });
 
   it('renders a retryable error when disclosure detail rejects', async () => {
-    getDisclosureDetail.mockReturnValue(Promise.reject(new Error('network down')));
+    getDisclosureDetail.mockImplementation(() => Promise.reject(new Error('network down')));
     render(<Keterbukaan />);
     fireEvent.click(await screen.findByTestId('disclosure-card'));
     expect(await screen.findByText('Detail unavailable')).toBeInTheDocument();
