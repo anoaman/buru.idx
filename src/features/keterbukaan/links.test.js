@@ -15,7 +15,7 @@ describe('Keterbukaan official links', () => {
   it('reads page and snippet evidence without inventing text', () => {
     expect(evidencePage({ page: 3, snippet: 'koreksi' })).toBe(3);
     expect(evidenceSnippet({ page: 3, snippet: 'koreksi' })).toBe('koreksi');
-    expect(evidenceSnippet(null)).toBe('');
+    expect(evidenceSnippet({ quote: 'Pendapatan usaha' })).toBe('Pendapatan usaha');
     expect(evidencePage(null)).toBeNull();
   });
 });

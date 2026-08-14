@@ -250,6 +250,12 @@ export default function Workbench() {
         />
       )}
 
+      {error && !loading && /^[A-Z]{4}$/.test(failedTicker || tickerParam) ? (
+        <div className="fundamentals-fallback" data-testid="fundamentals-fallback">
+          <FundamentalsPanel ticker={failedTicker || tickerParam} />
+        </div>
+      ) : null}
+
       {hasDisplayed && (
         <div className={`wb-analysis-frame ${warmLoading ? 'is-stale' : ''}`}>
           {warmLoading && (

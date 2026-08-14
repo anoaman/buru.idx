@@ -6,7 +6,7 @@ export function officialSourceHref(url) {
 
 export function evidenceSnippet(evidence) {
   if (!evidence || typeof evidence !== 'object' || Array.isArray(evidence)) return '';
-  const snippet = evidence.snippet ?? evidence.text ?? '';
+  const snippet = evidence.snippet ?? evidence.text ?? evidence.quote ?? '';
   return String(snippet).trim();
 }
 

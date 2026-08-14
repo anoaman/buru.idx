@@ -732,7 +732,7 @@ function normalizeEvidence(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
     return { page: null, snippet: null, officialUrl: null };
   }
-  const snippet = raw.snippet ?? raw.text ?? '';
+    const snippet = raw.snippet ?? raw.text ?? raw.quote ?? '';
   return {
     page: raw.page ?? raw.pageNumber ?? null,
     snippet: String(snippet).trim() || null,

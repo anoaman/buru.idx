@@ -116,8 +116,11 @@ Keterbukaan Informasi and Fundamentals are allowlisted GET pathnames only:
 `/api/fundamentals/statements`, and `/api/collector/health`. Validated
 ticker/date/category/severity/signal filters and bounded pagination are
 forwarded; filesystem paths, SQL, and PDF blobs are never exposed. When
-`TRADING_DB_PATH` is set, `server.js` serves those routes from
-`trading-db/disclosure_api.py`. Otherwise they proxy to the analysis API.
+`TRADING_DB_PATH` is set, `server.js` and the Vite dev middleware serve those
+routes from that SQLite file via `trading-db/disclosure_api.py`. When it is
+unset they seed and read `trading-db/fixtures/keterbukaan-demo.sqlite` so the
+Keterbukaan page is usable on this branch without a live collector or
+production `idx.db`. Analyze/broker routes still proxy to the analysis API.
 The Worker forwards the same allowlist and does not open SQLite.
 
 Cloudflare production uses `worker/index.js` as the same-origin static asset and

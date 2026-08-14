@@ -10,7 +10,12 @@ case-tracking capabilities from the retiring Trading Analysis Platform cockpit.
   broker evidence, and the optional TradingView comparison.
 - `/broker-intelligence` provides stock and broker lenses over observed broker
   flow and estimated inventory curves.
+- `/keterbukaan` is the standalone Keterbukaan Informasi feed: official IDX
+  disclosures, filters, event/signal cards, correction timelines, evidence,
+  and Collector freshness. Story Intelligence stays off this surface.
 - `/` redirects to `/workbench`.
+- Stock Analysis also has a Fundamentals drawer tab for parsed statement
+  periods. It does not compute ratios or inferred values.
 
 ## Private delayed-data intent
 
@@ -27,9 +32,11 @@ private Radar and Cases workflows.
 ## Backend boundary
 
 All first-party requests are made through `src/lib/api/client.js` and are
-prefixed with `VITE_API_BASE`. The value must point at an API origin that exposes
-the existing `/api/analyze` and `/api/broker-intelligence/*` contracts and allows
-the frontend origin through CORS.
+prefixed with `VITE_API_BASE`. Leave `VITE_API_BASE` empty for same-origin
+dev/`npm start`. Keterbukaan and Fundamentals GETs are served locally from
+`trading-db` (fixture `fixtures/keterbukaan-demo.sqlite` when `TRADING_DB_PATH`
+is unset; never production `idx.db` as a side effect). Analyze and Broker Flow
+still proxy to the delayed analysis API on `:8787`.
 
 `server.js` serves the production build and proxies a strict read-only subset of
 the loopback API. It is not an internet edge and must remain on the private

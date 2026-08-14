@@ -437,6 +437,7 @@ describe('Workbench', () => {
     );
     expect(await screen.findByText(/Analysis failed/i)).toBeInTheDocument();
     expect(screen.getByText(/upstream unavailable/i)).toBeInTheDocument();
+    expect(await screen.findByTestId('fundamentals-fallback')).toBeInTheDocument();
   });
 
   it('discards an older analysis that resolves after a newer ticker search', async () => {
