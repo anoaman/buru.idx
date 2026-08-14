@@ -35,13 +35,21 @@ export function groupStatementsByPeriod(items) {
   const groups = new Map();
   for (const row of items) {
     if (isInferredValue(row)) continue;
-    const key = [row.periodEnd, row.periodType, row.periodLabel, row.fiscalYear]
+    const period = [row.periodEnd, row.periodType, row.periodLabel, row.fiscalYear]
       .filter(Boolean)
       .join(' · ') || 'Unspecified period';
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(row);
+    const key = `${row.eventId || 'evt'}::${period}`;
+    if (!groups.has(key)) {
+      groups.set(key, {
+        period,
+        eventId: row.eventId || null,
+        title: row.title || null,
+        facts: [],
+      });
+    }
+    groups.get(key).facts.push(row);
   }
-  return [...groups.entries()].map(([period, facts]) => ({ period, facts }));
+  return [...groups.values()].filter((group) => group.facts.length > 0);
 }
 
 export async function loadStatementPages(ticker, fetchPage = getFundamentalStatements) {

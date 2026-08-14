@@ -119,6 +119,16 @@ describe('FundamentalsPanel', () => {
     expect(grouped[0].facts.map((row) => row.fieldKey)).toEqual(['revenue']);
   });
 
+  it('does not merge restated flat facts that share a period label', () => {
+    const grouped = groupStatementsByPeriod([
+      { periodLabel: 'FY2025', eventId: 'lk-restated', title: 'Restated', fieldKey: 'revenue', valueNumeric: 2 },
+      { periodLabel: 'FY2025', eventId: 'lk-original', title: 'Original', fieldKey: 'revenue', valueNumeric: 1 },
+    ]);
+    expect(grouped).toHaveLength(2);
+    expect(grouped.map((row) => row.eventId)).toEqual(['lk-restated', 'lk-original']);
+    expect(grouped.map((row) => row.facts[0].valueNumeric)).toEqual([2, 1]);
+  });
+
   it('keeps two filings for the same period as separate source sections', async () => {
     getFundamentalStatements.mockResolvedValue({
       success: true,
