@@ -170,6 +170,18 @@ describe('Keterbukaan', () => {
     expect(await screen.findByTestId('partial-data')).toBeInTheDocument();
   });
 
+  it('keeps loaded disclosures visible and marks them partial when append fails', async () => {
+    getDisclosures
+      .mockResolvedValueOnce(page([EVENT], { nextCursor: 25, total: 2 }))
+      .mockRejectedValueOnce(new Error('next page failed'));
+    render(<Keterbukaan />);
+    expect(await screen.findByTestId('disclosure-card')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+    expect(await screen.findByTestId('partial-data')).toBeInTheDocument();
+    expect(screen.getByTestId('disclosure-card')).toBeInTheDocument();
+    expect(screen.queryByText('Could not load disclosures')).not.toBeInTheDocument();
+  });
+
   it('sends validated ticker, date, category, severity, and signal filters', async () => {
     render(<Keterbukaan />);
     await screen.findByTestId('disclosure-card');

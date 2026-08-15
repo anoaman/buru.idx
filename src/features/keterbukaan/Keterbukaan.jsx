@@ -227,14 +227,16 @@ export default function Keterbukaan() {
       ]);
       const feed = guardDisclosures(feedRaw);
       if (!feed.ok) {
-        if (!append) setItems([]);
-        setFeedStatus('error');
+        if (append) setPartial(true);
+        else setItems([]);
+        setFeedStatus(append ? 'ready' : 'error');
         setFeedError(feed.error || 'Disclosure feed is unavailable.');
         return;
       }
       if (feed.data.available === false) {
-        if (!append) setItems([]);
-        setFeedStatus('unavailable');
+        if (append) setPartial(true);
+        else setItems([]);
+        setFeedStatus(append ? 'ready' : 'unavailable');
         setFeedError(feed.data.reason || 'Disclosure tables are not present.');
         return;
       }
@@ -258,8 +260,9 @@ export default function Keterbukaan() {
       }
       setFeedStatus('ready');
     } catch {
-      if (!append) setItems([]);
-      setFeedStatus('error');
+      if (append) setPartial(true);
+      else setItems([]);
+      setFeedStatus(append ? 'ready' : 'error');
       setFeedError('Disclosure feed is unavailable.');
     }
   }, [applied]);
