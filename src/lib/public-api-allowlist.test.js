@@ -2,6 +2,17 @@ import { describe, it, expect } from 'vitest';
 import { resolvePublicApiRequest, checkRateLimit } from './public-api-allowlist.js';
 
 describe('public API allowlist', () => {
+  it('allows only POST for the bounded News Detector scan actuator', () => {
+    expect(resolvePublicApiRequest('POST', '/api/news-detector/scan?date=2026-08-15&ignored=x')).toEqual({
+      ok: true,
+      path: '/api/news-detector/scan?date=2026-08-15',
+    });
+    expect(resolvePublicApiRequest('GET', '/api/news-detector/scan?date=2026-08-15').status).toBe(405);
+    expect(resolvePublicApiRequest('GET', '/api/news-detector?date=2026-08-15')).toEqual({
+      ok: true,
+      path: '/api/news-detector?date=2026-08-15',
+    });
+  });
   it('forwards the routes the public product actually uses', () => {
     expect(resolvePublicApiRequest('GET', '/api/analyze?ticker=BBCA')).toEqual({
       ok: true,
@@ -137,6 +148,36 @@ describe('public API allowlist', () => {
 
   it('rejects a malformed target instead of forwarding it', () => {
     expect(resolvePublicApiRequest('GET', '//%').ok).toBe(false);
+  });
+
+  it('forwards v18 Fundamentals routes with allowed params only', () => {
+    expect(resolvePublicApiRequest('GET', '/api/fundamentals/snapshot?ticker=BBCA').ok).toBe(true);
+    expect(resolvePublicApiRequest('GET', '/api/fundamentals/periods?ticker=BBCA').ok).toBe(true);
+    expect(resolvePublicApiRequest('GET', '/api/fundamentals/filing?ticker=BBCA&filingId=BBCA-2024-A-fs').ok).toBe(true);
+    expect(resolvePublicApiRequest('GET', '/api/fundamentals/derived?ticker=BBCA&filingId=BBCA-2024-A-fs').ok).toBe(true);
+    expect(resolvePublicApiRequest('GET', '/api/fundamentals/sources?ticker=BBCA').ok).toBe(true);
+    const factsResult = resolvePublicApiRequest(
+      'GET',
+      '/api/fundamentals/facts?ticker=BBCA&filingId=BBCA-2024-A-fs&statementType=income_statement&periodLabel=FY2024&cursor=0&limit=50',
+    );
+    expect(factsResult.ok).toBe(true);
+    const params = new URL(factsResult.path, 'http://internal').searchParams;
+    expect(params.get('ticker')).toBe('BBCA');
+    expect(params.get('filingId')).toBe('BBCA-2024-A-fs');
+    expect(params.get('statementType')).toBe('income_statement');
+    expect(params.get('periodLabel')).toBe('FY2024');
+  });
+
+  it('drops filesystem paths and SQL from v18 fundamentals params', () => {
+    const snapshot = resolvePublicApiRequest(
+      'GET',
+      '/api/fundamentals/snapshot?ticker=BBCA&dbPath=/etc/passwd&sql=drop',
+    );
+    expect(snapshot.ok).toBe(true);
+    const params = new URL(snapshot.path, 'http://internal').searchParams;
+    expect(params.get('dbPath')).toBeNull();
+    expect(params.get('sql')).toBeNull();
+    expect(params.get('ticker')).toBe('BBCA');
   });
 });
 

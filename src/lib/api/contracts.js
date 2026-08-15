@@ -1015,6 +1015,364 @@ export function guardFundamentalStatements(raw) {
   };
 }
 
+function normalizeFiling(row) {
+  if (!row || typeof row !== 'object') return null;
+  return {
+    filingId: row.filingId || null,
+    eventId: row.eventId || null,
+    filingType: row.filingType || null,
+    periodLabel: row.periodLabel || null,
+    fiscalYear: Number.isFinite(row.fiscalYear) ? row.fiscalYear : null,
+    fiscalPeriod: row.fiscalPeriod || null,
+    companyType: row.companyType || 'common',
+    extractionStatus: row.extractionStatus || null,
+    factCount: Number.isFinite(row.factCount) ? row.factCount : 0,
+    parsedAt: row.parsedAt || null,
+    sourceUrl: officialIdxUrl(row.sourceUrl),
+    publishedAt: row.publishedAt || null,
+    title: row.title || null,
+  };
+}
+
+export function guardFundamentalsSnapshot(raw) {
+  if (!raw || raw.success === false) {
+    return failEnvelope(raw, 'Fundamentals snapshot is unavailable.');
+  }
+  const data = raw.data;
+  if (!data || typeof data !== 'object') {
+    return failEnvelope(raw, 'Missing fundamentals snapshot data.');
+  }
+  if (data.available === false) {
+    return {
+      ok: true,
+      error: null,
+      data: {
+        available: false,
+        reason: data.reason || 'v18 fundamentals tables are not present.',
+        ticker: data.ticker || null,
+      },
+    };
+  }
+  return {
+    ok: true,
+    error: null,
+    data: {
+      available: true,
+      ticker: data.ticker || null,
+      companyType: data.companyType || null,
+      filingCount: Number.isFinite(data.filingCount) ? data.filingCount : 0,
+      latestPeriod: data.latestPeriod || null,
+      latestFiscalYear: Number.isFinite(data.latestFiscalYear) ? data.latestFiscalYear : null,
+      latestFilingId: data.latestFilingId || null,
+      latestExtractionStatus: data.latestExtractionStatus || null,
+      latestFactCount: Number.isFinite(data.latestFactCount) ? data.latestFactCount : 0,
+      latestParsedAt: data.latestParsedAt || null,
+      periods: Array.isArray(data.periods) ? data.periods.filter(Boolean) : [],
+      filings: Array.isArray(data.filings) ? data.filings.map(normalizeFiling).filter(Boolean) : [],
+    },
+  };
+}
+
+export function guardFundamentalsPeriods(raw) {
+  if (!raw || raw.success === false) {
+    return failEnvelope(raw, 'Fundamentals periods are unavailable.');
+  }
+  const data = raw.data;
+  if (!data || typeof data !== 'object') {
+    return failEnvelope(raw, 'Missing fundamentals periods data.');
+  }
+  return {
+    ok: true,
+    error: null,
+    data: {
+      available: data.available === true,
+      ticker: data.ticker || null,
+      filings: Array.isArray(data.filings) ? data.filings.map(normalizeFiling).filter(Boolean) : [],
+      legacy: Array.isArray(data.legacy)
+        ? data.legacy.map((row) => ({
+            source: 'legacy',
+            eventId: row.eventId || null,
+            periodLabel: row.periodLabel || null,
+            publishedAt: row.publishedAt || null,
+            factCount: Number.isFinite(row.factCount) ? row.factCount : 0,
+          }))
+        : [],
+    },
+  };
+}
+
+function normalizeFact(row) {
+  if (!row || typeof row !== 'object') return null;
+  if (row.factId == null && !row.fieldKey) return null;
+  return {
+    factId: row.factId ?? null,
+    filingId: row.filingId || null,
+    statementType: row.statementType || null,
+    section: row.section || null,
+    columnLabel: row.columnLabel || null,
+    periodLabel: row.periodLabel || null,
+    fieldKey: row.fieldKey || null,
+    valueNumeric: preserveFiniteOrNull(row.valueNumeric),
+    unit: row.unit || null,
+    confidence: preserveFiniteOrNull(row.confidence),
+    evidence: normalizeEvidence(row.evidence),
+    extractedAt: row.extractedAt || null,
+    companyType: row.companyType || null,
+  };
+}
+
+export function guardFundamentalsFacts(raw) {
+  if (!raw || raw.success === false) {
+    return failEnvelope(raw, 'Fundamentals facts are unavailable.');
+  }
+  const data = raw.data;
+  if (!data || typeof data !== 'object') {
+    return failEnvelope(raw, 'Missing fundamentals facts data.');
+  }
+  if (data.available === false) {
+    return {
+      ok: true,
+      error: null,
+      data: {
+        available: false,
+        reason: data.reason || 'v18 fundamental_facts table is not present.',
+        filingId: null,
+        items: [],
+        total: 0,
+        nextCursor: null,
+      },
+    };
+  }
+  return {
+    ok: true,
+    error: null,
+    data: {
+      available: true,
+      filingId: data.filingId || null,
+      items: Array.isArray(data.items) ? data.items.map(normalizeFact).filter(Boolean) : [],
+      total: Number.isFinite(data.total) ? data.total : 0,
+      cursor: Number.isFinite(data.cursor) ? data.cursor : 0,
+      limit: Number.isFinite(data.limit) ? data.limit : 0,
+      nextCursor: data.nextCursor ?? null,
+    },
+  };
+}
+
+export function guardFundamentalsFiling(raw) {
+  if (!raw || raw.success === false) {
+    return failEnvelope(raw, 'Fundamentals filing is unavailable.');
+  }
+  const data = raw.data;
+  if (!data || typeof data !== 'object') {
+    return failEnvelope(raw, 'Missing fundamentals filing data.');
+  }
+  if (data.available === false) {
+    return {
+      ok: true,
+      error: null,
+      data: {
+        available: false,
+        reason: data.reason || 'v18 fundamentals tables are not present.',
+      },
+    };
+  }
+  if (Array.isArray(data.filings)) {
+    return {
+      ok: true,
+      error: null,
+      data: {
+        available: true,
+        ticker: data.ticker || null,
+        filings: data.filings.map(normalizeFiling).filter(Boolean),
+      },
+    };
+  }
+  return {
+    ok: true,
+    error: null,
+    data: {
+      available: true,
+      ...(normalizeFiling(data) || {}),
+      parserVersion: data.parserVersion || null,
+      statementCount: Number.isFinite(data.statementCount) ? data.statementCount : 0,
+      updatedAt: data.updatedAt || null,
+    },
+  };
+}
+
+function normalizeDerivedInput(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  return {
+    factId: raw.factId ?? null,
+    fieldKey: raw.fieldKey || null,
+    valueNumeric: preserveFiniteOrNull(raw.valueNumeric),
+    unit: raw.unit || null,
+    confidence: preserveFiniteOrNull(raw.confidence),
+    evidence: normalizeEvidence(raw.evidence),
+    periodLabel: raw.periodLabel || null,
+  };
+}
+
+function normalizeDerivedMetric(row) {
+  if (!row || typeof row !== 'object' || !row.key) return null;
+  return {
+    key: String(row.key),
+    label: row.label || row.key,
+    formula: row.formula || null,
+    unit: row.unit || null,
+    section: row.section || null,
+    available: row.available === true,
+    value: preserveFiniteOrNull(row.value),
+    inputs: {
+      numerator: normalizeDerivedInput(row.inputs?.numerator),
+      denominator: normalizeDerivedInput(row.inputs?.denominator),
+    },
+    rejectionReason: row.rejectionReason || null,
+  };
+}
+
+export function guardFundamentalsDerived(raw) {
+  if (!raw || raw.success === false) {
+    return failEnvelope(raw, 'Derived metrics are unavailable.');
+  }
+  const data = raw.data;
+  if (!data || typeof data !== 'object') {
+    return failEnvelope(raw, 'Missing derived metrics data.');
+  }
+  if (data.available === false) {
+    return {
+      ok: true,
+      error: null,
+      data: {
+        available: false,
+        reason: data.reason || 'v18 fundamental_facts table is not present.',
+        filingId: null,
+        periodLabel: null,
+        companyType: null,
+        metrics: [],
+      },
+    };
+  }
+  return {
+    ok: true,
+    error: null,
+    data: {
+      available: true,
+      filingId: data.filingId || null,
+      periodLabel: data.periodLabel || null,
+      companyType: data.companyType || 'common',
+      metrics: Array.isArray(data.metrics)
+        ? data.metrics.map(normalizeDerivedMetric).filter(Boolean)
+        : [],
+    },
+  };
+}
+
+export function guardFundamentalsSources(raw) {
+  if (!raw || raw.success === false) {
+    return failEnvelope(raw, 'Fundamentals sources are unavailable.');
+  }
+  const data = raw.data;
+  if (!data || typeof data !== 'object') {
+    return failEnvelope(raw, 'Missing fundamentals sources data.');
+  }
+  if (data.available === false) {
+    return {
+      ok: true,
+      error: null,
+      data: {
+        available: false,
+        reason: data.reason || 'v18 fundamentals tables are not present.',
+        ticker: null,
+        sources: [],
+      },
+    };
+  }
+  return {
+    ok: true,
+    error: null,
+    data: {
+      available: true,
+      ticker: data.ticker || null,
+      sources: Array.isArray(data.sources)
+        ? data.sources.map((row) => ({
+            filingId: row.filingId || null,
+            periodLabel: row.periodLabel || null,
+            fiscalYear: Number.isFinite(row.fiscalYear) ? row.fiscalYear : null,
+            fiscalPeriod: row.fiscalPeriod || null,
+            eventId: row.eventId || null,
+            sourceUrl: officialIdxUrl(row.sourceUrl),
+            publishedAt: row.publishedAt || null,
+            title: row.title || null,
+          }))
+        : [],
+    },
+  };
+}
+
+export function guardNewsDetector(raw) {
+  if (!raw || raw.success === false) {
+    return failEnvelope(raw, 'News Detector is unavailable.');
+  }
+  const data = raw.data;
+  if (!data || typeof data !== 'object') {
+    return failEnvelope(raw, 'Missing News Detector data.');
+  }
+  if (data.available === false) {
+    return {
+      ok: true,
+      error: null,
+      data: {
+        available: false,
+        reason: data.reason || 'News Detector schema v18 is unavailable.',
+        run: null,
+        items: [],
+      },
+    };
+  }
+  const run = data.run && typeof data.run === 'object'
+    ? {
+        id: data.run.id ?? null,
+        scanDate: data.run.scanDate || data.run.scan_date || null,
+        taxonomyVersion: data.run.taxonomyVersion || data.run.taxonomy_version || null,
+        status: data.run.status || null,
+        totalDisclosures: Number(data.run.totalDisclosures ?? data.run.total_disclosures ?? 0),
+        scoredCount: Number(data.run.scoredCount ?? data.run.scored_count ?? 0),
+        suppressedCount: Number(data.run.suppressedCount ?? data.run.suppressed_count ?? 0),
+        materialCount: Number(data.run.materialCount ?? data.run.material_count ?? 0),
+        error: data.run.error || null,
+        startedAt: data.run.startedAt || data.run.started_at || null,
+        finishedAt: data.run.finishedAt || data.run.finished_at || null,
+      }
+    : null;
+  const items = Array.isArray(data.items)
+    ? data.items.map((row) => {
+      if (!row || typeof row !== 'object') return null;
+      return {
+        eventId: row.eventId || row.event_id || null,
+        ticker: row.ticker || null,
+        title: row.title || null,
+        publishedAt: row.publishedAt || row.published_at || null,
+        disposition: row.disposition || 'inconclusive',
+        category: row.category || 'unclassified',
+        signalScore: Number(row.signalScore ?? row.signal_score ?? 0),
+        suppressionReason: row.suppressionReason || row.suppression_reason || null,
+        taxonomyVersion: row.taxonomyVersion || row.taxonomy_version || null,
+        ruleVersion: row.ruleVersion || row.rule_version || null,
+        scoreBreakdown: row.scoreBreakdown || row.score_breakdown || {},
+        evidence: Array.isArray(row.evidence) ? row.evidence : [],
+        officialSourceUrl: officialIdxUrl(row.officialSourceUrl || row.official_source_url),
+        processedAt: row.processedAt || row.processed_at || null,
+      };
+    }).filter(Boolean)
+    : [];
+  return {
+    ok: true,
+    error: null,
+    data: { available: true, run, items },
+  };
+}
+
 export function guardCollectorHealth(raw) {
   if (!raw || raw.success === false) {
     return failEnvelope(raw, 'Collector health is unavailable.');

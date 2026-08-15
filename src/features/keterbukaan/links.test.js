@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evidencePage, evidenceSnippet, officialSourceHref } from './links.js';
+import { evidencePage, evidenceSnippet, officialSourceHref } from '../../lib/disclosures/links.js';
 
 describe('Keterbukaan official links', () => {
   it('accepts official IDX HTTPS URLs only', () => {

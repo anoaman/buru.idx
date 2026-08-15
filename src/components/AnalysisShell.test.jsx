@@ -50,12 +50,14 @@ describe('AnalysisShell', () => {
     expect(screen.getByText('as of 2026-08-07')).toBeInTheDocument();
   });
 
-  it('exposes Keterbukaan Informasi without a Story Intelligence tab', () => {
+  it('exposes the final analysis product navigation without a Story Intelligence tab', () => {
     renderShell('/radar');
     expect(screen.getByRole('link', { name: /Screener/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Stock Analysis/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Broker Flow/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Keterbukaan Informasi/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Fundamentals/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /News Detector/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Glossary/i })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /Watchlist/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /Story Intelligence/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/Story Intelligence/i)).not.toBeInTheDocument();

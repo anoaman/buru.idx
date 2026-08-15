@@ -16,6 +16,14 @@ const PUBLIC_ROUTES = new Map([
   ['/api/disclosures/anomalies', { params: ['ticker', 'severity', 'signal', 'from', 'to', 'cursor', 'limit'] }],
   ['/api/disclosures/documents', { params: ['documentId', 'eventId'] }],
   ['/api/fundamentals/statements', { params: ['ticker', 'period', 'statementType', 'cursor', 'limit'] }],
+  ['/api/fundamentals/snapshot', { params: ['ticker'] }],
+  ['/api/fundamentals/periods', { params: ['ticker'] }],
+  ['/api/fundamentals/facts', { params: ['ticker', 'filingId', 'statementType', 'periodLabel', 'cursor', 'limit'] }],
+  ['/api/fundamentals/filing', { params: ['ticker', 'filingId'] }],
+  ['/api/fundamentals/derived', { params: ['ticker', 'filingId', 'periodLabel'] }],
+  ['/api/fundamentals/sources', { params: ['ticker', 'filingId'] }],
+  ['/api/news-detector', { params: ['date'] }],
+  ['/api/news-detector/scan', { params: ['date'], methods: ['POST'] }],
   ['/api/collector/health', { params: [] }],
 ]);
 
@@ -121,10 +129,11 @@ export default {
     }
 
     if (url.pathname.startsWith('/api/')) {
-      if (!['GET', 'HEAD'].includes(request.method)) {
-        return json(405, 'This endpoint is read-only.');
+      const route = PUBLIC_ROUTES.get(url.pathname);
+      if (!route) return json(404, 'Not found.');
+      if (!(route.methods || ['GET', 'HEAD']).includes(request.method)) {
+        return json(405, 'This method is not allowed.');
       }
-      if (!PUBLIC_ROUTES.has(url.pathname)) return json(404, 'Not found.');
       const response = await fetch(originRequest(request, env, url));
       const contentType = response.headers.get('content-type') || '';
       if (!contentType.includes('application/json')) {

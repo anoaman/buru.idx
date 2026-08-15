@@ -201,6 +201,38 @@ export function getFundamentalStatements(filters = {}) {
   return request(withQuery('/api/fundamentals/statements', filters));
 }
 
+export function getFundamentalsSnapshot(ticker) {
+  return request(withQuery('/api/fundamentals/snapshot', { ticker }));
+}
+
+export function getFundamentalsPeriods(ticker) {
+  return request(withQuery('/api/fundamentals/periods', { ticker }));
+}
+
+export function getFundamentalsFacts(filters = {}) {
+  return request(withQuery('/api/fundamentals/facts', filters));
+}
+
+export function getFundamentalsFiling(filters = {}) {
+  return request(withQuery('/api/fundamentals/filing', filters));
+}
+
+export function getFundamentalsDerived(filters = {}) {
+  return request(withQuery('/api/fundamentals/derived', filters));
+}
+
+export function getFundamentalsSources(filters = {}) {
+  return request(withQuery('/api/fundamentals/sources', filters));
+}
+
 export function getCollectorHealth() {
   return request('/api/collector/health');
+}
+
+export function getNewsDetector(date) {
+  return request(withQuery('/api/news-detector', { date }));
+}
+
+export function runNewsDetector(date) {
+  return request(withQuery('/api/news-detector/scan', { date }), { method: 'POST' });
 }

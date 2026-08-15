@@ -1,4 +1,4 @@
-import { officialSourceUrl } from '../../lib/disclosures/serialize.js';
+import { officialSourceUrl } from './serialize.js';
 
 export function officialSourceHref(url) {
   return officialSourceUrl(url) || '';
@@ -14,6 +14,6 @@ export function evidencePage(evidence) {
   if (!evidence || typeof evidence !== 'object' || Array.isArray(evidence)) return null;
   const page = evidence.page ?? evidence.pageNumber;
   if (page == null || page === '') return null;
-  const n = Number(page);
-  return Number.isFinite(n) ? n : String(page);
+  const number = Number(page);
+  return Number.isFinite(number) ? number : String(page);
 }

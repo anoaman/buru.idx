@@ -26,10 +26,29 @@ case tracking from the retiring cockpit without duplicating backend engines.
   semantics and keyboard Left/Right/Home/End navigation. Network-triggering
   panels (BrokerEvidence, FundamentalsPanel) mount only when their tab is
   selected.
-- `src/features/keterbukaan/` owns the standalone Keterbukaan Informasi feed,
-  filters, event/signal cards, anomaly indicators, correction timeline,
-  evidence, official IDX links, and Collector freshness. Story Intelligence
-  remains a backend engine and has no user-facing tab.
+- `src/features/keterbukaan/` owns the legacy Keterbukaan Informasi passive
+  feed, filters, event/signal cards, anomaly indicators, correction timeline,
+  evidence, official IDX links, and Collector freshness. `/keterbukaan` will
+  temporarily redirect to `/news-detector` once News Detector reaches parity;
+  the Keterbukaan feature is removed only after that redirect is verified.
+  Story Intelligence remains a backend engine and has no user-facing tab.
+- `src/features/fundamentals/` owns the standalone Fundamentals product.
+  Sections: snapshot, key numbers, trends, profitability, health, cash
+  quality, per-share, full statements, learning explanations, and sources.
+  Every derived metric exposes its formula, input facts, evidence page/quote,
+  and rejection reason when unavailable. No ratio uses a non-positive
+  denominator. Bank-specific metrics activate only when company_type is
+  `bank`. The feature never invents figures: all values must trace to a
+  `fundamental_facts` row with confidence ≥ threshold and a linked
+  `official_source_url`. The Workbench Fundamentals tab remains until the
+  standalone route is verified at parity.
+- `src/features/news-detector/` owns the News Detector product: selected-date
+  EOD scan trigger, scan progress, ranked material digest, signal score
+  breakdown, suppressed-count summary with reasons, evidence drawer, and
+  `All Disclosures` view. Users select a date and trigger an on-demand scan;
+  the backend runs metadata-first suppression then bounded deep-parse for
+  candidates. The feature renders results from `news_detector_scan_runs` and
+  `news_detector_scan_items` and never contacts the IDX API directly.
 - `src/features/broker-intelligence/` owns stock/broker lenses, the merged
   signed ranking table (frontend display merge of accumulation + distribution
   arrays only), and inventory curve presentation.
@@ -66,9 +85,10 @@ case tracking from the retiring cockpit without duplicating backend engines.
   backend owns recipes, thresholds, measurements, qualification and ranking;
   React only submits bounded filters and renders the returned evidence,
   component score breakdown, evidence band, and separately labelled near misses.
-- Trader-facing labels use Screener / Market Shortlist / Custom Screener / Stock
-  Analysis / Broker Flow / Keterbukaan Informasi / Watchlist. Internal route
-  names remain stable. The
+- Trader-facing labels use Screener / Stock Analysis / Broker Flow /
+  Fundamentals / News Detector / Glossary. Internal route names remain stable.
+  The subnav order is fixed: Screener → Stock Analysis → Broker Flow →
+  Fundamentals → News Detector → Glossary. The
   global ticker selection is shared by Stock Analysis and Broker Flow; Screener
   handoffs open in new tabs so the originating result set is preserved.
 - Broker Flow and Custom Screener expose named and custom calendar ranges while
@@ -92,8 +112,10 @@ calculation. Those remain backend responsibilities.
 - `/workbench`
 - `/broker-intelligence`
 - `/radar`
-- `/keterbukaan`
+- `/keterbukaan` (temporary redirect to `/news-detector` after parity)
 - `/cases`
+- `/fundamentals`
+- `/news-detector`
 
 The root and unknown routes redirect to `/workbench`.
 
@@ -110,14 +132,20 @@ and rate limiting remain as defense in depth. Radar and Cases may add private
 read/write routes only after their exact contracts are reviewed; they must not
 turn the proxy into a wildcard forwarder.
 
-Keterbukaan Informasi and Fundamentals are allowlisted GET pathnames only:
-`/api/disclosures`, `/api/disclosures/detail`, `/api/disclosures/timeline`,
-`/api/disclosures/anomalies`, `/api/disclosures/documents`,
-`/api/fundamentals/statements`, and `/api/collector/health`. Validated
-ticker/date/category/severity/signal filters and bounded pagination are
-forwarded; filesystem paths, SQL, and PDF blobs are never exposed. Production
-`server.js` serves those routes only when `TRADING_DB_PATH` is set and fails
-closed otherwise. Demo fixture creation requires
+Keterbukaan Informasi and Fundamentals use allowlisted GET pathnames only:
+`/api/disclosures`, `/api/disclosures/detail`,
+`/api/disclosures/timeline`, `/api/disclosures/anomalies`,
+`/api/disclosures/documents`, `/api/fundamentals/statements`,
+`/api/fundamentals/filing`, `/api/fundamentals/facts`,
+`/api/fundamentals/snapshot`, `/api/fundamentals/periods`,
+`/api/fundamentals/derived`, `/api/fundamentals/sources`,
+`/api/news-detector`, and
+`/api/collector/health`. Validated ticker/date/category/severity/signal
+filters and bounded pagination are forwarded; filesystem paths, SQL, and PDF
+blobs are never exposed. News Detector scan triggers use a POST to
+`/api/news-detector/scan` with a date parameter only — no unbounded query
+parameters are forwarded. Production `server.js` serves those routes only
+when `TRADING_DB_PATH` is set and fails closed otherwise. Demo fixture creation requires
 `STOCK_ANALYSIS_DISCLOSURE_FIXTURE=1` and is allowed only in the Vite
 middleware, never as the `server.js` default. Analyze/broker routes still
 proxy to the analysis API. The Worker forwards the same allowlist and does

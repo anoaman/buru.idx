@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { officialSourceUrl, stripLeaks } from './serialize.js';
 import { validateDisclosureQuery } from './validate.js';
@@ -76,5 +77,7 @@ describe('disclosure HTTP handler', () => {
     expect(denied.status).toBe(405);
     const traversal = handleDisclosureHttp('GET', '/api/disclosures/../analyze', store);
     expect(traversal.status).toBe(400);
+    const newsDate = handleDisclosureHttp('GET', '/api/news-detector', store);
+    expect(newsDate.status).toBe(400);
   });
 });

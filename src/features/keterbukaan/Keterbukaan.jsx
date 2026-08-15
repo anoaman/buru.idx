@@ -16,7 +16,7 @@ import {
   guardDisclosureTimeline,
   guardDisclosures,
 } from '../../lib/api/contracts.js';
-import { evidencePage, evidenceSnippet, officialSourceHref } from './links.js';
+import { evidencePage, evidenceSnippet, officialSourceHref } from '../../lib/disclosures/links.js';
 
 const PAGE_LIMIT = 25;
 const CATEGORY_OPTIONS = [

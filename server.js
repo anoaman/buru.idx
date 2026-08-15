@@ -8,7 +8,7 @@ import {
   resolvePublicApiRequest,
   UPSTREAM_TIMEOUT_MS,
 } from './src/lib/public-api-allowlist.js';
-import { handleDisclosureHttp } from './src/lib/disclosures/http.js';
+import { handleDisclosureHttp, handleNewsDetectorScanHttp } from './src/lib/disclosures/http.js';
 import { createPythonDisclosureStore } from './src/lib/disclosures/local-store.js';
 
 const ROOT = fileURLToPath(new URL('./dist/', import.meta.url));
@@ -54,7 +54,13 @@ function proxyApi(req, res) {
     return sendJson(res, decision.status, { success: false, error: decision.error });
   }
 
-  if (DISCLOSURE_PATHS.has(new URL(decision.path, 'http://internal').pathname)) {
+  const pathname = new URL(decision.path, 'http://internal').pathname;
+  if (pathname === '/api/news-detector/scan') {
+    const handled = handleNewsDetectorScanHttp(req.method, req.url, { allowFixture: false });
+    return sendJson(res, handled.status, handled.body);
+  }
+
+  if (DISCLOSURE_PATHS.has(pathname)) {
     const handled = handleDisclosureHttp(req.method, req.url, disclosureStore);
     return sendJson(res, handled.status, handled.body);
   }
@@ -63,7 +69,7 @@ function proxyApi(req, res) {
     protocol: API_ORIGIN.protocol,
     hostname: API_ORIGIN.hostname,
     port: API_ORIGIN.port,
-    method: 'GET',
+    method: req.method,
     path: decision.path,
     headers: { accept: 'application/json' },
   }, (upstreamRes) => {

@@ -9,6 +9,7 @@ import {
   DISCLOSURE_FIXTURE_FLAG,
   pythonDisclosureStore,
   resolveDisclosureDb,
+  runLocalNewsDetectorScan,
   SEED_SCRIPT,
 } from './local-store.js';
 
@@ -48,6 +49,21 @@ describe('local disclosure store', () => {
     expect(statements.status).toBe(200);
     const labels = statements.body.data.items.map((item) => item.periodLabel);
     expect(labels).toEqual(expect.arrayContaining(['FY2025', 'FY2024']));
+
+    const snapshot = pythonDisclosureStore('/api/fundamentals/snapshot', { ticker: 'BBCA' });
+    expect(snapshot.status).toBe(200);
+    expect(snapshot.body.data.companyType).toBe('bank');
+    expect(snapshot.body.data.filingCount).toBeGreaterThanOrEqual(2);
+
+    const unread = pythonDisclosureStore('/api/news-detector', { date: '2026-08-04' });
+    expect(unread.status).toBe(200);
+    expect(unread.body.data.run).toBeNull();
+
+    const scan = runLocalNewsDetectorScan('2026-08-04');
+    expect(scan.status, scan.error).toBe(200);
+    expect(scan.body.data.run.materialCount).toBeGreaterThan(0);
+    expect(scan.body.data.items.some((item) => item.disposition === 'suppressed')).toBe(true);
+    expect(JSON.stringify(scan)).not.toContain('/secret/');
   });
 
   it('fails closed in production when TRADING_DB_PATH is missing', () => {

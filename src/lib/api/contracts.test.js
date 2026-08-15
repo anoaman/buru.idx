@@ -9,6 +9,13 @@ import {
   guardDisclosureDetail,
   guardDisclosures,
   guardFundamentalStatements,
+  guardFundamentalsSnapshot,
+  guardFundamentalsPeriods,
+  guardFundamentalsFacts,
+  guardFundamentalsFiling,
+  guardFundamentalsDerived,
+  guardFundamentalsSources,
+  guardNewsDetector,
   guardOpportunities,
   guardRadarScout,
   guardStockBrokerIntelligence,
@@ -483,5 +490,263 @@ describe('Keterbukaan and Fundamentals contracts', () => {
       success: true,
       data: { available: true, status: 'ready', feeds: [{ feed: 'idx', lastSuccessAt: '2026-08-14T00:00:00Z' }] },
     }).data.status).toBe('ready');
+  });
+});
+
+describe('v18 Fundamentals contracts', () => {
+  it('guardFundamentalsSnapshot: normalizes available snapshot', () => {
+    const result = guardFundamentalsSnapshot({
+      success: true,
+      data: {
+        available: true,
+        ticker: 'BBCA',
+        companyType: 'bank',
+        filingCount: 2,
+        latestPeriod: 'FY2024',
+        latestFiscalYear: 2024,
+        latestFilingId: 'BBCA-2024-A-fs',
+        latestExtractionStatus: 'success',
+        latestFactCount: 100,
+        latestParsedAt: '2025-01-01',
+        periods: ['FY2024', 'FY2023'],
+        filings: [
+          {
+            filingId: 'BBCA-2024-A-fs',
+            companyType: 'bank',
+            fiscalYear: 2024,
+            fiscalPeriod: 'A',
+            periodLabel: 'FY2024',
+            extractionStatus: 'success',
+            factCount: 100,
+            parsedAt: '2025-01-01',
+            sourceUrl: 'https://www.idx.co.id/bbca.pdf',
+            publishedAt: '2025-02-01',
+          },
+        ],
+      },
+    });
+    expect(result.ok).toBe(true);
+    expect(result.data.available).toBe(true);
+    expect(result.data.companyType).toBe('bank');
+    expect(result.data.filingCount).toBe(2);
+    expect(result.data.filings[0].sourceUrl).toBe('https://www.idx.co.id/bbca.pdf');
+    expect(result.data.filings[0].fiscalYear).toBe(2024);
+  });
+
+  it('guardFundamentalsSnapshot: returns unavailable when tables missing', () => {
+    const result = guardFundamentalsSnapshot({
+      success: true,
+      data: { available: false, reason: 'v18 fundamentals tables are not present.', ticker: 'BBCA' },
+    });
+    expect(result.ok).toBe(true);
+    expect(result.data.available).toBe(false);
+    expect(result.data.reason).toMatch(/v18/);
+  });
+
+  it('guardFundamentalsSnapshot: fails on error envelope', () => {
+    expect(guardFundamentalsSnapshot({ success: false, error: 'db down' }).ok).toBe(false);
+  });
+
+  it('guardFundamentalsFacts: normalizes v18 facts and handles unavailable', () => {
+    const result = guardFundamentalsFacts({
+      success: true,
+      data: {
+        available: true,
+        filingId: 'BBCA-2024-A-fs',
+        items: [
+          {
+            factId: 1,
+            filingId: 'BBCA-2024-A-fs',
+            statementType: 'income_statement',
+            section: 'revenue',
+            columnLabel: 'FY2024',
+            periodLabel: 'FY2024',
+            fieldKey: 'net_income',
+            valueNumeric: 48600000000000,
+            unit: 'IDR',
+            confidence: 0.95,
+            evidence: { page: 45, snippet: 'Laba bersih', officialUrl: 'https://www.idx.co.id/x.pdf' },
+            extractedAt: '2025-01-01',
+            companyType: 'bank',
+          },
+        ],
+        total: 1,
+        cursor: 0,
+        limit: 50,
+        nextCursor: null,
+      },
+    });
+    expect(result.ok).toBe(true);
+    expect(result.data.available).toBe(true);
+    expect(result.data.items[0].fieldKey).toBe('net_income');
+    expect(result.data.items[0].evidence.officialUrl).toBe('https://www.idx.co.id/x.pdf');
+    expect(result.data.items[0].confidence).toBe(0.95);
+
+    const missing = guardFundamentalsFacts({
+      success: true,
+      data: { available: false, reason: 'v18 fundamental_facts table is not present.' },
+    });
+    expect(missing.ok).toBe(true);
+    expect(missing.data.available).toBe(false);
+    expect(missing.data.items).toEqual([]);
+  });
+
+  it('guardFundamentalsDerived: normalizes metrics with formula and inputs', () => {
+    const result = guardFundamentalsDerived({
+      success: true,
+      data: {
+        available: true,
+        filingId: 'BBCA-2024-A-fs',
+        periodLabel: 'FY2024',
+        companyType: 'bank',
+        metrics: [
+          {
+            key: 'net_margin',
+            label: 'Net Profit Margin',
+            formula: 'net_income / revenue × 100',
+            unit: '%',
+            section: 'profitability',
+            available: true,
+            value: 31.5,
+            inputs: {
+              numerator: { factId: 1, fieldKey: 'net_income', valueNumeric: 486e11, unit: 'IDR', confidence: 0.95, evidence: { page: 45, officialUrl: 'https://www.idx.co.id/x.pdf' }, periodLabel: 'FY2024' },
+              denominator: { factId: 2, fieldKey: 'net_revenue', valueNumeric: 154.3e13, unit: 'IDR', confidence: 0.95, evidence: {}, periodLabel: 'FY2024' },
+            },
+            rejectionReason: null,
+          },
+          {
+            key: 'gross_margin',
+            label: 'Gross Margin',
+            formula: 'gross_profit / revenue × 100',
+            unit: '%',
+            section: 'profitability',
+            available: false,
+            value: null,
+            inputs: { numerator: null, denominator: null },
+            rejectionReason: 'numerator unavailable (tried: gross_profit, laba_kotor, gross_income)',
+          },
+          {
+            key: 'eps',
+            label: 'Earnings Per Share',
+            formula: 'net_income / shares',
+            unit: 'IDR',
+            section: 'per_share',
+            available: false,
+            value: null,
+            inputs: { numerator: { factId: 1, fieldKey: 'net_income', valueNumeric: 486e11, unit: 'IDR', confidence: 0.9, evidence: {}, periodLabel: 'FY2024' }, denominator: { factId: 5, fieldKey: 'shares', valueNumeric: -100, unit: 'shares', confidence: 0.5, evidence: {}, periodLabel: 'FY2024' } },
+            rejectionReason: 'denominator must be positive',
+          },
+        ],
+      },
+    });
+    expect(result.ok).toBe(true);
+    expect(result.data.available).toBe(true);
+    expect(result.data.companyType).toBe('bank');
+    expect(result.data.metrics).toHaveLength(3);
+
+    const margin = result.data.metrics.find((m) => m.key === 'net_margin');
+    expect(margin.available).toBe(true);
+    expect(margin.value).toBe(31.5);
+    expect(margin.formula).toBe('net_income / revenue × 100');
+    expect(margin.inputs.numerator.fieldKey).toBe('net_income');
+    expect(margin.inputs.numerator.evidence.officialUrl).toBe('https://www.idx.co.id/x.pdf');
+
+    const gross = result.data.metrics.find((m) => m.key === 'gross_margin');
+    expect(gross.available).toBe(false);
+    expect(gross.rejectionReason).toMatch(/numerator unavailable/);
+    expect(gross.inputs.numerator).toBeNull();
+
+    const eps = result.data.metrics.find((m) => m.key === 'eps');
+    expect(eps.available).toBe(false);
+    expect(eps.rejectionReason).toBe('denominator must be positive');
+    expect(eps.inputs.numerator).not.toBeNull();
+  });
+
+  it('guardFundamentalsDerived: handles unavailable tables', () => {
+    const result = guardFundamentalsDerived({
+      success: true,
+      data: { available: false, reason: 'v18 fundamental_facts table is not present.' },
+    });
+    expect(result.ok).toBe(true);
+    expect(result.data.available).toBe(false);
+    expect(result.data.metrics).toEqual([]);
+    expect(guardFundamentalsDerived({ success: false, error: 'offline' }).ok).toBe(false);
+  });
+
+  it('guardFundamentalsSources: strips non-IDX source URLs', () => {
+    const result = guardFundamentalsSources({
+      success: true,
+      data: {
+        available: true,
+        ticker: 'BBCA',
+        sources: [
+          {
+            filingId: 'BBCA-2024-A-fs',
+            periodLabel: 'FY2024',
+            fiscalYear: 2024,
+            fiscalPeriod: 'A',
+            eventId: 'evt-1',
+            sourceUrl: 'https://www.idx.co.id/fs.pdf',
+            publishedAt: '2025-02-01',
+            title: 'FS 2024',
+          },
+          {
+            filingId: 'BBCA-2023-A-fs',
+            periodLabel: 'FY2023',
+            fiscalYear: 2023,
+            fiscalPeriod: 'A',
+            eventId: 'evt-2',
+            sourceUrl: '/home/user/secret.pdf',
+            publishedAt: '2024-02-01',
+            title: 'FS 2023',
+          },
+        ],
+      },
+    });
+    expect(result.ok).toBe(true);
+    expect(result.data.sources[0].sourceUrl).toBe('https://www.idx.co.id/fs.pdf');
+    expect(result.data.sources[1].sourceUrl).toBeNull();
+  });
+
+  it('guardFundamentalsSnapshot and guardFundamentalsFiling preserve fiscal year as number', () => {
+    const snap = guardFundamentalsSnapshot({
+      success: true,
+      data: {
+        available: true,
+        ticker: 'BBCA',
+        companyType: 'common',
+        filingCount: 1,
+        latestPeriod: 'FY2024',
+        latestFiscalYear: 2024,
+        latestFilingId: 'x',
+        latestExtractionStatus: 'success',
+        latestFactCount: 10,
+        latestParsedAt: null,
+        periods: ['FY2024'],
+        filings: [{ filingId: 'x', companyType: 'common', fiscalYear: 2024, fiscalPeriod: 'A', periodLabel: 'FY2024', extractionStatus: 'success', factCount: 10, parsedAt: null }],
+      },
+    });
+    expect(snap.data.filings[0].fiscalYear).toBe(2024);
+  });
+
+  it('guardNewsDetector normalizes camelCase and snake_case scan payloads', () => {
+    const result = guardNewsDetector({
+      success: true,
+      data: {
+        available: true,
+        run: { id: 3, scan_date: '2026-08-04', taxonomy_version: '1', material_count: 1, total_disclosures: 2 },
+        items: [{
+          event_id: 'e1', ticker: 'ASII', title: 'Akuisisi', disposition: 'material',
+          category: 'acquisition', signal_score: 0.9,
+          official_source_url: 'https://www.idx.co.id/e1',
+          evidence: [{ kind: 'title_keyword', quote: 'Akuisisi' }],
+        }],
+      },
+    });
+    expect(result.ok).toBe(true);
+    expect(result.data.run.scanDate).toBe('2026-08-04');
+    expect(result.data.run.materialCount).toBe(1);
+    expect(result.data.items[0].eventId).toBe('e1');
+    expect(result.data.items[0].officialSourceUrl).toBe('https://www.idx.co.id/e1');
   });
 });

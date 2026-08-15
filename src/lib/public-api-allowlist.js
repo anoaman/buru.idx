@@ -46,6 +46,14 @@ const PUBLIC_ROUTES = new Map([
   ['/api/disclosures/anomalies', { params: ['ticker', 'severity', 'signal', 'from', 'to', 'cursor', 'limit'] }],
   ['/api/disclosures/documents', { params: ['documentId', 'eventId'] }],
   ['/api/fundamentals/statements', { params: ['ticker', 'period', 'statementType', 'cursor', 'limit'] }],
+  ['/api/fundamentals/snapshot', { params: ['ticker'] }],
+  ['/api/fundamentals/periods', { params: ['ticker'] }],
+  ['/api/fundamentals/facts', { params: ['ticker', 'filingId', 'statementType', 'periodLabel', 'cursor', 'limit'] }],
+  ['/api/fundamentals/filing', { params: ['ticker', 'filingId'] }],
+  ['/api/fundamentals/derived', { params: ['ticker', 'filingId', 'periodLabel'] }],
+  ['/api/fundamentals/sources', { params: ['ticker', 'filingId'] }],
+  ['/api/news-detector', { params: ['date'] }],
+  ['/api/news-detector/scan', { params: ['date'], methods: ['POST'] }],
   ['/api/collector/health', { params: [] }],
 ]);
 
@@ -56,6 +64,13 @@ export const DISCLOSURE_PATHS = new Set([
   '/api/disclosures/anomalies',
   '/api/disclosures/documents',
   '/api/fundamentals/statements',
+  '/api/fundamentals/snapshot',
+  '/api/fundamentals/periods',
+  '/api/fundamentals/facts',
+  '/api/fundamentals/filing',
+  '/api/fundamentals/derived',
+  '/api/fundamentals/sources',
+  '/api/news-detector',
   '/api/collector/health',
 ]);
 
@@ -114,9 +129,6 @@ export function checkRateLimit(key, nowMs, buckets = rateBuckets) {
  * backend that was not built here.
  */
 export function resolvePublicApiRequest(method, rawUrl) {
-  if (method !== 'GET' && method !== 'HEAD') {
-    return { ok: false, status: 405, error: 'This endpoint is read-only.' };
-  }
   let url;
   const rawPath = String(rawUrl || '').split('?')[0];
   if (/(^|\/)\.\.?($|\/)/.test(rawPath)) {
@@ -130,6 +142,10 @@ export function resolvePublicApiRequest(method, rawUrl) {
   const route = PUBLIC_ROUTES.get(url.pathname);
   if (!route) {
     return { ok: false, status: 404, error: 'Not found.' };
+  }
+  const allowedMethods = route.methods || ['GET', 'HEAD'];
+  if (!allowedMethods.includes(method)) {
+    return { ok: false, status: 405, error: 'This method is not allowed.' };
   }
   const forwarded = new URLSearchParams();
   for (const name of route.params) {

@@ -1,6 +1,6 @@
 import { spawnSync } from 'child_process';
 import { existsSync, mkdirSync } from 'fs';
-import { dirname } from 'path';
+import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
 const TRADING_DB_ROOT = fileURLToPath(new URL('../../../../../trading-db/', import.meta.url));
@@ -8,6 +8,16 @@ export const DISCLOSURE_API = `${TRADING_DB_ROOT}disclosure_api.py`;
 export const SEED_SCRIPT = `${TRADING_DB_ROOT}seed_keterbukaan_fixture.py`;
 export const FIXTURE_DB = `${TRADING_DB_ROOT}fixtures/keterbukaan-demo.sqlite`;
 export const DISCLOSURE_FIXTURE_FLAG = 'STOCK_ANALYSIS_DISCLOSURE_FIXTURE';
+const PROJECTS_ROOT = fileURLToPath(new URL('../../../../../projects/', import.meta.url));
+
+export function resolveNewsDetectorModule(env = process.env) {
+  const candidates = [
+    env.STOCKBIT_SCRAPER_ROOT && join(env.STOCKBIT_SCRAPER_ROOT, 'src/news-detector.js'),
+    join(PROJECTS_ROOT, 'stockbit-scraper-fundamentals-news/src/news-detector.js'),
+    join(PROJECTS_ROOT, 'stockbit-scraper/src/news-detector.js'),
+  ].filter(Boolean);
+  return candidates.find((path) => existsSync(path)) || null;
+}
 
 export function disclosureFixtureEnabled(env = process.env) {
   const value = String(env[DISCLOSURE_FIXTURE_FLAG] || '').toLowerCase();
@@ -85,4 +95,35 @@ export function pythonDisclosureStore(path, filters, options = {}) {
 
 export function createPythonDisclosureStore({ allowFixture = false } = {}) {
   return (path, filters) => pythonDisclosureStore(path, filters, { allowFixture });
+}
+
+export function runLocalNewsDetectorScan(date, options = {}) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) {
+    return { status: 400, error: 'Date must be YYYY-MM-DD.' };
+  }
+  let dbPath;
+  try {
+    dbPath = ensureDisclosureDb(options);
+  } catch {
+    return { status: 503, error: 'Disclosure data is temporarily unavailable.' };
+  }
+  const modulePath = resolveNewsDetectorModule(options.env || process.env);
+  if (!modulePath) {
+    return { status: 503, error: 'News Detector engine is unavailable.' };
+  }
+  const result = spawnSync('node', [modulePath, '--db', dbPath, '--date', date], {
+    encoding: 'utf8',
+    timeout: 30_000,
+  });
+  const parsed = parseJsonStdout(result.stdout);
+  if (!parsed) {
+    return { status: 503, error: 'News Detector scan failed.' };
+  }
+  if (parsed.success === false) {
+    return {
+      status: parsed.status || 400,
+      error: parsed.error || 'News Detector scan failed.',
+    };
+  }
+  return { status: 200, body: parsed };
 }
