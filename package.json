@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "deploy:cloudflare": "wrangler deploy"
+    "deploy:cloudflare": "npm run deploy:production",
+    "deploy:staging": "node scripts/deploy.js staging",
+    "deploy:production": "node scripts/deploy.js production"
   },
   "dependencies": {
     "lightweight-charts": "^5.0.0",

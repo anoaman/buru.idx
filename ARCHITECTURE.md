@@ -158,6 +158,14 @@ rewriting application code. The Worker reaches the loopback API only through a
 Tunnel hostname protected by a Cloudflare Access service token stored as Worker
 secrets; neither credential nor the origin hostname enters the browser bundle.
 
+Production is deployed only from `main` to `analysis.tombaklepas.app`. Staging
+is deployed only from `develop` to `staging.analysis.tombaklepas.app`; normal
+feature branches merge into `develop` before promotion to `main`. Staging uses
+the existing V2 service lane on ports 8793/8788, a separate bounded database,
+and a separate Access-protected Tunnel origin. It never runs scheduled market
+refreshes or disclosure collectors. `scripts/deploy.js` enforces the branch to
+environment mapping before invoking Wrangler.
+
 ## Analysis V2 baseline
 
 - Broker Intelligence defaults to one completed trading session. Named ranges

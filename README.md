@@ -73,3 +73,19 @@ bundle.
 npm test
 npm run build
 ```
+
+## Deployment lanes
+
+- `develop` deploys to the Access-protected staging environment at
+  `staging.analysis.tombaklepas.app`.
+- `main` deploys to production at `analysis.tombaklepas.app`.
+- Feature work starts from `develop`; an explicitly requested tiny production
+  fix may start from `main`.
+
+The deployment commands fail when the checked-out branch does not match the
+target environment:
+
+```bash
+npm run deploy:staging
+npm run deploy:production
+```
