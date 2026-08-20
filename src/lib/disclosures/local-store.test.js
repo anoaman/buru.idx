@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { mkdtempSync } from 'node:fs';
+import { chmodSync, mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   DISCLOSURE_FIXTURE_FLAG,
   pythonDisclosureStore,
+  resolveNewsDetectorModule,
   resolveDisclosureDb,
   runLocalNewsDetectorScan,
   SEED_SCRIPT,
@@ -82,5 +83,30 @@ describe('local disclosure store', () => {
     expect(resolveDisclosureDb({ allowFixture: true })).toBeNull();
     const result = pythonDisclosureStore('/api/disclosures', { limit: 25 }, { allowFixture: true });
     expect(result.status).toBe(503);
+  });
+
+  it('prefers an explicitly configured News Detector engine', () => {
+    const root = mkdtempSync(join(tmpdir(), 'news-detector-root-'));
+    mkdirSync(join(root, 'src'));
+    const modulePath = join(root, 'src/news-detector.js');
+    writeFileSync(modulePath, '');
+
+    expect(resolveNewsDetectorModule({ STOCKBIT_SCRAPER_ROOT: root })).toBe(modulePath);
+  });
+
+  it('fails closed when the News Detector process exits non-zero', () => {
+    const db = join(mkdtempSync(join(tmpdir(), 'news-detector-db-')), 'demo.sqlite');
+    writeFileSync(db, 'fixture');
+    const root = mkdtempSync(join(tmpdir(), 'news-detector-fail-'));
+    mkdirSync(join(root, 'src'));
+    const modulePath = join(root, 'src/news-detector.js');
+    writeFileSync(modulePath, '#!/usr/bin/env node\nconsole.log(JSON.stringify({ success: true, data: {} }));\nprocess.exit(1);\n');
+    chmodSync(modulePath, 0o755);
+
+    const result = runLocalNewsDetectorScan('2026-08-04', {
+      env: { TRADING_DB_PATH: db, STOCKBIT_SCRAPER_ROOT: root },
+    });
+
+    expect(result).toEqual({ status: 503, error: 'News Detector scan failed.' });
   });
 });

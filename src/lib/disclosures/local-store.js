@@ -13,8 +13,9 @@ const PROJECTS_ROOT = fileURLToPath(new URL('../../../../../projects/', import.m
 export function resolveNewsDetectorModule(env = process.env) {
   const candidates = [
     env.STOCKBIT_SCRAPER_ROOT && join(env.STOCKBIT_SCRAPER_ROOT, 'src/news-detector.js'),
-    join(PROJECTS_ROOT, 'stockbit-scraper-fundamentals-news/src/news-detector.js'),
     join(PROJECTS_ROOT, 'stockbit-scraper/src/news-detector.js'),
+    join(PROJECTS_ROOT, 'stockbit-scraper-integration/src/news-detector.js'),
+    join(PROJECTS_ROOT, 'stockbit-scraper-fundamentals-news/src/news-detector.js'),
   ].filter(Boolean);
   return candidates.find((path) => existsSync(path)) || null;
 }
@@ -116,7 +117,7 @@ export function runLocalNewsDetectorScan(date, options = {}) {
     timeout: 30_000,
   });
   const parsed = parseJsonStdout(result.stdout);
-  if (!parsed) {
+  if (result.status !== 0 || !parsed) {
     return { status: 503, error: 'News Detector scan failed.' };
   }
   if (parsed.success === false) {
