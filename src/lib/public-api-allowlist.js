@@ -19,6 +19,7 @@ const PUBLIC_ROUTES = new Map([
   ['/api/opportunities', { params: [] }],
   ['/api/radar/scout', { params: [
     'recipe',
+    'asOf',
     'brokerSessions',
     'brokerPreset',
     'brokerFrom',
@@ -35,6 +36,9 @@ const PUBLIC_ROUTES = new Map([
     'useMaxPrice',
     'useLiquidity',
     'useLeadBrokerValue',
+    'minRsVsIhsgPct',
+    'useRsVsIhsg',
+    'excludeFca',
   ] }],
   ['/api/watchlist', { params: [] }],
   ['/api/broker-intelligence/health', { params: [] }],

@@ -183,6 +183,10 @@ function normalizeBrokerStockRow(row) {
     ticker: String(row.ticker).toUpperCase(),
     name: row.name || row.ticker,
     observedSessions: Number.isFinite(row.observedSessions) ? row.observedSessions : 0,
+    requestedSessions: Number.isFinite(row.requestedSessions) ? row.requestedSessions : null,
+    accumulationSessions: Number.isFinite(row.accumulationSessions) ? row.accumulationSessions : null,
+    accumulationStreak: Number.isFinite(row.accumulationStreak) ? row.accumulationStreak : null,
+    persistencePct: preserveFiniteOrNull(row.persistencePct),
     buyValue: preserveFiniteOrZero(row.buyValue),
     sellValue: preserveFiniteOrZero(row.sellValue),
     netValue: preserveFiniteOrZero(row.netValue),
@@ -420,6 +424,13 @@ function normalizeScoutCandidate(row) {
     score: preserveFiniteOrNull(row.score),
     evidenceBand: ['high', 'medium', 'low'].includes(row.evidenceBand) ? row.evidenceBand : 'low',
     failedCondition: typeof row.failedCondition === 'string' ? row.failedCondition : null,
+    qualificationState: ['new', 'still', 'dropped'].includes(row.qualificationState) ? row.qualificationState : null,
+    qualificationStreak: Number.isFinite(row.qualificationStreak) ? row.qualificationStreak : null,
+    isFca: row.isFca === true,
+    relativeStrengthVsIhsgPct: preserveFiniteOrNull(row.relativeStrengthVsIhsgPct ?? row.rsVsIhsgPct),
+    evidence: row.evidence && typeof row.evidence === 'object' && !Array.isArray(row.evidence)
+      ? Object.fromEntries(Object.entries(row.evidence).map(([key, value]) => [key, typeof value === 'boolean' || typeof value === 'string' ? value : preserveFiniteOrNull(value)]))
+      : {},
     scoreBreakdown: row.scoreBreakdown && typeof row.scoreBreakdown === 'object'
       ? Object.fromEntries(Object.entries(row.scoreBreakdown).map(([key, value]) => [key, preserveFiniteOrNull(value)]))
       : {},
@@ -491,6 +502,7 @@ export function guardRadarScout(raw) {
         brokerFrom: asOf.brokerFrom || null,
         brokerTo: asOf.brokerTo || null,
         brokerSessions: Number.isFinite(asOf.brokerSessions) ? asOf.brokerSessions : 0,
+        requestedBrokerSessions: Number.isFinite(asOf.requestedBrokerSessions) ? asOf.requestedBrokerSessions : null,
       },
       coverage: {
         evaluated: Number.isFinite(coverage.evaluated) ? coverage.evaluated : 0,
@@ -505,6 +517,11 @@ export function guardRadarScout(raw) {
       nearMisses: Array.isArray(data.nearMisses)
         ? data.nearMisses.map(normalizeScoutCandidate).filter(Boolean)
         : [],
+      dailyDiff: {
+        new: Array.isArray(data.dailyDiff?.new) ? data.dailyDiff.new.map(normalizeScoutCandidate).filter(Boolean) : [],
+        still: Array.isArray(data.dailyDiff?.still) ? data.dailyDiff.still.map(normalizeScoutCandidate).filter(Boolean) : [],
+        dropped: Array.isArray(data.dailyDiff?.dropped) ? data.dailyDiff.dropped.map(normalizeScoutCandidate).filter(Boolean) : [],
+      },
       disclosures: normalizeStringList(data.disclosures, 6),
     },
   };

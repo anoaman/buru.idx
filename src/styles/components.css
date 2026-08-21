@@ -2155,6 +2155,12 @@
 .scout-recipe-explanation span { color: var(--text-tertiary); font-size: var(--type-meta); line-height: 1.45; }
 .scout-disclosures { margin-top: var(--space-3); color: var(--text-tertiary); font-size: var(--type-meta); line-height: 1.45; }
 .scout-disclosures p { margin: 3px 0; }
+.scout-saved { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px; align-items: end; margin-top: 10px; }
+.scout-saved label { display: grid; gap: 4px; }
+.scout-diff { display: grid; gap: 6px; margin-bottom: var(--space-3); padding: 12px 14px; border: 1px solid var(--border-default); background: var(--bg-surface); }
+.scout-diff h3 { margin: 0 0 4px; font-size: var(--type-control); }
+.scout-diff div { color: var(--text-secondary); font-size: var(--type-caption); }
+@media (max-width: 720px) { .scout-saved { grid-template-columns: 1fr; } }
 .cases-summary { display: flex; flex-wrap: wrap; gap: var(--space-3); padding: 9px 0; margin-bottom: var(--space-3); border-block: 1px solid var(--border-default); color: var(--text-secondary); font-size: var(--type-caption); }
 .cases-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3); }
 .case-card { display: flex; flex-direction: column; padding: var(--space-4); border: 1px solid var(--border-default); border-radius: var(--radius-md); }

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router';
 import { getOpportunities, getRadarScout } from '../../lib/api/client.js';
 import { guardOpportunities, guardRadarScout } from '../../lib/api/contracts.js';
 import { formatDate, formatIDR, formatPct, formatPrice, formatRatio, formatRelativeDays } from '../../lib/format/market.js';
@@ -12,11 +13,15 @@ const RECIPES = [
   { id: 'quiet_accumulation', label: 'Quiet accumulation', description: 'Looks for moderate, persistent buying—not extreme broker dominance—near independently confirmed support.' },
   { id: 'dominant_broker', label: 'Dominant broker', description: 'Prioritizes stocks where one broker accumulated materially more than the second-largest positive buyer.' },
   { id: 'support_compression', label: 'Support compression', description: 'Looks for repeated one-month support while recent candles remain inside a controlled sideways range.' },
+  { id: 'range_resolution', label: 'Range resolution + participation', description: 'Requires a backend-confirmed base breakout with value, transaction-frequency, broker-breadth and close-location participation.' },
+  { id: 'foreign_flow_divergence', label: 'Foreign flow divergence', description: 'Finds persistent foreign accumulation while price has not yet travelled materially.' },
+  { id: 'capitulation_reversal', label: 'Capitulation reversal', description: 'A strict V-reversal recipe requiring capitulation, retracement, improving trend and seller-behaviour confirmation.' },
 ];
 const DEFAULT_SCOUT_FILTERS = Object.freeze({
-  recipe: '', brokerSessions: 7, brokerPreset: '7d', brokerFrom: '', brokerTo: '', consolidationSessions: 10,
+  recipe: '', asOf: '', brokerSessions: 7, brokerPreset: '7d', brokerFrom: '', brokerTo: '', consolidationSessions: 10,
   supportSessions: 20, maxPrice: 1000, minAverageValue: 500_000_000, limit: 10,
   minLeadBrokerValue: 1_000_000_000, useLeadBrokerValue: false,
+  minRsVsIhsgPct: 0, useRsVsIhsg: false, excludeFca: false,
   useBroker: false, useSupport: false, useSideways: false, useMaxPrice: false, useLiquidity: false,
 });
 const BROKER_RANGES = [['latest', 'Latest'], ['previous', 'Previous'], ['7d', '7D'], ['14d', '14D'], ['1m', '1M'], ['custom', 'Custom (up to 60 days)']];
@@ -27,6 +32,14 @@ const BROKER_PRESET_SESSIONS = Object.freeze({
   '14d': 14,
   '1m': 22,
 });
+const SAVED_SCREENS_KEY = 'nalar-saved-screens-v1';
+
+function readSavedScreens() {
+  try {
+    const value = JSON.parse(localStorage.getItem(SAVED_SCREENS_KEY) || '[]');
+    return Array.isArray(value) ? value.filter((item) => item?.id && item?.name && item?.filters) : [];
+  } catch { return []; }
+}
 
 function scoutRequestPayload(filters) {
   const payload = { ...filters };
@@ -59,6 +72,9 @@ const RECIPE_CONDITIONS = Object.freeze({
   quiet_accumulation: { useBroker: true, useSupport: true, useSideways: true },
   dominant_broker: { useBroker: true, useSupport: false, useSideways: false },
   support_compression: { useBroker: false, useSupport: true, useSideways: true },
+  range_resolution: { useBroker: true, useSupport: false, useSideways: true, useLiquidity: true },
+  foreign_flow_divergence: { useBroker: false, useSupport: false, useSideways: false, useLiquidity: true },
+  capitulation_reversal: { useBroker: true, useSupport: false, useSideways: false, useLiquidity: true },
 });
 const EVIDENCE_BAND_LABEL = { high: 'High signal', medium: 'Medium signal', low: 'Low signal' };
 const EVIDENCE_BAND_TONE = { high: 'badge-positive', medium: 'badge-info', low: 'badge-neutral' };
@@ -172,6 +188,7 @@ function ShortlistTable({ rows, onInvestigate, onActors }) {
 // primary columns differ between the two tables.
 function ScoutDetail({ row }) {
   const breakdown = Object.entries(row.scoreBreakdown || {});
+  const evidence = Object.entries(row.evidence || {});
   return (
     <div className="radar-detail">
       <div>
@@ -205,6 +222,9 @@ function ScoutDetail({ row }) {
           </div>
         </div>
       )}
+      {evidence.length > 0 && (
+        <div><h4>Recipe evidence</h4><div className="radar-detail__chips">{evidence.map(([key, value]) => <span key={key}>{breakdownLabel(key)} <strong>{value == null ? 'Unavailable' : typeof value === 'boolean' ? (value ? 'Yes' : 'No') : String(value)}</strong></span>)}</div></div>
+      )}
     </div>
   );
 }
@@ -220,7 +240,7 @@ function QualifiedRow({ row, onInvestigate, onActors }) {
         <td>
           <div className="radar-cell-ticker">
             <strong>{row.ticker}</strong>
-            <span>{row.name}{row.board ? ` · ${row.board}` : ''}</span>
+            <span>{row.name}{row.board ? ` · ${row.board}` : ''}{row.isFca ? ' · FCA' : ''}</span>
           </div>
         </td>
         <td className="tabular"><strong>{Number.isFinite(row.score) ? row.score.toFixed(1) : '—'}</strong></td>
@@ -249,7 +269,7 @@ function QualifiedRow({ row, onInvestigate, onActors }) {
             <span>{row.price.volatilityContracting ? 'contracting' : 'not contracting'}</span>
           </div>
         </td>
-        <td className="tabular"><strong>{formatIDR(row.price.averageValue, true)}</strong></td>
+        <td className="tabular"><div className="radar-cell-metric"><strong>{row.relativeStrengthVsIhsgPct == null ? 'Unavailable' : formatPct(row.relativeStrengthVsIhsgPct)}</strong><span>vs IHSG</span></div></td>
         <td>
           <div className="radar-row__actions">
             <button type="button" className="ui-btn ui-btn--ghost" aria-label={`Open ${row.ticker} analysis`} onClick={onInvestigate}>Open Analysis</button>
@@ -289,7 +309,7 @@ function ScoutQualifiedTable({ rows, onInvestigate, onActors }) {
             <th className="tabular">Lead gap</th>
             <th className="tabular">Support</th>
             <th className="tabular">Compression</th>
-            <th className="tabular">Avg value</th>
+            <th className="tabular">RS vs IHSG</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -385,7 +405,20 @@ function ScoutNearMissSection({ rows, onInvestigate, onActors }) {
 }
 
 function Scout({ onInvestigate, onActors }) {
-  const [filters, setFilters] = useState(DEFAULT_SCOUT_FILTERS);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [filters, setFilters] = useState(() => {
+    const next = { ...DEFAULT_SCOUT_FILTERS };
+    for (const key of Object.keys(next)) {
+      const raw = searchParams.get(key);
+      if (raw == null) continue;
+      if (typeof next[key] === 'boolean') next[key] = raw === 'true';
+      else if (typeof next[key] === 'number') next[key] = Number(raw);
+      else next[key] = raw;
+    }
+    return next;
+  });
+  const [savedScreens, setSavedScreens] = useState(readSavedScreens);
+  const [saveName, setSaveName] = useState('');
   const [state, setState] = useState({ loading: false, error: null, data: null });
   const requestRef = useRef(0);
   useEffect(() => () => { requestRef.current += 1; }, []);
@@ -398,6 +431,19 @@ function Scout({ onInvestigate, onActors }) {
     setFilters((current) => ({ ...current, [key]: value }));
   };
   const recipe = RECIPES.find((item) => item.id === filters.recipe);
+  const persistPermalink = (nextFilters) => {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(nextFilters)) if (value !== '' && value !== false) params.set(key, String(value));
+    setSearchParams(params, { replace: true });
+  };
+  const saveScreen = () => {
+    const name = saveName.trim();
+    if (!name) return;
+    const next = [...savedScreens.filter((item) => item.name !== name), { id: `${Date.now()}`, name, filters }];
+    localStorage.setItem(SAVED_SCREENS_KEY, JSON.stringify(next));
+    setSavedScreens(next);
+    setSaveName('');
+  };
   const selectRecipe = (event) => {
     const recipeId = event.target.value;
     setFilters((current) => ({ ...current, recipe: recipeId, ...RECIPE_CONDITIONS[recipeId] }));
@@ -406,10 +452,15 @@ function Scout({ onInvestigate, onActors }) {
     event?.preventDefault();
     const requestId = ++requestRef.current;
     setState((current) => ({ ...current, loading: true, error: null }));
+    persistPermalink(filters);
     getRadarScout(scoutRequestPayload(filters)).then((raw) => {
       if (requestId !== requestRef.current) return;
       const result = guardRadarScout(raw);
       setState({ loading: false, error: result.ok ? null : result.error, data: result.data });
+      if (result.ok && !filters.asOf && result.data.asOf.priceDate) {
+        const pinned = { ...filters, asOf: result.data.asOf.priceDate };
+        persistPermalink(pinned);
+      }
     }).catch((error) => {
       if (requestId !== requestRef.current) return;
       setState({ loading: false, error: error.message || 'Screener request failed', data: null });
@@ -423,6 +474,11 @@ function Scout({ onInvestigate, onActors }) {
           <div className="scout-controls__intro">
             <label className="scout-controls__recipe">Screening recipe<select value={filters.recipe} onChange={selectRecipe}><option value="" disabled>Select a recipe</option>{RECIPES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
             {recipe && <div className="scout-recipe-explanation"><strong>{recipe.label}</strong><p>{recipe.description}</p><span>Every enabled condition must pass.</span></div>}
+            <div className="scout-saved">
+              <label>Saved screens<select defaultValue="" onChange={(event) => { const saved = savedScreens.find((item) => item.id === event.target.value); if (saved) setFilters({ ...DEFAULT_SCOUT_FILTERS, ...saved.filters }); }}><option value="">Load a screen</option>{savedScreens.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+              <label>Save current<input value={saveName} onChange={(event) => setSaveName(event.target.value)} placeholder="Morning breakout" /></label>
+              <button type="button" className="ui-btn ui-btn--ghost" onClick={saveScreen} disabled={!saveName.trim()}>Save</button>
+            </div>
           </div>
           <fieldset className="scout-conditions">
             <legend>Conditions</legend>
@@ -451,6 +507,17 @@ function Scout({ onInvestigate, onActors }) {
               <label className="scout-toggle"><input type="checkbox" checked={filters.useLeadBrokerValue} onChange={update('useLeadBrokerValue')} /><span><strong>Lead broker minimum</strong><small>Minimum net accumulation by the top buyer.</small></span></label>
               <label className="scout-condition__value">Rp net buy<input type="text" inputMode="numeric" disabled={!filters.useLeadBrokerValue} value={numericText(filters.minLeadBrokerValue)} onChange={update('minLeadBrokerValue')} /></label>
             </div>
+            <div className={!filters.useRsVsIhsg ? 'scout-condition is-disabled' : 'scout-condition'}>
+              <label className="scout-toggle"><input type="checkbox" checked={filters.useRsVsIhsg} onChange={update('useRsVsIhsg')} /><span><strong>RS vs IHSG</strong><small>Minimum backend-calculated relative performance.</small></span></label>
+              <label className="scout-condition__value">Minimum %<input type="number" step="0.1" disabled={!filters.useRsVsIhsg} value={filters.minRsVsIhsgPct} onChange={update('minRsVsIhsgPct')} /></label>
+            </div>
+            <div className="scout-condition">
+              <label className="scout-toggle"><input type="checkbox" checked={filters.excludeFca} onChange={update('excludeFca')} /><span><strong>Exclude FCA</strong><small>Hide tickers identified by the backend as FCA.</small></span></label>
+            </div>
+            <div className="scout-condition">
+              <label className="scout-condition__value">As-of date<input type="date" value={filters.asOf} onChange={(event) => setFilters((current) => ({ ...current, asOf: event.target.value }))} /></label>
+              <small className="text-tertiary">Leave blank for the latest completed session. Permalinks preserve this date.</small>
+            </div>
           </fieldset>
           <div className="scout-controls__footer">
             <span>No AI · end-of-day data · deterministic ranking</span>
@@ -466,7 +533,8 @@ function Scout({ onInvestigate, onActors }) {
           {!state.data && state.loading && <Skeleton label="Screening…" />}
           {!state.data && !state.loading && !state.error && <EmptyState title={recipe ? `${recipe.label} is ready` : 'Custom Screener is ready'} message="Choose a recipe or enable conditions, then press Run Screener to find matching stocks." />}
           {state.data && <>
-            <div className="radar-run"><strong>{state.data.recipe.label}</strong><span>Prices through {formatDate(state.data.asOf.priceDate)}</span><span>Broker flow {formatDate(state.data.asOf.brokerFrom)}–{formatDate(state.data.asOf.brokerTo)} · {state.data.asOf.brokerSessions} trading days</span><span>{state.data.coverage.matched} matched</span><span>Showing {state.data.coverage.returned}</span></div>
+            <div className="radar-run"><strong>{state.data.recipe.label}</strong><span>Prices through {formatDate(state.data.asOf.priceDate)}</span><span>Broker flow {formatDate(state.data.asOf.brokerFrom)}–{formatDate(state.data.asOf.brokerTo)} · requested {state.data.asOf.requestedBrokerSessions ?? filters.brokerSessions}, observed {state.data.asOf.brokerSessions} trading days</span><span>{state.data.coverage.matched} matched</span><span>Showing {state.data.coverage.returned}</span></div>
+            {(state.data.dailyDiff.new.length > 0 || state.data.dailyDiff.still.length > 0 || state.data.dailyDiff.dropped.length > 0) && <section className="scout-diff" aria-label="Daily qualification changes"><h3>Since previous session</h3><div><strong>New</strong> {state.data.dailyDiff.new.map((row) => row.ticker).join(', ') || 'None'}</div><div><strong>Still</strong> {state.data.dailyDiff.still.map((row) => `${row.ticker}${row.qualificationStreak ? ` (${row.qualificationStreak})` : ''}`).join(', ') || 'None'}</div><div><strong>Dropped</strong> {state.data.dailyDiff.dropped.map((row) => `${row.ticker}${row.failedCondition ? ` — ${row.failedCondition}` : ''}`).join(', ') || 'None'}</div></section>}
             {state.data.candidates.length === 0
               ? <EmptyState title="No stocks passed this recipe" message="That is a valid screen result. Widen the price or liquidity boundary only if it matches your intended trade universe." />
               : <ScoutQualifiedTable rows={state.data.candidates} onInvestigate={onInvestigate} onActors={handoffActors} />}

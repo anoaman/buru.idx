@@ -412,6 +412,38 @@ describe('Radar Scout contracts', () => {
       scoreBreakdown: { broker: 20, support: 18, liquidity: null },
     });
   });
+
+  it('preserves roadmap evidence, qualification history, FCA and requested coverage without turning unavailable into zero', () => {
+    const result = guardRadarScout({
+      success: true,
+      data: {
+        recipe: { id: 'range_resolution', label: 'Range resolution + participation' },
+        asOf: { brokerSessions: 7, requestedBrokerSessions: 10 },
+        candidates: [{
+          ticker: 'ANTM',
+          isFca: true,
+          relativeStrengthVsIhsgPct: null,
+          evidence: { valueExpansion: 2.1, frequencyExpansion: null, breadthPass: false },
+          price: scoutPrice,
+        }],
+        nearMisses: [],
+        dailyDiff: {
+          new: [],
+          still: [{ ticker: 'ANTM', qualificationState: 'still', qualificationStreak: 3, price: scoutPrice }],
+          dropped: [{ ticker: 'ELSA', qualificationState: 'dropped', failedCondition: 'breadth_narrow', price: scoutPrice }],
+        },
+      },
+    });
+
+    expect(result.data.asOf).toMatchObject({ brokerSessions: 7, requestedBrokerSessions: 10 });
+    expect(result.data.candidates[0]).toMatchObject({
+      isFca: true,
+      relativeStrengthVsIhsgPct: null,
+      evidence: { valueExpansion: 2.1, frequencyExpansion: null, breadthPass: false },
+    });
+    expect(result.data.dailyDiff.still[0]).toMatchObject({ qualificationState: 'still', qualificationStreak: 3 });
+    expect(result.data.dailyDiff.dropped[0].failedCondition).toBe('breadth_narrow');
+  });
 });
 
 describe('Keterbukaan and Fundamentals contracts', () => {

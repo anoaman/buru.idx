@@ -4,10 +4,11 @@ const PUBLIC_ROUTES = new Map([
   ['/api/broker-intelligence/stock', { params: ['ticker', 'days', 'date', 'preset', 'from', 'to'] }],
   ['/api/opportunities', { params: [] }],
   ['/api/radar/scout', { params: [
-    'recipe', 'brokerSessions', 'brokerPreset', 'brokerFrom', 'brokerTo',
+    'recipe', 'asOf', 'brokerSessions', 'brokerPreset', 'brokerFrom', 'brokerTo',
     'consolidationSessions', 'supportSessions', 'maxPrice', 'minAverageValue',
     'minLeadBrokerValue', 'limit', 'useBroker', 'useSupport', 'useSideways',
     'useMaxPrice', 'useLiquidity', 'useLeadBrokerValue',
+    'minRsVsIhsgPct', 'useRsVsIhsg', 'excludeFca',
   ] }],
   ['/api/risk-simulation', { params: ['entry', 'stop', 'target', 'capital', 'maxRiskPct'] }],
   ['/api/disclosures', { params: ['ticker', 'from', 'to', 'category', 'severity', 'signal', 'cursor', 'limit'] }],

@@ -85,6 +85,11 @@ case tracking from the retiring cockpit without duplicating backend engines.
   backend owns recipes, thresholds, measurements, qualification and ranking;
   React only submits bounded filters and renders the returned evidence,
   component score breakdown, evidence band, and separately labelled near misses.
+  Recipe parameters, FCA exclusion and IHSG-relative-strength filters are sent
+  unchanged to the backend; React never evaluates their formulas. Saved screen
+  definitions are local browser preferences, while qualification history and
+  New/Still/Dropped daily diffs come only from the backend response. Query state
+  is permalinkable and may pin the displayed as-of date.
 - Trader-facing labels use Screener / Stock Analysis / Broker Flow /
   Fundamentals / News Detector / Glossary. Internal route names remain stable.
   The subnav order is fixed: Screener → Stock Analysis → Broker Flow →
@@ -95,6 +100,9 @@ case tracking from the retiring cockpit without duplicating backend engines.
   reporting the actual observed trading-day count. Chart defaults show the
   latest 60 trading days, exclude overlays from the initial price range, keep
   manual scale control, and allow moving-average lines to be hidden.
+  The broker lens may render backend-ranked accumulation persistence and streaks.
+  It always identifies requested versus observed sessions and warns that a
+  broker code aggregates unrelated clients; it never infers a single actor.
 - `src/styles/tokens.css` owns the Paper Ledger (light) and Graphite Ledger
   (dark) semantic theme contract plus motion tokens. Feature styles consume
   semantic tokens rather than theme-specific color literals.
