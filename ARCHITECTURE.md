@@ -75,15 +75,16 @@ case tracking from the retiring cockpit without duplicating backend engines.
   contracts through `contracts.js` like every other feature. They rank nothing,
   score nothing, and decide no material change; those all arrive already
   computed. Radar's lane filter only hides rows the backend already ranked.
-  Custom Screener uses a split layout (conditions column + results table) and
-  forwards broker custom range / lead-broker minimum through the public
-  allowlist.
+  Custom Screener uses a condition-builder + results layout. It fetches the
+  backend-owned registry from `/api/radar/scout/conditions`, submits at most 20
+  explicit condition/value pairs, and forwards broker evidence windows through
+  the public allowlist.
 - `confidence` is a deprecated pre-1.2 alias for source freshness and coverage,
   not outcome probability. The view models expose it as `dataQuality` and drop
   the alias, so no component can render it under the wrong label.
 - Radar's Scout sub-view reads deterministic `/api/radar/scout` results. The
-  backend owns recipes, thresholds, measurements, qualification and ranking;
-  React only submits bounded filters and renders the returned evidence,
+  backend owns condition definitions, template defaults, measurements,
+  qualification and ranking; React only submits bounded filters and renders the returned evidence,
   component score breakdown, evidence band, and separately labelled near misses.
   Recipe parameters, FCA exclusion and IHSG-relative-strength filters are sent
   unchanged to the backend; React never evaluates their formulas. Saved screen

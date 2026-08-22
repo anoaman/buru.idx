@@ -7,9 +7,26 @@ import Radar from './Radar.jsx';
 vi.mock('../../lib/api/client.js', () => ({
   getOpportunities: vi.fn(),
   getRadarScout: vi.fn(),
+  getRadarScoutConditions: vi.fn(),
 }));
 
-import { getOpportunities, getRadarScout } from '../../lib/api/client.js';
+import { getOpportunities, getRadarScout, getRadarScoutConditions } from '../../lib/api/client.js';
+
+const CONDITION_CATALOG = {
+  success: true,
+  data: {
+    conditions: [
+      { id: 'max_price', label: 'Maximum price', category: 'Universe', type: 'number', comparison: 'at_most', unit: 'Rp', defaultValue: 1000, min: 1, max: 100000, step: 1 },
+      { id: 'exclude_fca', label: 'Exclude FCA', category: 'Universe', type: 'boolean', comparison: 'equals', defaultValue: true, options: [] },
+      { id: 'min_lead_net_buy', label: 'Lead broker net buy', category: 'Broker behaviour', type: 'number', comparison: 'at_least', unit: 'Rp', defaultValue: 1000000000, min: 0, max: 1000000000000, step: 100000000 },
+    ],
+    templates: {
+      quiet_accumulation: [{ id: 'max_price', value: 1000 }],
+      dominant_broker: [{ id: 'min_lead_net_buy', value: 1000000000 }],
+      support_compression: [{ id: 'max_price', value: 1500 }],
+    },
+  },
+};
 
 const RUN = {
   id: 41,
@@ -97,10 +114,15 @@ function renderRadar() {
   return result;
 }
 
+async function selectQuietTemplate() {
+  fireEvent.change(await screen.findByLabelText('Start from template'), { target: { value: 'quiet_accumulation' } });
+}
+
 describe('Radar', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    getRadarScoutConditions.mockResolvedValue(CONDITION_CATALOG);
   });
 
   it('renders ranked candidates with counter-evidence and scan provenance', async () => {
@@ -242,16 +264,11 @@ describe('Radar', () => {
 
     renderRadar();
     fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
-    expect(screen.getAllByRole('radio')).toHaveLength(3);
-    expect(screen.queryByRole('radio', { name: /Range resolution/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole('radio', { name: /Foreign flow divergence/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole('radio', { name: /Capitulation reversal/ })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('radio', { name: /Quiet accumulation/ }));
-    expect(screen.getByText(/moderate, persistent buying/i)).toBeInTheDocument();
-    expect(screen.getByLabelText('Rp')).toHaveValue('1,000');
-    expect(screen.getByLabelText('Rp average')).toHaveValue('500,000,000');
-    fireEvent.click(screen.getByLabelText(/Broker concentration/));
-    expect(screen.getByLabelText('Date range')).toBeDisabled();
+    await selectQuietTemplate();
+    expect(screen.getByLabelText('Maximum price')).toHaveValue(1000);
+    expect(screen.queryByText(/Range resolution/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Foreign flow divergence/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Capitulation reversal/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
     expect(await screen.findByText('AHAP')).toBeInTheDocument();
@@ -263,7 +280,7 @@ describe('Radar', () => {
     expect(screen.getByText('CC accumulated Rp1200M, 4.0× YP, across 6/7 sessions.')).toBeInTheDocument();
     expect(screen.getByText('CC distributed in 1 observed session.')).toBeInTheDocument();
 
-    expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({ recipe: 'quiet_accumulation', brokerPreset: '7d', useBroker: false }));
+    expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({ recipe: 'quiet_accumulation', brokerPreset: '7d', conditions: [{ id: 'max_price', value: 1000 }] }));
   });
 
   it('keeps advanced controls secondary and renders session changes as ticker cards', async () => {
@@ -279,17 +296,19 @@ describe('Radar', () => {
 
     renderRadar();
     fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
+    await selectQuietTemplate();
     const advanced = document.querySelector('.scout-advanced');
     expect(advanced).not.toHaveAttribute('open');
-    fireEvent.click(advanced.querySelector('summary'));
-    fireEvent.click(screen.getByLabelText(/Exclude FCA/));
+    const addCondition = document.querySelector('.scout-add-condition');
+    fireEvent.click(addCondition.querySelector('summary'));
+    fireEvent.click(screen.getByRole('button', { name: /Exclude FCA/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
     const changes = await screen.findByRole('region', { name: 'Daily qualification changes' });
     expect(changes).toHaveTextContent('New1AHAP');
     expect(changes).toHaveTextContent('Still qualified1BBCA3d');
     expect(changes).toHaveTextContent('Dropped1ELSA');
-    expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({ excludeFca: true }));
+    expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({ conditions: expect.arrayContaining([{ id: 'exclude_fca', value: true }]) }));
   });
 
   it('submits a custom broker date range through the client', async () => {
@@ -298,7 +317,9 @@ describe('Radar', () => {
 
     renderRadar();
     fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
-    fireEvent.change(screen.getByLabelText('Date range'), { target: { value: 'custom' } });
+    await selectQuietTemplate();
+    fireEvent.click(document.querySelector('.scout-advanced summary'));
+    fireEvent.change(screen.getByLabelText('Broker window'), { target: { value: 'custom' } });
     fireEvent.change(screen.getByLabelText('From'), { target: { value: '2026-07-01' } });
     fireEvent.change(screen.getByLabelText('To'), { target: { value: '2026-07-31' } });
     fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
@@ -318,7 +339,9 @@ describe('Radar', () => {
 
     renderRadar();
     fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
-    fireEvent.change(screen.getByLabelText('Date range'), { target: { value: '14d' } });
+    await selectQuietTemplate();
+    fireEvent.click(document.querySelector('.scout-advanced summary'));
+    fireEvent.change(screen.getByLabelText('Broker window'), { target: { value: '14d' } });
     fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
     await waitFor(() => expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({
@@ -333,13 +356,14 @@ describe('Radar', () => {
 
     renderRadar();
     fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
-    fireEvent.click(screen.getByLabelText(/Lead broker minimum/));
-    fireEvent.change(screen.getByLabelText('Rp net buy'), { target: { value: '2500000000' } });
+    await selectQuietTemplate();
+    fireEvent.click(document.querySelector('.scout-add-condition summary'));
+    fireEvent.click(screen.getByRole('button', { name: /Lead broker net buy/ }));
+    fireEvent.change(screen.getByLabelText('Lead broker net buy'), { target: { value: '2500000000' } });
     fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
     await waitFor(() => expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({
-      useLeadBrokerValue: true,
-      minLeadBrokerValue: 2_500_000_000,
+      conditions: expect.arrayContaining([{ id: 'min_lead_net_buy', value: 2_500_000_000 }]),
     })));
   });
 
@@ -349,6 +373,7 @@ describe('Radar', () => {
 
     renderRadar();
     fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
+    await selectQuietTemplate();
     fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
     expect(await screen.findByText('Medium signal')).toBeInTheDocument();
@@ -362,6 +387,7 @@ describe('Radar', () => {
 
     renderRadar();
     fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
+    await selectQuietTemplate();
     fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
     expect(await screen.findByText('AHAP')).toBeInTheDocument();
@@ -388,6 +414,7 @@ describe('Radar', () => {
 
     renderRadar();
     fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
+    await selectQuietTemplate();
     fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
     expect(await screen.findByText('Almost Matched')).toBeInTheDocument();
@@ -418,6 +445,7 @@ describe('Radar', () => {
 
     renderRadar();
     fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
+    await selectQuietTemplate();
     fireEvent.change(screen.getByLabelText('Return'), { target: { value: '100' } });
     fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
@@ -443,6 +471,7 @@ describe('Radar', () => {
     expect(openSpy.mock.calls.at(-1)[0]).toContain('ticker=BBRI');
 
     fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
+    await selectQuietTemplate();
     fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
     fireEvent.click(await screen.findByRole('button', { name: 'Open AHAP analysis' }));

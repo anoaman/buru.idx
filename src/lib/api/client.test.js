@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   analyzeTicker,
   getDisclosures,
+  getRadarScout,
+  getRadarScoutConditions,
   getStockBrokerIntelligence,
   invalidateBrokerCache,
 } from './client.js';
@@ -31,6 +33,15 @@ describe('Stock Analysis API client', () => {
     await analyzeTicker('BB RI');
     expect(global.fetch.mock.calls[0][0]).toContain('/api/analyze?ticker=BB+RI');
     expect(global.fetch.mock.calls[0][0]).toContain('mode=delayed');
+  });
+
+  it('encodes explicit Scout conditions and reads the condition catalog', async () => {
+    global.fetch = vi.fn().mockResolvedValue(response({ success: true, data: {} }));
+    await getRadarScout({ recipe: 'quiet_accumulation', conditions: [{ id: 'max_price', value: 1000 }] });
+    const scoutUrl = new URL(global.fetch.mock.calls[0][0], 'http://local');
+    expect(JSON.parse(scoutUrl.searchParams.get('conditions'))).toEqual([{ id: 'max_price', value: 1000 }]);
+    await getRadarScoutConditions();
+    expect(global.fetch.mock.calls[1][0]).toContain('/api/radar/scout/conditions');
   });
 
   it('deduplicates concurrent broker reads and caches successful responses', async () => {

@@ -123,9 +123,13 @@ export function getOpportunities() {
 export function getRadarScout(options = {}) {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(options)) {
-    if (value != null && value !== '') params.set(key, String(value));
+    if (value != null && value !== '') params.set(key, key === 'conditions' ? JSON.stringify(value) : String(value));
   }
   return request(`/api/radar/scout?${params.toString()}`);
+}
+
+export function getRadarScoutConditions() {
+  return request('/api/radar/scout/conditions');
 }
 
 export function getCases() {

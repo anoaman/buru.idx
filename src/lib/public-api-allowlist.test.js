@@ -35,6 +35,7 @@ describe('public API allowlist', () => {
       ok: true,
       path: '/api/radar/scout?recipe=quiet_accumulation&brokerSessions=7',
     });
+    expect(resolvePublicApiRequest('GET', '/api/radar/scout/conditions').ok).toBe(true);
     expect(resolvePublicApiRequest('GET', '/api/watchlist').ok).toBe(true);
     expect(resolvePublicApiRequest('GET', '/api/disclosures?ticker=BBCA').ok).toBe(true);
     expect(resolvePublicApiRequest('GET', '/api/disclosures/detail?eventId=div-1').ok).toBe(true);
@@ -58,6 +59,12 @@ describe('public API allowlist', () => {
     expect(sent.get('minLeadBrokerValue')).toBe('500000000');
     expect(sent.get('useLeadBrokerValue')).toBe('true');
     expect(sent.get('limit')).toBe('25');
+  });
+
+  it('preserves the bounded Scout condition payload', () => {
+    const conditions = JSON.stringify([{ id: 'max_price', value: 1000 }]);
+    const result = resolvePublicApiRequest('GET', `/api/radar/scout?conditions=${encodeURIComponent(conditions)}`);
+    expect(new URL(result.path, 'http://internal').searchParams.get('conditions')).toBe(conditions);
   });
 
   it('drops unknown Scout parameters while keeping the route GET/HEAD-only', () => {

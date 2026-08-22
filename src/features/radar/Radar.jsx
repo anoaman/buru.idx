@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { getOpportunities, getRadarScout } from '../../lib/api/client.js';
-import { guardOpportunities, guardRadarScout } from '../../lib/api/contracts.js';
+import { getOpportunities, getRadarScout, getRadarScoutConditions } from '../../lib/api/client.js';
+import { guardOpportunities, guardRadarScout, guardRadarScoutConditions } from '../../lib/api/contracts.js';
 import { formatDate, formatIDR, formatPct, formatPrice, formatRatio, formatRelativeDays } from '../../lib/format/market.js';
 import EmptyState from '../../components/EmptyState.jsx';
 import ErrorState from '../../components/ErrorState.jsx';
@@ -15,7 +15,7 @@ const RECIPES = [
   { id: 'support_compression', label: 'Support compression', description: 'Looks for repeated one-month support while recent candles remain inside a controlled sideways range.' },
 ];
 const DEFAULT_SCOUT_FILTERS = Object.freeze({
-  recipe: '', asOf: '', brokerSessions: 7, brokerPreset: '7d', brokerFrom: '', brokerTo: '', consolidationSessions: 10,
+  recipe: '', conditions: [], asOf: '', brokerSessions: 7, brokerPreset: '7d', brokerFrom: '', brokerTo: '', consolidationSessions: 10,
   supportSessions: 20, maxPrice: 1000, minAverageValue: 500_000_000, limit: 10,
   minLeadBrokerValue: 1_000_000_000, useLeadBrokerValue: false,
   minRsVsIhsgPct: 0, useRsVsIhsg: false, excludeFca: false,
@@ -65,17 +65,8 @@ function scoutBrokerHandoffRange(filters) {
 function formatRank(rank) {
   return Number.isFinite(rank) ? String(rank).padStart(2, '0') : '—';
 }
-const RECIPE_CONDITIONS = Object.freeze({
-  quiet_accumulation: { useBroker: true, useSupport: true, useSideways: true, useLiquidity: false },
-  dominant_broker: { useBroker: true, useSupport: false, useSideways: false, useLiquidity: false },
-  support_compression: { useBroker: false, useSupport: true, useSideways: true, useLiquidity: false },
-});
 const EVIDENCE_BAND_LABEL = { high: 'High signal', medium: 'Medium signal', low: 'Low signal' };
 const EVIDENCE_BAND_TONE = { high: 'badge-positive', medium: 'badge-info', low: 'badge-neutral' };
-
-function numericText(value) {
-  return Number.isFinite(value) ? value.toLocaleString('en-US') : '';
-}
 
 function breakdownLabel(key) {
   const spaced = key.replace(/([A-Z])/g, ' $1');
@@ -433,7 +424,9 @@ function Scout({ onInvestigate, onActors }) {
     for (const key of Object.keys(next)) {
       const raw = searchParams.get(key);
       if (raw == null) continue;
-      if (typeof next[key] === 'boolean') next[key] = raw === 'true';
+      if (Array.isArray(next[key])) {
+        try { next[key] = JSON.parse(raw); } catch { next[key] = []; }
+      } else if (typeof next[key] === 'boolean') next[key] = raw === 'true';
       else if (typeof next[key] === 'number') next[key] = Number(raw);
       else next[key] = raw;
     }
@@ -441,9 +434,20 @@ function Scout({ onInvestigate, onActors }) {
   });
   const [savedScreens, setSavedScreens] = useState(readSavedScreens);
   const [saveName, setSaveName] = useState('');
+  const [catalog, setCatalog] = useState({ loading: true, error: null, conditions: [], templates: {} });
+  const [conditionSearch, setConditionSearch] = useState('');
   const [state, setState] = useState({ loading: false, error: null, data: null });
   const requestRef = useRef(0);
   useEffect(() => () => { requestRef.current += 1; }, []);
+  useEffect(() => {
+    let active = true;
+    getRadarScoutConditions().then((raw) => {
+      if (!active) return;
+      const result = guardRadarScoutConditions(raw);
+      setCatalog(result.ok ? { loading: false, error: null, ...result.data } : { loading: false, error: result.error, conditions: [], templates: {} });
+    }).catch((error) => { if (active) setCatalog({ loading: false, error: error.message, conditions: [], templates: {} }); });
+    return () => { active = false; };
+  }, []);
   const update = (key) => (event) => {
     const value = event.target.type === 'checkbox'
       ? event.target.checked
@@ -453,10 +457,12 @@ function Scout({ onInvestigate, onActors }) {
     setFilters((current) => ({ ...current, [key]: value }));
   };
   const recipe = RECIPES.find((item) => item.id === filters.recipe);
-  const showsRecipeCondition = (key) => !filters.recipe || RECIPE_CONDITIONS[filters.recipe]?.[key];
+  const definitions = useMemo(() => new Map(catalog.conditions.map((item) => [item.id, item])), [catalog.conditions]);
+  const availableConditions = catalog.conditions.filter((item) => !filters.conditions.some((active) => active.id === item.id)
+    && (!conditionSearch.trim() || `${item.label} ${item.category}`.toLowerCase().includes(conditionSearch.trim().toLowerCase())));
   const persistPermalink = (nextFilters) => {
     const params = new URLSearchParams();
-    for (const [key, value] of Object.entries(nextFilters)) if (value !== '' && value !== false) params.set(key, String(value));
+    for (const [key, value] of Object.entries(nextFilters)) if (value !== '' && value !== false) params.set(key, Array.isArray(value) ? JSON.stringify(value) : String(value));
     setSearchParams(params, { replace: true });
   };
   const saveScreen = () => {
@@ -468,8 +474,11 @@ function Scout({ onInvestigate, onActors }) {
     setSaveName('');
   };
   const selectRecipe = (recipeId) => {
-    setFilters((current) => ({ ...current, recipe: recipeId, ...RECIPE_CONDITIONS[recipeId] }));
+    setFilters((current) => ({ ...current, recipe: recipeId, conditions: (catalog.templates[recipeId] || []).map((item) => ({ ...item })) }));
   };
+  const updateCondition = (id, value) => setFilters((current) => ({ ...current, conditions: current.conditions.map((item) => item.id === id ? { ...item, value } : item) }));
+  const removeCondition = (id) => setFilters((current) => ({ ...current, conditions: current.conditions.filter((item) => item.id !== id) }));
+  const addCondition = (definition) => setFilters((current) => ({ ...current, conditions: [...current.conditions, { id: definition.id, value: definition.defaultValue ?? definition.options[0] ?? true }] }));
   const run = (event) => {
     event?.preventDefault();
     const requestId = ++requestRef.current;
@@ -495,68 +504,41 @@ function Scout({ onInvestigate, onActors }) {
         <form className="scout-controls scout-layout__conditions" onSubmit={run}>
           <div className="scout-toolbar">
             <div><span className="scout-eyebrow">Deterministic screener</span><h2>Build a trade shortlist</h2></div>
-            <div className="scout-saved">
-              <label>Saved screen<select aria-label="Saved screens" defaultValue="" onChange={(event) => { const saved = savedScreens.find((item) => item.id === event.target.value); if (saved) setFilters({ ...DEFAULT_SCOUT_FILTERS, ...saved.filters }); }}><option value="">Load saved</option>{savedScreens.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-              <label>Save as<input aria-label="Save current screen as" value={saveName} onChange={(event) => setSaveName(event.target.value)} placeholder="Morning breakout" /></label>
-              <button type="button" className="ui-btn ui-btn--ghost" onClick={saveScreen} disabled={!saveName.trim()}>Save</button>
-            </div>
+            <label className="scout-template">Start from template<select aria-label="Start from template" value={filters.recipe} onChange={(event) => selectRecipe(event.target.value)}><option value="">Custom conditions</option>{RECIPES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
           </div>
-          <fieldset className="scout-recipes">
-            <legend><span>1</span> Choose a strategy</legend>
-            <div className="scout-recipes__grid" role="radiogroup" aria-label="Screening strategy">
-              {RECIPES.map((item) => <button key={item.id} type="button" role="radio" aria-checked={filters.recipe === item.id} className={filters.recipe === item.id ? 'scout-recipe is-selected' : 'scout-recipe'} onClick={() => selectRecipe(item.id)}><strong>{item.label}</strong><span>{item.description}</span></button>)}
+          <section className="scout-builder" aria-label="Active screening conditions">
+            <header><div><h3>Active conditions</h3><span>{filters.conditions.length} enabled · all must pass</span></div></header>
+            {catalog.loading && <Skeleton label="Loading condition catalog…" />}
+            {catalog.error && <p className="is-degraded">{catalog.error}</p>}
+            {!catalog.loading && filters.conditions.length === 0 && <p className="scout-builder__empty">Choose a template or add conditions to define the shortlist.</p>}
+            <div className="scout-condition-list">
+              {filters.conditions.map((condition) => {
+                const definition = definitions.get(condition.id);
+                if (!definition) return null;
+                return <div className="scout-condition-row" key={condition.id}><div><span>{definition.category}</span><strong>{definition.label}</strong></div><label><span className="sr-only">{definition.label}</span>{definition.type === 'boolean' ? <select value={String(condition.value)} onChange={(event) => updateCondition(condition.id, event.target.value === 'true')}><option value="true">Required</option><option value="false">Must be false</option></select> : definition.type === 'select' ? <select value={condition.value} onChange={(event) => updateCondition(condition.id, event.target.value)}>{definition.options.map((option) => <option key={option}>{option}</option>)}</select> : <span className="scout-condition-row__value"><input aria-label={definition.label} type="number" min={definition.min} max={definition.max} step={definition.step || 1} value={condition.value} onChange={(event) => updateCondition(condition.id, Number(event.target.value))} />{definition.unit && <small>{definition.unit}</small>}</span>}</label><button type="button" className="ui-btn ui-btn--ghost" aria-label={`Remove ${definition.label}`} onClick={() => removeCondition(condition.id)}>Remove</button></div>;
+              })}
             </div>
-          </fieldset>
-          <fieldset className="scout-conditions scout-conditions--primary">
-            <legend><span>2</span> Tune the setup</legend>
-            {showsRecipeCondition('useBroker') && <div className={!filters.useBroker ? 'scout-condition is-disabled' : 'scout-condition'}>
-              <label className="scout-toggle"><input type="checkbox" checked={filters.useBroker} onChange={update('useBroker')} /><span><strong>Broker concentration</strong><small>One buyer leads the positive flow.</small></span></label>
-              <label className="scout-condition__value">Date range<select disabled={!filters.useBroker} value={filters.brokerPreset} onChange={(event) => setFilters((current) => ({ ...current, brokerPreset: event.target.value }))}>{BROKER_RANGES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-              {filters.brokerPreset === 'custom' && <div className="scout-condition__dates"><label>From<input type="date" disabled={!filters.useBroker} value={filters.brokerFrom} onChange={(event) => setFilters((current) => ({ ...current, brokerFrom: event.target.value }))} /></label><label>To<input type="date" disabled={!filters.useBroker} value={filters.brokerTo} onChange={(event) => setFilters((current) => ({ ...current, brokerTo: event.target.value }))} /></label></div>}
-            </div>}
-            {showsRecipeCondition('useSupport') && <div className={!filters.useSupport ? 'scout-condition is-disabled' : 'scout-condition'}>
-              <label className="scout-toggle"><input type="checkbox" checked={filters.useSupport} onChange={update('useSupport')} /><span><strong>Repeated support</strong><small>Price remains near a tested support zone.</small></span></label>
-              <label className="scout-condition__value">Trading days<input type="number" min="5" max="120" disabled={!filters.useSupport} value={filters.supportSessions} onChange={update('supportSessions')} /></label>
-            </div>}
-            {showsRecipeCondition('useSideways') && <div className={!filters.useSideways ? 'scout-condition is-disabled' : 'scout-condition'}>
-              <label className="scout-toggle"><input type="checkbox" checked={filters.useSideways} onChange={update('useSideways')} /><span><strong>Sideways compression</strong><small>Recent candles stay inside a narrow range.</small></span></label>
-              <label className="scout-condition__value">Trading days<input type="number" min="5" max="60" disabled={!filters.useSideways} value={filters.consolidationSessions} onChange={update('consolidationSessions')} /></label>
-            </div>}
-          </fieldset>
+            <details className="scout-add-condition">
+              <summary>+ Add condition</summary>
+              <div className="scout-add-condition__panel"><input aria-label="Search conditions" value={conditionSearch} onChange={(event) => setConditionSearch(event.target.value)} placeholder="Search price, broker, foreign…" /><div>{availableConditions.map((definition) => <button type="button" key={definition.id} onClick={() => addCondition(definition)}><span>{definition.category}</span><strong>{definition.label}</strong></button>)}</div></div>
+            </details>
+          </section>
           <details className="scout-advanced">
-            <summary><span><strong>Advanced filters</strong><small>Universe, liquidity, relative strength and historical date</small></span><span aria-hidden="true">+</span></summary>
-            <fieldset className="scout-conditions scout-conditions--advanced">
-              <legend>Advanced filters</legend>
-              <div className={!filters.useMaxPrice ? 'scout-condition is-disabled' : 'scout-condition'}>
-              <label className="scout-toggle"><input type="checkbox" checked={filters.useMaxPrice} onChange={update('useMaxPrice')} /><span><strong>Maximum price</strong><small>Keep the universe inside your price band.</small></span></label>
-              <label className="scout-condition__value">Rp<input type="text" inputMode="numeric" disabled={!filters.useMaxPrice} value={numericText(filters.maxPrice)} onChange={update('maxPrice')} /></label>
+            <summary><span><strong>Window, date and saved screens</strong><small>Change evidence periods only when the strategy requires it</small></span><span aria-hidden="true">+</span></summary>
+            <div className="scout-execution-settings">
+              <label>Broker window<select value={filters.brokerPreset} onChange={(event) => setFilters((current) => ({ ...current, brokerPreset: event.target.value }))}>{BROKER_RANGES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+              {filters.brokerPreset === 'custom' && <><label>From<input type="date" value={filters.brokerFrom} onChange={(event) => setFilters((current) => ({ ...current, brokerFrom: event.target.value }))} /></label><label>To<input type="date" value={filters.brokerTo} onChange={(event) => setFilters((current) => ({ ...current, brokerTo: event.target.value }))} /></label></>}
+              <label>Support window<input type="number" min="5" max="120" value={filters.supportSessions} onChange={update('supportSessions')} /></label>
+              <label>Range window<input type="number" min="5" max="60" value={filters.consolidationSessions} onChange={update('consolidationSessions')} /></label>
+              <label>As-of date<input type="date" value={filters.asOf} onChange={(event) => setFilters((current) => ({ ...current, asOf: event.target.value }))} /></label>
             </div>
-            <div className={!filters.useLiquidity ? 'scout-condition is-disabled' : 'scout-condition'}>
-              <label className="scout-toggle"><input type="checkbox" checked={filters.useLiquidity} onChange={update('useLiquidity')} /><span><strong>Liquidity floor</strong><small>Minimum average traded value per trading day.</small></span></label>
-              <label className="scout-condition__value">Rp average<input type="text" inputMode="numeric" disabled={!filters.useLiquidity} value={numericText(filters.minAverageValue)} onChange={update('minAverageValue')} /></label>
-            </div>
-            <div className={!filters.useLeadBrokerValue ? 'scout-condition is-disabled' : 'scout-condition'}>
-              <label className="scout-toggle"><input type="checkbox" checked={filters.useLeadBrokerValue} onChange={update('useLeadBrokerValue')} /><span><strong>Lead broker minimum</strong><small>Minimum net accumulation by the top buyer.</small></span></label>
-              <label className="scout-condition__value">Rp net buy<input type="text" inputMode="numeric" disabled={!filters.useLeadBrokerValue} value={numericText(filters.minLeadBrokerValue)} onChange={update('minLeadBrokerValue')} /></label>
-            </div>
-            <div className={!filters.useRsVsIhsg ? 'scout-condition is-disabled' : 'scout-condition'}>
-              <label className="scout-toggle"><input type="checkbox" checked={filters.useRsVsIhsg} onChange={update('useRsVsIhsg')} /><span><strong>RS vs IHSG</strong><small>Minimum backend-calculated relative performance.</small></span></label>
-              <label className="scout-condition__value">Minimum %<input type="number" step="0.1" disabled={!filters.useRsVsIhsg} value={filters.minRsVsIhsgPct} onChange={update('minRsVsIhsgPct')} /></label>
-            </div>
-            <div className="scout-condition">
-              <label className="scout-toggle"><input type="checkbox" checked={filters.excludeFca} onChange={update('excludeFca')} /><span><strong>Exclude FCA</strong><small>Hide tickers identified by the backend as FCA.</small></span></label>
-            </div>
-            <div className="scout-condition">
-              <label className="scout-condition__value">As-of date<input type="date" value={filters.asOf} onChange={(event) => setFilters((current) => ({ ...current, asOf: event.target.value }))} /></label>
-              <small className="text-tertiary">Leave blank for the latest completed session. Permalinks preserve this date.</small>
-            </div>
-            </fieldset>
+            <div className="scout-saved"><label>Saved screen<select aria-label="Saved screens" defaultValue="" onChange={(event) => { const saved = savedScreens.find((item) => item.id === event.target.value); if (saved) setFilters({ ...DEFAULT_SCOUT_FILTERS, ...saved.filters }); }}><option value="">Load saved</option>{savedScreens.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label>Save as<input aria-label="Save current screen as" value={saveName} onChange={(event) => setSaveName(event.target.value)} placeholder="Morning breakout" /></label><button type="button" className="ui-btn ui-btn--ghost" onClick={saveScreen} disabled={!saveName.trim()}>Save</button></div>
           </details>
           <div className="scout-controls__footer">
-            <div className="scout-run-context"><span>3</span><div><strong>Review the shortlist</strong><small>No AI · end-of-day data · every enabled condition must pass</small></div></div>
+            <div className="scout-run-context"><div><strong>{recipe?.label || 'Custom screen'}</strong><small>No AI · end-of-day data · every active condition must pass</small></div></div>
             <div className="scout-controls__actions">
               <label>Return<select value={filters.limit} onChange={update('limit')}><option value="10">10 stocks</option><option value="25">25 stocks</option><option value="50">50 stocks</option><option value="100">100 stocks</option></select></label>
-              <button type="submit" className="ui-btn ui-btn--primary" disabled={state.loading}>{state.loading ? 'Screening…' : 'Run Screener'}</button>
+              <button type="submit" className="ui-btn ui-btn--primary" disabled={state.loading || catalog.loading || filters.conditions.length === 0}>{state.loading ? 'Screening…' : 'Run Screener'}</button>
             </div>
           </div>
         </form>
@@ -564,12 +546,12 @@ function Scout({ onInvestigate, onActors }) {
         <div className="scout-results">
           {state.error && <ErrorState title="Custom Screener unavailable" error={state.error} onRetry={run} />}
           {!state.data && state.loading && <Skeleton label="Screening…" />}
-          {!state.data && !state.loading && !state.error && <EmptyState title={recipe ? `${recipe.label} is ready` : 'Custom Screener is ready'} message="Choose a recipe or enable conditions, then press Run Screener to find matching stocks." />}
+          {!state.data && !state.loading && !state.error && <EmptyState title={recipe ? `${recipe.label} is ready` : 'Custom Screener is ready'} message="Choose a template or add conditions, then press Run Screener to find matching stocks." />}
           {state.data && <>
             <div className="radar-run"><strong>{state.data.recipe.label}</strong><span>Prices through {formatDate(state.data.asOf.priceDate)}</span><span>Broker flow {formatDate(state.data.asOf.brokerFrom)}–{formatDate(state.data.asOf.brokerTo)} · requested {state.data.asOf.requestedBrokerSessions ?? filters.brokerSessions}, observed {state.data.asOf.brokerSessions} trading days</span><span>{state.data.coverage.matched} matched</span><span>Showing {state.data.coverage.returned}</span></div>
             <DailyDiff diff={state.data.dailyDiff} />
             {state.data.candidates.length === 0
-              ? <EmptyState title="No stocks passed this recipe" message="That is a valid screen result. Widen the price or liquidity boundary only if it matches your intended trade universe." />
+              ? <EmptyState title="No stocks passed this screen" message="That is a valid screen result. Widen a boundary only if it still matches your intended trade universe." />
               : <ScoutQualifiedTable rows={state.data.candidates} onInvestigate={onInvestigate} onActors={handoffActors} />}
             <ScoutNearMissSection rows={state.data.nearMisses} onInvestigate={onInvestigate} onActors={handoffActors} />
             <div className="scout-disclosures">{state.data.disclosures.map((item) => <p key={item}>{item}</p>)}</div>

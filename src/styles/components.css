@@ -2128,19 +2128,29 @@
 .scout-controls { border: 1px solid var(--border-default); border-radius: var(--radius-md); background: var(--bg-elevated); }
 .scout-controls label { color: var(--text-secondary); font-size: var(--type-caption); text-transform: none; letter-spacing: 0; font-weight: 600; }
 .scout-controls input:not([type="checkbox"]), .scout-controls select { min-width: 0; border: 1px solid var(--border-default); background: var(--bg-base); color: var(--text-primary); padding: 8px; border-radius: var(--radius-sm); }
-.scout-controls .scout-toggle { display: flex; align-items: flex-start; gap: 9px; color: var(--text-secondary); cursor: pointer; }
-.scout-toggle input { accent-color: var(--color-accent); }
-.scout-toggle span { display: grid; gap: 3px; }
-.scout-toggle strong { color: var(--text-primary); font-size: var(--type-control); letter-spacing: 0; text-transform: none; }
-.scout-toggle small { color: var(--text-secondary); font-size: var(--type-caption); line-height: 1.5; letter-spacing: 0; text-transform: none; }
-.scout-conditions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); margin: 0; padding: var(--space-4); border: 0; }
-.scout-conditions legend, .scout-recipes legend { display: flex; align-items: center; gap: 8px; width: 100%; padding: 0 var(--space-4); color: var(--text-primary); font-size: var(--type-control); font-weight: 700; }
-.scout-conditions legend span, .scout-recipes legend span, .scout-run-context > span { display: inline-grid; place-items: center; width: 22px; height: 22px; border: 1px solid var(--border-strong); border-radius: 50%; color: var(--color-accent); font-family: var(--font-tabular); font-size: var(--type-meta); }
-.scout-condition { display: grid; align-content: space-between; gap: 14px; min-height: 106px; padding: 14px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); transition: opacity .15s, background .15s, border-color .15s; }
-.scout-condition.is-disabled { opacity: .5; background: var(--bg-base); color: var(--text-disabled); }
-.scout-condition__value { display: grid; gap: 5px; }
-.scout-condition__dates { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.scout-condition__dates label { display: grid; gap: 4px; }
+.scout-template { display: grid; gap: 4px; min-width: 210px; }
+.scout-builder { padding: var(--space-4); }
+.scout-builder > header { display: flex; justify-content: space-between; margin-bottom: var(--space-3); }
+.scout-builder > header h3 { margin: 0 0 3px; font-size: var(--type-control); }
+.scout-builder > header span, .scout-builder__empty { color: var(--text-tertiary); font-size: var(--type-meta); }
+.scout-condition-list { display: grid; gap: 7px; }
+.scout-condition-row { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(130px, 190px) auto; align-items: center; gap: var(--space-3); padding: 9px 10px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); background: var(--bg-surface); }
+.scout-condition-row > div { display: grid; gap: 2px; }
+.scout-condition-row > div span { color: var(--text-tertiary); font-size: var(--type-meta); }
+.scout-condition-row > div strong { color: var(--text-primary); font-size: var(--type-control); }
+.scout-condition-row__value { display: flex; align-items: center; gap: 6px; }
+.scout-condition-row__value input { width: 100%; }
+.scout-condition-row__value small { color: var(--text-tertiary); white-space: nowrap; }
+.scout-controls .scout-condition-row > button { padding: 7px 9px; border-color: var(--border-strong); background: transparent; color: var(--text-secondary); }
+.scout-add-condition { margin-top: var(--space-3); }
+.scout-add-condition summary { color: var(--color-accent); cursor: pointer; font-size: var(--type-caption); font-weight: 700; list-style: none; }
+.scout-add-condition summary::-webkit-details-marker { display: none; }
+.scout-add-condition__panel { display: grid; gap: 8px; margin-top: 9px; padding: 10px; border: 1px solid var(--border-subtle); background: var(--bg-base); }
+.scout-add-condition__panel > div { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; max-height: 260px; overflow-y: auto; }
+.scout-controls .scout-add-condition__panel button { display: grid; gap: 3px; padding: 9px; border-color: var(--border-subtle); background: var(--bg-surface); color: var(--text-primary); text-align: left; }
+.scout-add-condition__panel button span { color: var(--text-tertiary); font-size: var(--type-meta); font-weight: 400; }
+.scout-execution-settings { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 0 var(--space-4) var(--space-3); }
+.scout-execution-settings label { display: grid; gap: 4px; }
 .scout-controls button { border: 1px solid var(--color-accent); background: transparent; color: var(--color-accent); padding: 9px 14px; border-radius: var(--radius-sm); cursor: pointer; }
 .scout-controls button:disabled { opacity: .55; cursor: wait; }
 .scout-controls__footer { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-4); border-top: 1px solid var(--border-default); }
@@ -2154,13 +2164,6 @@
 .scout-eyebrow { color: var(--color-accent); font-size: var(--type-meta); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .scout-saved { display: grid; grid-template-columns: minmax(130px, 1fr) minmax(150px, 1fr) auto; gap: 8px; align-items: end; }
 .scout-saved label { display: grid; gap: 4px; }
-.scout-recipes { margin: 0; padding: var(--space-4); border: 0; }
-.scout-recipes__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); margin-top: var(--space-3); }
-.scout-controls .scout-recipe { display: grid; gap: 6px; min-height: 96px; padding: 13px; border: 1px solid var(--border-subtle); background: var(--bg-surface); color: var(--text-secondary); text-align: left; }
-.scout-controls .scout-recipe strong { color: var(--text-primary); font-size: var(--type-control); }
-.scout-controls .scout-recipe span { font-size: var(--type-meta); line-height: 1.45; }
-.scout-controls .scout-recipe:hover { border-color: var(--border-strong); }
-.scout-controls .scout-recipe.is-selected { border-color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 8%, var(--bg-surface)); box-shadow: inset 3px 0 var(--color-accent); }
 .scout-advanced { border-top: 1px solid var(--border-default); }
 .scout-advanced summary { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: 12px var(--space-4); cursor: pointer; list-style: none; }
 .scout-advanced summary::-webkit-details-marker { display: none; }
@@ -2186,7 +2189,7 @@
 .scout-diff__ticker { display: inline-flex; align-items: center; gap: 4px; padding: 4px 6px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-tabular); font-size: var(--type-meta); font-weight: 700; }
 .scout-diff__ticker small { color: var(--text-tertiary); font-size: 9px; }
 .scout-diff__empty { color: var(--text-tertiary); font-size: var(--type-meta); }
-@media (max-width: 720px) { .scout-toolbar { align-items: stretch; flex-direction: column; } .scout-saved, .scout-recipes__grid, .scout-conditions, .scout-diff__grid { grid-template-columns: 1fr; } }
+@media (max-width: 720px) { .scout-toolbar { align-items: stretch; flex-direction: column; } .scout-saved, .scout-execution-settings, .scout-add-condition__panel > div, .scout-diff__grid { grid-template-columns: 1fr; } .scout-condition-row { grid-template-columns: 1fr; } }
 .cases-summary { display: flex; flex-wrap: wrap; gap: var(--space-3); padding: 9px 0; margin-bottom: var(--space-3); border-block: 1px solid var(--border-default); color: var(--text-secondary); font-size: var(--type-caption); }
 .cases-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3); }
 .case-card { display: flex; flex-direction: column; padding: var(--space-4); border: 1px solid var(--border-default); border-radius: var(--radius-md); }
@@ -2309,8 +2312,6 @@
 }
 .scout-controls__intro { background: var(--bg-surface); }
 .scout-controls label { font-family: var(--font-ui); letter-spacing: 0; }
-.scout-condition { min-height: 110px; border-color: var(--border-subtle); }
-.scout-condition.is-disabled { background: var(--bg-surface); opacity: .5; }
 .scout-controls input:not([type='checkbox']),
 .scout-controls select,
 .bi-controls input,
@@ -2319,7 +2320,7 @@
   border-radius: var(--radius-md);
   background: var(--bg-elevated);
 }
-.scout-controls button:not(.scout-recipe) {
+.scout-controls button {
   border-radius: var(--radius-md);
   background: var(--color-accent);
   color: var(--color-accent-on);
@@ -2833,7 +2834,7 @@
   white-space: nowrap;
 }
 @media (max-width: 1100px) {
-  .scout-recipes__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .scout-add-condition__panel > div { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .scout-layout__conditions .scout-controls__footer,
   .scout-layout__conditions .scout-controls__actions { align-items: stretch; flex-direction: column; }
 }

@@ -17,8 +17,10 @@ const PUBLIC_ROUTES = new Map([
   ['/api/analyze', { params: ['ticker'], force: { mode: 'delayed' } }],
   ['/api/risk-simulation', { params: ['entry', 'stop', 'target', 'capital', 'maxRiskPct'] }],
   ['/api/opportunities', { params: [] }],
+  ['/api/radar/scout/conditions', { params: [] }],
   ['/api/radar/scout', { params: [
     'recipe',
+    'conditions',
     'asOf',
     'brokerSessions',
     'brokerPreset',

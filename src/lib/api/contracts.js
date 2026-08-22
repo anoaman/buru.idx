@@ -431,6 +431,12 @@ function normalizeScoutCandidate(row) {
     evidence: row.evidence && typeof row.evidence === 'object' && !Array.isArray(row.evidence)
       ? Object.fromEntries(Object.entries(row.evidence).map(([key, value]) => [key, typeof value === 'boolean' || typeof value === 'string' ? value : preserveFiniteOrNull(value)]))
       : {},
+    conditionEvidence: Array.isArray(row.conditionEvidence) ? row.conditionEvidence.filter((item) => item?.id).map((item) => ({
+      id: String(item.id), label: item.label ? String(item.label) : String(item.id),
+      actual: typeof item.actual === 'boolean' || typeof item.actual === 'string' ? item.actual : preserveFiniteOrNull(item.actual),
+      target: typeof item.target === 'boolean' || typeof item.target === 'string' ? item.target : preserveFiniteOrNull(item.target),
+      passed: item.passed === true,
+    })) : [],
     scoreBreakdown: row.scoreBreakdown && typeof row.scoreBreakdown === 'object'
       ? Object.fromEntries(Object.entries(row.scoreBreakdown).map(([key, value]) => [key, preserveFiniteOrNull(value)]))
       : {},
@@ -525,6 +531,24 @@ export function guardRadarScout(raw) {
       disclosures: normalizeStringList(data.disclosures, 6),
     },
   };
+}
+
+export function guardRadarScoutConditions(raw) {
+  const data = raw?.data;
+  if (!raw || raw.success === false || !data || !Array.isArray(data.conditions)) {
+    return { ok: false, error: raw?.error || 'Condition catalog unavailable', data: null };
+  }
+  const conditions = data.conditions.filter((item) => item?.id && item?.label && item?.category && ['number', 'boolean', 'select'].includes(item.type)).map((item) => ({
+    id: String(item.id), label: String(item.label), category: String(item.category), type: item.type,
+    comparison: item.comparison || 'equals', unit: item.unit || null,
+    defaultValue: item.defaultValue, min: item.min, max: item.max, step: item.step,
+    options: Array.isArray(item.options) ? item.options.map(String) : [],
+  }));
+  const templates = {};
+  for (const [id, items] of Object.entries(data.templates || {})) {
+    if (Array.isArray(items)) templates[id] = items.filter((item) => item?.id).map((item) => ({ id: String(item.id), value: item.value }));
+  }
+  return { ok: true, error: null, data: { conditions, templates } };
 }
 
 function normalizeCaseMonitoring(raw) {
