@@ -61,6 +61,19 @@ describe('public Worker API boundary', () => {
     expect(url.searchParams.has('path')).toBe(false);
   });
 
+  it('forwards the Scout catalog and explicit condition payload', async () => {
+    const upstream = [];
+    vi.stubGlobal('fetch', vi.fn(async (request) => {
+      upstream.push(request);
+      return Response.json({ success: true, data: {} });
+    }));
+    const conditions = JSON.stringify([{ id: 'max_price', value: 1000 }]);
+    await worker.fetch(new Request('https://analysis.example.test/api/radar/scout/conditions'), env);
+    await worker.fetch(new Request(`https://analysis.example.test/api/radar/scout?conditions=${encodeURIComponent(conditions)}`), env);
+    expect(new URL(upstream[0].url).pathname).toBe('/api/radar/scout/conditions');
+    expect(new URL(upstream[1].url).searchParams.get('conditions')).toBe(conditions);
+  });
+
   it('allows only the bounded News Detector scan write', async () => {
     let upstream;
     vi.stubGlobal('fetch', vi.fn(async (request) => {

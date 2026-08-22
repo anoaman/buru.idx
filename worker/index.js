@@ -3,8 +3,9 @@ const PUBLIC_ROUTES = new Map([
   ['/api/broker-intelligence/broker', { params: ['code', 'days', 'limit', 'date', 'preset', 'from', 'to'] }],
   ['/api/broker-intelligence/stock', { params: ['ticker', 'days', 'date', 'preset', 'from', 'to'] }],
   ['/api/opportunities', { params: [] }],
+  ['/api/radar/scout/conditions', { params: [] }],
   ['/api/radar/scout', { params: [
-    'recipe', 'asOf', 'brokerSessions', 'brokerPreset', 'brokerFrom', 'brokerTo',
+    'recipe', 'conditions', 'asOf', 'brokerSessions', 'brokerPreset', 'brokerFrom', 'brokerTo',
     'consolidationSessions', 'supportSessions', 'maxPrice', 'minAverageValue',
     'minLeadBrokerValue', 'limit', 'useBroker', 'useSupport', 'useSideways',
     'useMaxPrice', 'useLiquidity', 'useLeadBrokerValue',
