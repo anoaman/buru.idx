@@ -13,9 +13,6 @@ const RECIPES = [
   { id: 'quiet_accumulation', label: 'Quiet accumulation', description: 'Looks for moderate, persistent buying—not extreme broker dominance—near independently confirmed support.' },
   { id: 'dominant_broker', label: 'Dominant broker', description: 'Prioritizes stocks where one broker accumulated materially more than the second-largest positive buyer.' },
   { id: 'support_compression', label: 'Support compression', description: 'Looks for repeated one-month support while recent candles remain inside a controlled sideways range.' },
-  { id: 'range_resolution', label: 'Range resolution + participation', description: 'Requires a backend-confirmed base breakout with value, transaction-frequency, broker-breadth and close-location participation.' },
-  { id: 'foreign_flow_divergence', label: 'Foreign flow divergence', description: 'Finds persistent foreign accumulation while price has not yet travelled materially.' },
-  { id: 'capitulation_reversal', label: 'Capitulation reversal', description: 'A strict V-reversal recipe requiring capitulation, retracement, improving trend and seller-behaviour confirmation.' },
 ];
 const DEFAULT_SCOUT_FILTERS = Object.freeze({
   recipe: '', asOf: '', brokerSessions: 7, brokerPreset: '7d', brokerFrom: '', brokerTo: '', consolidationSessions: 10,
@@ -72,9 +69,6 @@ const RECIPE_CONDITIONS = Object.freeze({
   quiet_accumulation: { useBroker: true, useSupport: true, useSideways: true, useLiquidity: false },
   dominant_broker: { useBroker: true, useSupport: false, useSideways: false, useLiquidity: false },
   support_compression: { useBroker: false, useSupport: true, useSideways: true, useLiquidity: false },
-  range_resolution: { useBroker: true, useSupport: false, useSideways: true, useLiquidity: true },
-  foreign_flow_divergence: { useBroker: false, useSupport: false, useSideways: false, useLiquidity: true },
-  capitulation_reversal: { useBroker: true, useSupport: false, useSideways: false, useLiquidity: true },
 });
 const EVIDENCE_BAND_LABEL = { high: 'High signal', medium: 'Medium signal', low: 'Low signal' };
 const EVIDENCE_BAND_TONE = { high: 'badge-positive', medium: 'badge-info', low: 'badge-neutral' };

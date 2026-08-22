@@ -242,6 +242,10 @@ describe('Radar', () => {
 
     renderRadar();
     fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
+    expect(screen.getAllByRole('radio')).toHaveLength(3);
+    expect(screen.queryByRole('radio', { name: /Range resolution/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: /Foreign flow divergence/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: /Capitulation reversal/ })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('radio', { name: /Quiet accumulation/ }));
     expect(screen.getByText(/moderate, persistent buying/i)).toBeInTheDocument();
     expect(screen.getByLabelText('Rp')).toHaveValue('1,000');
