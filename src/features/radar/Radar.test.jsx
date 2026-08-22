@@ -68,7 +68,7 @@ function scoutCandidate(overrides = {}) {
   };
 }
 
-function scoutResponse({ candidates = [], nearMisses = [], coverage } = {}) {
+function scoutResponse({ candidates = [], nearMisses = [], coverage, dailyDiff } = {}) {
   return {
     success: true,
     data: {
@@ -78,6 +78,7 @@ function scoutResponse({ candidates = [], nearMisses = [], coverage } = {}) {
       coverage: coverage || { evaluated: 900, matched: candidates.length, returned: candidates.length, nearMisses: nearMisses.length },
       candidates,
       nearMisses,
+      dailyDiff: dailyDiff || { new: [], still: [], dropped: [] },
       disclosures: ['Observed flow is not a holdings ledger.'],
     },
   };
@@ -99,6 +100,7 @@ function renderRadar() {
 describe('Radar', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
   });
 
   it('renders ranked candidates with counter-evidence and scan provenance', async () => {
@@ -240,7 +242,7 @@ describe('Radar', () => {
 
     renderRadar();
     fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
-    fireEvent.change(screen.getByLabelText('Screening recipe'), { target: { value: 'quiet_accumulation' } });
+    fireEvent.click(screen.getByRole('radio', { name: /Quiet accumulation/ }));
     expect(screen.getByText(/moderate, persistent buying/i)).toBeInTheDocument();
     expect(screen.getByLabelText('Rp')).toHaveValue('1,000');
     expect(screen.getByLabelText('Rp average')).toHaveValue('500,000,000');
@@ -258,6 +260,32 @@ describe('Radar', () => {
     expect(screen.getByText('CC distributed in 1 observed session.')).toBeInTheDocument();
 
     expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({ recipe: 'quiet_accumulation', brokerPreset: '7d', useBroker: false }));
+  });
+
+  it('keeps advanced controls secondary and renders session changes as ticker cards', async () => {
+    getOpportunities.mockResolvedValue({ success: true, data: { run: RUN, opportunities: [] } });
+    getRadarScout.mockResolvedValue(scoutResponse({
+      candidates: [scoutCandidate()],
+      dailyDiff: {
+        new: [scoutCandidate({ ticker: 'AHAP' })],
+        still: [scoutCandidate({ ticker: 'BBCA', qualificationStreak: 3 })],
+        dropped: [scoutCandidate({ ticker: 'ELSA', failedCondition: 'liquidity floor' })],
+      },
+    }));
+
+    renderRadar();
+    fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
+    const advanced = document.querySelector('.scout-advanced');
+    expect(advanced).not.toHaveAttribute('open');
+    fireEvent.click(advanced.querySelector('summary'));
+    fireEvent.click(screen.getByLabelText(/Exclude FCA/));
+    fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
+
+    const changes = await screen.findByRole('region', { name: 'Daily qualification changes' });
+    expect(changes).toHaveTextContent('New1AHAP');
+    expect(changes).toHaveTextContent('Still qualified1BBCA3d');
+    expect(changes).toHaveTextContent('Dropped1ELSA');
+    expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({ excludeFca: true }));
   });
 
   it('submits a custom broker date range through the client', async () => {

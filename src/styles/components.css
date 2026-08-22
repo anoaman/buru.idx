@@ -2125,42 +2125,68 @@
 .radar-row__actions, .case-card__actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .radar-row__actions button, .case-card__actions button { border: 1px solid var(--border-strong); background: transparent; color: var(--text-secondary); padding: 7px 10px; border-radius: var(--radius-sm); cursor: pointer; }
 .radar-row__actions button:first-child { border-color: var(--color-accent); color: var(--color-accent); }
-.scout-controls { overflow: hidden; border: 1px solid var(--border-default); border-radius: var(--radius-md); background: var(--bg-elevated); }
+.scout-controls { border: 1px solid var(--border-default); border-radius: var(--radius-md); background: var(--bg-elevated); }
 .scout-controls label { color: var(--text-secondary); font-size: var(--type-caption); text-transform: none; letter-spacing: 0; font-weight: 600; }
 .scout-controls input:not([type="checkbox"]), .scout-controls select { min-width: 0; border: 1px solid var(--border-default); background: var(--bg-base); color: var(--text-primary); padding: 8px; border-radius: var(--radius-sm); }
-.scout-controls__intro { display: grid; grid-template-columns: minmax(220px, .7fr) 1.3fr; align-items: center; gap: var(--space-5); padding: var(--space-4); border-bottom: 1px solid var(--border-default); }
-.scout-controls__recipe { display: grid; gap: 6px; }
 .scout-controls .scout-toggle { display: flex; align-items: flex-start; gap: 9px; color: var(--text-secondary); cursor: pointer; }
 .scout-toggle input { accent-color: var(--color-accent); }
 .scout-toggle span { display: grid; gap: 3px; }
 .scout-toggle strong { color: var(--text-primary); font-size: var(--type-control); letter-spacing: 0; text-transform: none; }
 .scout-toggle small { color: var(--text-secondary); font-size: var(--type-caption); line-height: 1.5; letter-spacing: 0; text-transform: none; }
-.scout-conditions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin: 0; padding: 0; border: 0; }
-.scout-conditions legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-.scout-condition { display: grid; align-content: space-between; gap: 14px; min-height: 118px; padding: 14px; border-right: 1px solid var(--border-default); transition: opacity .15s, background .15s; }
-.scout-condition:last-child { border-right: 0; }
+.scout-conditions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); margin: 0; padding: var(--space-4); border: 0; }
+.scout-conditions legend, .scout-recipes legend { display: flex; align-items: center; gap: 8px; width: 100%; padding: 0 var(--space-4); color: var(--text-primary); font-size: var(--type-control); font-weight: 700; }
+.scout-conditions legend span, .scout-recipes legend span, .scout-run-context > span { display: inline-grid; place-items: center; width: 22px; height: 22px; border: 1px solid var(--border-strong); border-radius: 50%; color: var(--color-accent); font-family: var(--font-tabular); font-size: var(--type-meta); }
+.scout-condition { display: grid; align-content: space-between; gap: 14px; min-height: 106px; padding: 14px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); transition: opacity .15s, background .15s, border-color .15s; }
 .scout-condition.is-disabled { opacity: .5; background: var(--bg-base); color: var(--text-disabled); }
 .scout-condition__value { display: grid; gap: 5px; }
 .scout-condition__dates { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .scout-condition__dates label { display: grid; gap: 4px; }
 .scout-controls button { border: 1px solid var(--color-accent); background: transparent; color: var(--color-accent); padding: 9px 14px; border-radius: var(--radius-sm); cursor: pointer; }
 .scout-controls button:disabled { opacity: .55; cursor: wait; }
-.scout-controls__footer { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: 10px 14px; border-top: 1px solid var(--border-default); }
+.scout-controls__footer { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-4); border-top: 1px solid var(--border-default); }
 .scout-controls__footer span { color: var(--text-secondary); font-size: var(--type-meta); text-transform: none; letter-spacing: 0; }
 .scout-controls__actions { display: flex; align-items: end; gap: 8px; }
 .scout-controls__actions label { display: grid; gap: 4px; }
-.scout-recipe-explanation { padding-left: 12px; border-left: 2px solid var(--color-accent); }
-.scout-recipe-explanation strong { font-size: var(--type-control); }
-.scout-recipe-explanation p { margin: 3px 0; color: var(--text-secondary); font-size: var(--type-caption); line-height: 1.5; }
-.scout-recipe-explanation span { color: var(--text-tertiary); font-size: var(--type-meta); line-height: 1.45; }
 .scout-disclosures { margin-top: var(--space-3); color: var(--text-tertiary); font-size: var(--type-meta); line-height: 1.45; }
 .scout-disclosures p { margin: 3px 0; }
-.scout-saved { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px; align-items: end; margin-top: 10px; }
+.scout-toolbar { display: flex; align-items: end; justify-content: space-between; gap: var(--space-5); padding: var(--space-4); border-bottom: 1px solid var(--border-default); }
+.scout-toolbar h2 { margin: 3px 0 0; font-size: var(--type-title); }
+.scout-eyebrow { color: var(--color-accent); font-size: var(--type-meta); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.scout-saved { display: grid; grid-template-columns: minmax(130px, 1fr) minmax(150px, 1fr) auto; gap: 8px; align-items: end; }
 .scout-saved label { display: grid; gap: 4px; }
-.scout-diff { display: grid; gap: 6px; margin-bottom: var(--space-3); padding: 12px 14px; border: 1px solid var(--border-default); background: var(--bg-surface); }
-.scout-diff h3 { margin: 0 0 4px; font-size: var(--type-control); }
-.scout-diff div { color: var(--text-secondary); font-size: var(--type-caption); }
-@media (max-width: 720px) { .scout-saved { grid-template-columns: 1fr; } }
+.scout-recipes { margin: 0; padding: var(--space-4); border: 0; }
+.scout-recipes__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); margin-top: var(--space-3); }
+.scout-controls .scout-recipe { display: grid; gap: 6px; min-height: 96px; padding: 13px; border: 1px solid var(--border-subtle); background: var(--bg-surface); color: var(--text-secondary); text-align: left; }
+.scout-controls .scout-recipe strong { color: var(--text-primary); font-size: var(--type-control); }
+.scout-controls .scout-recipe span { font-size: var(--type-meta); line-height: 1.45; }
+.scout-controls .scout-recipe:hover { border-color: var(--border-strong); }
+.scout-controls .scout-recipe.is-selected { border-color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 8%, var(--bg-surface)); box-shadow: inset 3px 0 var(--color-accent); }
+.scout-advanced { border-top: 1px solid var(--border-default); }
+.scout-advanced summary { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: 12px var(--space-4); cursor: pointer; list-style: none; }
+.scout-advanced summary::-webkit-details-marker { display: none; }
+.scout-advanced summary > span:first-child { display: grid; gap: 2px; }
+.scout-advanced summary small { color: var(--text-tertiary); font-size: var(--type-meta); font-weight: 400; }
+.scout-advanced summary > span:last-child { color: var(--color-accent); font-size: 20px; transition: transform .15s; }
+.scout-advanced[open] summary > span:last-child { transform: rotate(45deg); }
+.scout-run-context { display: flex; align-items: center; gap: 10px; }
+.scout-run-context div { display: grid; gap: 2px; }
+.scout-run-context strong { font-size: var(--type-control); }
+.scout-run-context small { color: var(--text-tertiary); font-size: var(--type-meta); }
+.scout-diff { margin-bottom: var(--space-3); }
+.scout-diff header { margin-bottom: 8px; }
+.scout-diff header span { color: var(--text-tertiary); font-size: var(--type-meta); text-transform: uppercase; letter-spacing: .08em; }
+.scout-diff h3 { margin: 2px 0 0; font-size: var(--type-control); }
+.scout-diff__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.scout-diff__card { min-height: 84px; padding: 11px; border: 1px solid var(--border-subtle); border-top: 2px solid var(--border-strong); background: var(--bg-elevated); }
+.scout-diff__card--positive { border-top-color: var(--color-positive); }
+.scout-diff__card--warning { border-top-color: var(--color-warning); }
+.scout-diff__heading { display: flex; justify-content: space-between; gap: 8px; color: var(--text-secondary); font-size: var(--type-caption); }
+.scout-diff__heading > span { font-family: var(--font-tabular); }
+.scout-diff__tickers { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
+.scout-diff__ticker { display: inline-flex; align-items: center; gap: 4px; padding: 4px 6px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-tabular); font-size: var(--type-meta); font-weight: 700; }
+.scout-diff__ticker small { color: var(--text-tertiary); font-size: 9px; }
+.scout-diff__empty { color: var(--text-tertiary); font-size: var(--type-meta); }
+@media (max-width: 720px) { .scout-toolbar { align-items: stretch; flex-direction: column; } .scout-saved, .scout-recipes__grid, .scout-conditions, .scout-diff__grid { grid-template-columns: 1fr; } }
 .cases-summary { display: flex; flex-wrap: wrap; gap: var(--space-3); padding: 9px 0; margin-bottom: var(--space-3); border-block: 1px solid var(--border-default); color: var(--text-secondary); font-size: var(--type-caption); }
 .cases-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3); }
 .case-card { display: flex; flex-direction: column; padding: var(--space-4); border: 1px solid var(--border-default); border-radius: var(--radius-md); }
@@ -2293,13 +2319,12 @@
   border-radius: var(--radius-md);
   background: var(--bg-elevated);
 }
-.scout-controls button {
+.scout-controls button:not(.scout-recipe) {
   border-radius: var(--radius-md);
   background: var(--color-accent);
   color: var(--color-accent-on);
   font-weight: 500;
 }
-.scout-recipe-explanation { border-left-color: var(--border-strong); }
 
 .wb-result { gap: 14px; }
 .wb-header {
@@ -2772,37 +2797,13 @@
   container-type: inline-size;
   container-name: scout-layout;
 }
-/* The desktop control deck keeps the recipe, conditions, and primary action in
-   one compact panel. Narrow layouts stack the same controls without a nested
-   scroll region, so Run Screener stays reachable in both compositions. */
 .scout-layout__conditions {
-  position: static;
-  /* Grid, not flex: the condition list is a <fieldset>, which as a flex item
-     refuses to shrink below its content even with min-height: 0. A
-     minmax(0, 1fr) track constrains it, so the scroll region actually scrolls
-     and the footer stays inside the panel. */
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  /* --screener-chrome is the page title + view tabs sitting above the panel.
-     Without it the panel is viewport-height only once stuck, so Run Screener
-     starts ~117px below the fold on load. Over-estimating costs nothing: the
-     condition list just scrolls a little sooner. */
-  max-height: none;
+  min-width: 0;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   background: var(--bg-elevated);
-  padding: var(--space-4);
-}
-.scout-layout__conditions .scout-conditions {
-  min-height: 0;
-  overflow-y: visible;
-  /* Reserve the scrollbar track so toggling a condition open/closed does not
-     reflow the whole form sideways. */
-  scrollbar-gutter: stable;
-}
-.scout-layout__conditions .scout-controls__footer {
-  border-top: 1px solid var(--border-default);
-  padding-top: var(--space-3);
+  overflow: hidden;
 }
 .scout-results {
   min-width: 0;
@@ -2831,34 +2832,8 @@
   gap: 6px;
   white-space: nowrap;
 }
-@container scout-layout (min-width: 1051px) and (max-width: 1280px) {
-  /* The split is based on the content pane, not the viewport (the shell has a
-     persistent navigation rail). */
-  .scout-layout {
-    grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
-  }
-}
-@container scout-layout (max-width: 1050px) {
-  /* Stack when the actual results pane would become too narrow. Actions stay
-     reachable in the contained table scroller. */
-  .scout-layout {
-    grid-template-columns: 1fr;
-  }
-  .scout-layout__conditions {
-    position: static;
-    max-width: 352px;
-    max-height: none;
-  }
-  .scout-layout__conditions .scout-conditions { overflow-y: visible; }
-}
 @media (max-width: 1100px) {
-  .scout-layout { grid-template-columns: 1fr; }
-  /* Stacked: the panel is no longer a sidebar, so it grows with the page and
-     the condition list must not become a second scroll region. */
-  .scout-layout__conditions { position: static; max-width: none; max-height: none; }
-  .scout-layout__conditions .scout-conditions { grid-template-columns: 1fr; overflow-y: visible; }
-  .scout-layout__conditions .scout-condition { border-right: 0; border-bottom: 1px solid var(--border-default); }
-  .scout-layout__conditions .scout-condition:last-child { border-bottom: 0; }
+  .scout-recipes__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .scout-layout__conditions .scout-controls__footer,
   .scout-layout__conditions .scout-controls__actions { align-items: stretch; flex-direction: column; }
 }
@@ -2889,45 +2864,6 @@
 /* ============================================
    Phase 5 — Screener tables (Market Shortlist + Custom Screener)
    ============================================ */
-
-/* The conditions form keeps its full grammar while using the available desktop
-   width as a compact control deck; narrow layouts override it to one column. */
-.scout-layout__conditions.scout-controls {
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  overflow: visible;
-}
-.scout-layout__conditions .scout-controls__intro {
-  grid-template-columns: minmax(220px, .7fr) 1.3fr;
-}
-.scout-layout__conditions .scout-conditions {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-.scout-layout__conditions .scout-recipe-explanation {
-  width: 100%;
-  max-width: none;
-  min-width: 0;
-}
-.scout-layout__conditions .scout-condition {
-  border-right: 1px solid var(--border-default);
-  border-bottom: 0;
-}
-.scout-layout__conditions .scout-condition:nth-child(3n) { border-right: 0; }
-.scout-layout__conditions .scout-condition:last-child { border-bottom: 0; }
-.scout-layout__conditions .scout-controls__footer,
-.scout-layout__conditions .scout-controls__actions {
-  align-items: center;
-  flex-direction: row;
-}
-@media (max-width: 1100px) {
-  .scout-layout__conditions { position: static; }
-  .scout-layout__conditions .scout-conditions { grid-template-columns: 1fr; }
-  .scout-layout__conditions .scout-condition { border-right: 0; border-bottom: 1px solid var(--border-default); }
-  .scout-layout__conditions .scout-condition:last-child { border-bottom: 0; }
-  .scout-layout__conditions .scout-controls__footer,
-  .scout-layout__conditions .scout-controls__actions { align-items: stretch; flex-direction: column; }
-}
 
 .radar-cell-ticker,
 .radar-cell-levels,

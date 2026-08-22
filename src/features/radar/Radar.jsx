@@ -69,9 +69,9 @@ function formatRank(rank) {
   return Number.isFinite(rank) ? String(rank).padStart(2, '0') : '—';
 }
 const RECIPE_CONDITIONS = Object.freeze({
-  quiet_accumulation: { useBroker: true, useSupport: true, useSideways: true },
-  dominant_broker: { useBroker: true, useSupport: false, useSideways: false },
-  support_compression: { useBroker: false, useSupport: true, useSideways: true },
+  quiet_accumulation: { useBroker: true, useSupport: true, useSideways: true, useLiquidity: false },
+  dominant_broker: { useBroker: true, useSupport: false, useSideways: false, useLiquidity: false },
+  support_compression: { useBroker: false, useSupport: true, useSideways: true, useLiquidity: false },
   range_resolution: { useBroker: true, useSupport: false, useSideways: true, useLiquidity: true },
   foreign_flow_divergence: { useBroker: false, useSupport: false, useSideways: false, useLiquidity: true },
   capitulation_reversal: { useBroker: true, useSupport: false, useSideways: false, useLiquidity: true },
@@ -404,6 +404,34 @@ function ScoutNearMissSection({ rows, onInvestigate, onActors }) {
   );
 }
 
+function DailyDiff({ diff }) {
+  const groups = [
+    { key: 'new', label: 'New', rows: diff.new, tone: 'positive' },
+    { key: 'still', label: 'Still qualified', rows: diff.still, tone: 'neutral' },
+    { key: 'dropped', label: 'Dropped', rows: diff.dropped, tone: 'warning' },
+  ];
+  return (
+    <section className="scout-diff" aria-label="Daily qualification changes">
+      <header><div><span>Session change</span><h3>Since previous session</h3></div></header>
+      <div className="scout-diff__grid">
+        {groups.map((group) => (
+          <article className={`scout-diff__card scout-diff__card--${group.tone}`} key={group.key}>
+            <div className="scout-diff__heading"><strong>{group.label}</strong><span>{group.rows.length}</span></div>
+            <div className="scout-diff__tickers">
+              {group.rows.length === 0 && <span className="scout-diff__empty">None</span>}
+              {group.rows.map((row) => (
+                <span className="scout-diff__ticker" key={row.ticker} title={row.failedCondition || undefined}>
+                  {row.ticker}{group.key === 'still' && row.qualificationStreak ? <small>{row.qualificationStreak}d</small> : null}
+                </span>
+              ))}
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function Scout({ onInvestigate, onActors }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [filters, setFilters] = useState(() => {
@@ -431,6 +459,7 @@ function Scout({ onInvestigate, onActors }) {
     setFilters((current) => ({ ...current, [key]: value }));
   };
   const recipe = RECIPES.find((item) => item.id === filters.recipe);
+  const showsRecipeCondition = (key) => !filters.recipe || RECIPE_CONDITIONS[filters.recipe]?.[key];
   const persistPermalink = (nextFilters) => {
     const params = new URLSearchParams();
     for (const [key, value] of Object.entries(nextFilters)) if (value !== '' && value !== false) params.set(key, String(value));
@@ -444,8 +473,7 @@ function Scout({ onInvestigate, onActors }) {
     setSavedScreens(next);
     setSaveName('');
   };
-  const selectRecipe = (event) => {
-    const recipeId = event.target.value;
+  const selectRecipe = (recipeId) => {
     setFilters((current) => ({ ...current, recipe: recipeId, ...RECIPE_CONDITIONS[recipeId] }));
   };
   const run = (event) => {
@@ -471,31 +499,41 @@ function Scout({ onInvestigate, onActors }) {
     <div className="scout-view">
       <div className="scout-layout">
         <form className="scout-controls scout-layout__conditions" onSubmit={run}>
-          <div className="scout-controls__intro">
-            <label className="scout-controls__recipe">Screening recipe<select value={filters.recipe} onChange={selectRecipe}><option value="" disabled>Select a recipe</option>{RECIPES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
-            {recipe && <div className="scout-recipe-explanation"><strong>{recipe.label}</strong><p>{recipe.description}</p><span>Every enabled condition must pass.</span></div>}
+          <div className="scout-toolbar">
+            <div><span className="scout-eyebrow">Deterministic screener</span><h2>Build a trade shortlist</h2></div>
             <div className="scout-saved">
-              <label>Saved screens<select defaultValue="" onChange={(event) => { const saved = savedScreens.find((item) => item.id === event.target.value); if (saved) setFilters({ ...DEFAULT_SCOUT_FILTERS, ...saved.filters }); }}><option value="">Load a screen</option>{savedScreens.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-              <label>Save current<input value={saveName} onChange={(event) => setSaveName(event.target.value)} placeholder="Morning breakout" /></label>
+              <label>Saved screen<select aria-label="Saved screens" defaultValue="" onChange={(event) => { const saved = savedScreens.find((item) => item.id === event.target.value); if (saved) setFilters({ ...DEFAULT_SCOUT_FILTERS, ...saved.filters }); }}><option value="">Load saved</option>{savedScreens.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+              <label>Save as<input aria-label="Save current screen as" value={saveName} onChange={(event) => setSaveName(event.target.value)} placeholder="Morning breakout" /></label>
               <button type="button" className="ui-btn ui-btn--ghost" onClick={saveScreen} disabled={!saveName.trim()}>Save</button>
             </div>
           </div>
-          <fieldset className="scout-conditions">
-            <legend>Conditions</legend>
-            <div className={!filters.useBroker ? 'scout-condition is-disabled' : 'scout-condition'}>
+          <fieldset className="scout-recipes">
+            <legend><span>1</span> Choose a strategy</legend>
+            <div className="scout-recipes__grid" role="radiogroup" aria-label="Screening strategy">
+              {RECIPES.map((item) => <button key={item.id} type="button" role="radio" aria-checked={filters.recipe === item.id} className={filters.recipe === item.id ? 'scout-recipe is-selected' : 'scout-recipe'} onClick={() => selectRecipe(item.id)}><strong>{item.label}</strong><span>{item.description}</span></button>)}
+            </div>
+          </fieldset>
+          <fieldset className="scout-conditions scout-conditions--primary">
+            <legend><span>2</span> Tune the setup</legend>
+            {showsRecipeCondition('useBroker') && <div className={!filters.useBroker ? 'scout-condition is-disabled' : 'scout-condition'}>
               <label className="scout-toggle"><input type="checkbox" checked={filters.useBroker} onChange={update('useBroker')} /><span><strong>Broker concentration</strong><small>One buyer leads the positive flow.</small></span></label>
               <label className="scout-condition__value">Date range<select disabled={!filters.useBroker} value={filters.brokerPreset} onChange={(event) => setFilters((current) => ({ ...current, brokerPreset: event.target.value }))}>{BROKER_RANGES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
               {filters.brokerPreset === 'custom' && <div className="scout-condition__dates"><label>From<input type="date" disabled={!filters.useBroker} value={filters.brokerFrom} onChange={(event) => setFilters((current) => ({ ...current, brokerFrom: event.target.value }))} /></label><label>To<input type="date" disabled={!filters.useBroker} value={filters.brokerTo} onChange={(event) => setFilters((current) => ({ ...current, brokerTo: event.target.value }))} /></label></div>}
-            </div>
-            <div className={!filters.useSupport ? 'scout-condition is-disabled' : 'scout-condition'}>
+            </div>}
+            {showsRecipeCondition('useSupport') && <div className={!filters.useSupport ? 'scout-condition is-disabled' : 'scout-condition'}>
               <label className="scout-toggle"><input type="checkbox" checked={filters.useSupport} onChange={update('useSupport')} /><span><strong>Repeated support</strong><small>Price remains near a tested support zone.</small></span></label>
               <label className="scout-condition__value">Trading days<input type="number" min="5" max="120" disabled={!filters.useSupport} value={filters.supportSessions} onChange={update('supportSessions')} /></label>
-            </div>
-            <div className={!filters.useSideways ? 'scout-condition is-disabled' : 'scout-condition'}>
+            </div>}
+            {showsRecipeCondition('useSideways') && <div className={!filters.useSideways ? 'scout-condition is-disabled' : 'scout-condition'}>
               <label className="scout-toggle"><input type="checkbox" checked={filters.useSideways} onChange={update('useSideways')} /><span><strong>Sideways compression</strong><small>Recent candles stay inside a narrow range.</small></span></label>
               <label className="scout-condition__value">Trading days<input type="number" min="5" max="60" disabled={!filters.useSideways} value={filters.consolidationSessions} onChange={update('consolidationSessions')} /></label>
-            </div>
-            <div className={!filters.useMaxPrice ? 'scout-condition is-disabled' : 'scout-condition'}>
+            </div>}
+          </fieldset>
+          <details className="scout-advanced">
+            <summary><span><strong>Advanced filters</strong><small>Universe, liquidity, relative strength and historical date</small></span><span aria-hidden="true">+</span></summary>
+            <fieldset className="scout-conditions scout-conditions--advanced">
+              <legend>Advanced filters</legend>
+              <div className={!filters.useMaxPrice ? 'scout-condition is-disabled' : 'scout-condition'}>
               <label className="scout-toggle"><input type="checkbox" checked={filters.useMaxPrice} onChange={update('useMaxPrice')} /><span><strong>Maximum price</strong><small>Keep the universe inside your price band.</small></span></label>
               <label className="scout-condition__value">Rp<input type="text" inputMode="numeric" disabled={!filters.useMaxPrice} value={numericText(filters.maxPrice)} onChange={update('maxPrice')} /></label>
             </div>
@@ -518,9 +556,10 @@ function Scout({ onInvestigate, onActors }) {
               <label className="scout-condition__value">As-of date<input type="date" value={filters.asOf} onChange={(event) => setFilters((current) => ({ ...current, asOf: event.target.value }))} /></label>
               <small className="text-tertiary">Leave blank for the latest completed session. Permalinks preserve this date.</small>
             </div>
-          </fieldset>
+            </fieldset>
+          </details>
           <div className="scout-controls__footer">
-            <span>No AI · end-of-day data · deterministic ranking</span>
+            <div className="scout-run-context"><span>3</span><div><strong>Review the shortlist</strong><small>No AI · end-of-day data · every enabled condition must pass</small></div></div>
             <div className="scout-controls__actions">
               <label>Return<select value={filters.limit} onChange={update('limit')}><option value="10">10 stocks</option><option value="25">25 stocks</option><option value="50">50 stocks</option><option value="100">100 stocks</option></select></label>
               <button type="submit" className="ui-btn ui-btn--primary" disabled={state.loading}>{state.loading ? 'Screening…' : 'Run Screener'}</button>
@@ -534,7 +573,7 @@ function Scout({ onInvestigate, onActors }) {
           {!state.data && !state.loading && !state.error && <EmptyState title={recipe ? `${recipe.label} is ready` : 'Custom Screener is ready'} message="Choose a recipe or enable conditions, then press Run Screener to find matching stocks." />}
           {state.data && <>
             <div className="radar-run"><strong>{state.data.recipe.label}</strong><span>Prices through {formatDate(state.data.asOf.priceDate)}</span><span>Broker flow {formatDate(state.data.asOf.brokerFrom)}–{formatDate(state.data.asOf.brokerTo)} · requested {state.data.asOf.requestedBrokerSessions ?? filters.brokerSessions}, observed {state.data.asOf.brokerSessions} trading days</span><span>{state.data.coverage.matched} matched</span><span>Showing {state.data.coverage.returned}</span></div>
-            {(state.data.dailyDiff.new.length > 0 || state.data.dailyDiff.still.length > 0 || state.data.dailyDiff.dropped.length > 0) && <section className="scout-diff" aria-label="Daily qualification changes"><h3>Since previous session</h3><div><strong>New</strong> {state.data.dailyDiff.new.map((row) => row.ticker).join(', ') || 'None'}</div><div><strong>Still</strong> {state.data.dailyDiff.still.map((row) => `${row.ticker}${row.qualificationStreak ? ` (${row.qualificationStreak})` : ''}`).join(', ') || 'None'}</div><div><strong>Dropped</strong> {state.data.dailyDiff.dropped.map((row) => `${row.ticker}${row.failedCondition ? ` — ${row.failedCondition}` : ''}`).join(', ') || 'None'}</div></section>}
+            <DailyDiff diff={state.data.dailyDiff} />
             {state.data.candidates.length === 0
               ? <EmptyState title="No stocks passed this recipe" message="That is a valid screen result. Widen the price or liquidity boundary only if it matches your intended trade universe." />
               : <ScoutQualifiedTable rows={state.data.candidates} onInvestigate={onInvestigate} onActors={handoffActors} />}
