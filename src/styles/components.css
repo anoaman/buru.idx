@@ -2129,6 +2129,14 @@
 .scout-controls label { color: var(--text-secondary); font-size: var(--type-caption); text-transform: none; letter-spacing: 0; font-weight: 600; }
 .scout-controls input:not([type="checkbox"]), .scout-controls select { min-width: 0; border: 1px solid var(--border-default); background: var(--bg-base); color: var(--text-primary); padding: 8px; border-radius: var(--radius-sm); }
 .scout-template { display: grid; gap: 4px; min-width: 210px; }
+.scout-strategies { margin: 0; padding: 16px; border: 0; border-top: 1px solid var(--border); }
+.scout-strategies legend { padding: 0; font-size: 12px; font-weight: 700; color: var(--text-secondary); }
+.scout-strategies > div { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.scout-strategies button { display: grid; gap: 5px; min-height: 76px; padding: 12px; text-align: left; color: var(--text-secondary); background: var(--surface-raised); border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; }
+.scout-strategies button strong { color: var(--text-primary); }
+.scout-strategies button span { font-size: 11px; line-height: 1.35; }
+.scout-strategies button.is-selected { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+@media (max-width: 900px) { .scout-strategies > div { grid-template-columns: 1fr 1fr; } }
 .scout-builder { padding: var(--space-4); }
 .scout-builder > header { display: flex; justify-content: space-between; margin-bottom: var(--space-3); }
 .scout-builder > header h3 { margin: 0 0 3px; font-size: var(--type-control); }

@@ -544,8 +544,14 @@ function Scout({ onInvestigate, onActors }) {
         <form className="scout-controls scout-layout__conditions" onSubmit={run}>
           <div className="scout-toolbar">
             <div><span className="scout-eyebrow">Deterministic screener</span><h2>Build a trade shortlist</h2></div>
-            <label className="scout-template">Start from template<select aria-label="Start from template" value={filters.recipe} onChange={(event) => selectRecipe(event.target.value)}><option value="">Custom conditions</option>{RECIPES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
           </div>
+          <fieldset className="scout-strategies">
+            <legend>Start with a strategy</legend>
+            <div role="radiogroup" aria-label="Screening strategy">
+              {RECIPES.map((item) => <button key={item.id} type="button" role="radio" aria-checked={filters.recipe === item.id} className={filters.recipe === item.id ? 'is-selected' : ''} onClick={() => selectRecipe(item.id)}><strong>{item.label}</strong><span>{item.description}</span></button>)}
+              <button type="button" role="radio" aria-checked={!filters.recipe} className={!filters.recipe ? 'is-selected' : ''} onClick={() => selectRecipe('')}><strong>Custom</strong><span>Build from only the filters you enable below.</span></button>
+            </div>
+          </fieldset>
           <section className="scout-builder" aria-label="Screener filters">
             <header><div><h3>Filters</h3><span>Set the evidence window, then enable only the boundaries you need</span></div></header>
             <div className="scout-execution-settings" aria-label="Screen settings">

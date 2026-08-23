@@ -115,7 +115,7 @@ function renderRadar() {
 }
 
 async function selectQuietTemplate() {
-  fireEvent.change(await screen.findByLabelText('Start from template'), { target: { value: 'quiet_accumulation' } });
+  fireEvent.click(await screen.findByRole('radio', { name: /Quiet accumulation/i }));
 }
 
 describe('Radar', () => {
