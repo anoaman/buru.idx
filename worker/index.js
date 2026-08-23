@@ -3,13 +3,30 @@ const PUBLIC_ROUTES = new Map([
   ['/api/broker-intelligence/broker', { params: ['code', 'days', 'limit', 'date', 'preset', 'from', 'to'] }],
   ['/api/broker-intelligence/stock', { params: ['ticker', 'days', 'date', 'preset', 'from', 'to'] }],
   ['/api/opportunities', { params: [] }],
+  ['/api/radar/scout/conditions', { params: [] }],
   ['/api/radar/scout', { params: [
-    'recipe', 'brokerSessions', 'brokerPreset', 'brokerFrom', 'brokerTo',
+    'recipe', 'conditions', 'asOf', 'brokerSessions', 'brokerPreset', 'brokerFrom', 'brokerTo',
     'consolidationSessions', 'supportSessions', 'maxPrice', 'minAverageValue',
     'minLeadBrokerValue', 'limit', 'useBroker', 'useSupport', 'useSideways',
     'useMaxPrice', 'useLiquidity', 'useLeadBrokerValue',
+    'minRsVsIhsgPct', 'useRsVsIhsg', 'excludeFca',
   ] }],
   ['/api/risk-simulation', { params: ['entry', 'stop', 'target', 'capital', 'maxRiskPct'] }],
+  ['/api/disclosures', { params: ['ticker', 'from', 'to', 'category', 'severity', 'signal', 'cursor', 'limit'] }],
+  ['/api/disclosures/detail', { params: ['eventId'] }],
+  ['/api/disclosures/timeline', { params: ['ticker', 'from', 'to', 'limit'] }],
+  ['/api/disclosures/anomalies', { params: ['ticker', 'severity', 'signal', 'from', 'to', 'cursor', 'limit'] }],
+  ['/api/disclosures/documents', { params: ['documentId', 'eventId'] }],
+  ['/api/fundamentals/statements', { params: ['ticker', 'period', 'statementType', 'cursor', 'limit'] }],
+  ['/api/fundamentals/snapshot', { params: ['ticker'] }],
+  ['/api/fundamentals/periods', { params: ['ticker'] }],
+  ['/api/fundamentals/facts', { params: ['ticker', 'filingId', 'statementType', 'periodLabel', 'cursor', 'limit'] }],
+  ['/api/fundamentals/filing', { params: ['ticker', 'filingId'] }],
+  ['/api/fundamentals/derived', { params: ['ticker', 'filingId', 'periodLabel'] }],
+  ['/api/fundamentals/sources', { params: ['ticker', 'filingId'] }],
+  ['/api/news-detector', { params: ['date'] }],
+  ['/api/news-detector/scan', { params: ['date'], methods: ['POST'] }],
+  ['/api/collector/health', { params: [] }],
 ]);
 
 const PRIVATE_KEYS = new Set([
@@ -113,10 +130,11 @@ export default {
     }
 
     if (url.pathname.startsWith('/api/')) {
-      if (!['GET', 'HEAD'].includes(request.method)) {
-        return json(405, 'This endpoint is read-only.');
+      const route = PUBLIC_ROUTES.get(url.pathname);
+      if (!route) return json(404, 'Not found.');
+      if (!(route.methods || ['GET', 'HEAD']).includes(request.method)) {
+        return json(405, 'This method is not allowed.');
       }
-      if (!PUBLIC_ROUTES.has(url.pathname)) return json(404, 'Not found.');
       const response = await fetch(originRequest(request, env, url));
       const contentType = response.headers.get('content-type') || '';
       if (!contentType.includes('application/json')) {

@@ -214,6 +214,14 @@ function SelectedDetail({ lens, row }) {
           <span className="tabular">{formatNumber(row.observedSessions)}</span>
         </div>
         <div>
+          <span className="text-tertiary">Accumulation persistence</span>
+          <span className="tabular">{row.accumulationSessions == null ? 'Unavailable' : `${formatNumber(row.accumulationSessions)}/${formatNumber(row.requestedSessions ?? row.observedSessions)} sessions`}</span>
+        </div>
+        <div>
+          <span className="text-tertiary">Current streak</span>
+          <span className="tabular">{row.accumulationStreak == null ? 'Unavailable' : `${formatNumber(row.accumulationStreak)} sessions`}</span>
+        </div>
+        <div>
           <span className="text-tertiary">Est. inventory</span>
           <span className={`tabular ${row.estimatedInventoryLots > 0 ? 'text-positive' : row.estimatedInventoryLots < 0 ? 'text-negative' : ''}`}>
             {signedLots(row.estimatedInventoryLots)}
@@ -642,6 +650,7 @@ const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
                 <span className="text-tertiary">
                   {formatWindow(brokerData.window.from, brokerData.window.to)}
                 </span>
+                <span className="text-tertiary">Requested {formatNumber(brokerData.window.days ?? days)} · observed {formatNumber(brokerData.window.tradingSessions)} sessions</span>
                 <span className="text-tertiary">
                   Observed stocks {formatNumber(brokerData.summary.observedStocks)}
                   {' · '}Acc {formatNumber(brokerData.summary.accumulationStocks)}
@@ -733,6 +742,7 @@ const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
           )}
 
           <Disclosures items={meta?.disclosures} />
+          {brokerData && <p className="bi-merged__note" role="note">Broker codes aggregate activity from unrelated clients. Persistence is observed flow, not proof of a single bandar, owner, or coordinated position.</p>}
         </>
       )}
     </div>

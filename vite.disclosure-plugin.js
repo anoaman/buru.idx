@@ -1,0 +1,31 @@
+import { DISCLOSURE_PATHS } from './src/lib/public-api-allowlist.js';
+import { handleDisclosureHttp, handleNewsDetectorScanHttp } from './src/lib/disclosures/http.js';
+import { createPythonDisclosureStore } from './src/lib/disclosures/local-store.js';
+
+const disclosureStore = createPythonDisclosureStore({ allowFixture: true });
+const scanOptions = { allowFixture: true };
+
+function sendHandled(res, handled) {
+  res.statusCode = handled.status;
+  res.setHeader('content-type', 'application/json; charset=utf-8');
+  res.setHeader('cache-control', 'no-store');
+  res.setHeader('x-content-type-options', 'nosniff');
+  res.end(JSON.stringify(handled.body));
+}
+
+export function disclosureLocalApi() {
+  return {
+    name: 'disclosure-local-api',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const url = req.url || '/';
+        const pathname = url.split('?')[0];
+        if (pathname === '/api/news-detector/scan') {
+          return sendHandled(res, handleNewsDetectorScanHttp(req.method || 'POST', url, scanOptions));
+        }
+        if (!DISCLOSURE_PATHS.has(pathname)) return next();
+        sendHandled(res, handleDisclosureHttp(req.method || 'GET', url, disclosureStore));
+      });
+    },
+  };
+}

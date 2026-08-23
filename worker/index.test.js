@@ -42,4 +42,55 @@ describe('public Worker API boundary', () => {
     expect(write.status).toBe(405);
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it('forwards disclosure reads and drops path-like query parameters', async () => {
+    let upstream;
+    vi.stubGlobal('fetch', vi.fn(async (request) => {
+      upstream = request;
+      return Response.json({ success: true, data: { items: [] } });
+    }));
+
+    const response = await worker.fetch(new Request(
+      'https://analysis.example.test/api/disclosures?ticker=BBCA&path=/etc/passwd',
+    ), env);
+
+    expect(response.status).toBe(200);
+    const url = new URL(upstream.url);
+    expect(url.pathname).toBe('/api/disclosures');
+    expect(url.searchParams.get('ticker')).toBe('BBCA');
+    expect(url.searchParams.has('path')).toBe(false);
+  });
+
+  it('forwards the Scout catalog and explicit condition payload', async () => {
+    const upstream = [];
+    vi.stubGlobal('fetch', vi.fn(async (request) => {
+      upstream.push(request);
+      return Response.json({ success: true, data: {} });
+    }));
+    const conditions = JSON.stringify([{ id: 'max_price', value: 1000 }]);
+    await worker.fetch(new Request('https://analysis.example.test/api/radar/scout/conditions'), env);
+    await worker.fetch(new Request(`https://analysis.example.test/api/radar/scout?conditions=${encodeURIComponent(conditions)}`), env);
+    expect(new URL(upstream[0].url).pathname).toBe('/api/radar/scout/conditions');
+    expect(new URL(upstream[1].url).searchParams.get('conditions')).toBe(conditions);
+  });
+
+  it('allows only the bounded News Detector scan write', async () => {
+    let upstream;
+    vi.stubGlobal('fetch', vi.fn(async (request) => {
+      upstream = request;
+      return Response.json({ success: true, data: { items: [] } });
+    }));
+
+    const response = await worker.fetch(new Request(
+      'https://analysis.example.test/api/news-detector/scan?date=2026-08-15&path=/etc/passwd',
+      { method: 'POST' },
+    ), env);
+
+    expect(response.status).toBe(200);
+    expect(upstream.method).toBe('POST');
+    const url = new URL(upstream.url);
+    expect(url.pathname).toBe('/api/news-detector/scan');
+    expect(url.searchParams.get('date')).toBe('2026-08-15');
+    expect(url.searchParams.has('path')).toBe(false);
+  });
 });

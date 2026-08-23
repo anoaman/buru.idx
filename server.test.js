@@ -21,6 +21,10 @@ describe('static path resolution', () => {
 
   it('falls back to the SPA entry for unknown in-app routes', () => {
     expect(resolveStaticPath('/radar')).toMatch(/index\.html$/);
+    expect(resolveStaticPath('/keterbukaan')).toMatch(/index\.html$/);
+    expect(resolveStaticPath('/fundamentals')).toMatch(/index\.html$/);
+    expect(resolveStaticPath('/news-detector')).toMatch(/index\.html$/);
+    expect(resolveStaticPath('/glossary')).toMatch(/index\.html$/);
     expect(resolveStaticPath('/')).toMatch(/index\.html$/);
   });
 });

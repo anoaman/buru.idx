@@ -123,9 +123,13 @@ export function getOpportunities() {
 export function getRadarScout(options = {}) {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(options)) {
-    if (value != null && value !== '') params.set(key, String(value));
+    if (value != null && value !== '') params.set(key, key === 'conditions' ? JSON.stringify(value) : String(value));
   }
   return request(`/api/radar/scout?${params.toString()}`);
+}
+
+export function getRadarScoutConditions() {
+  return request('/api/radar/scout/conditions');
 }
 
 export function getCases() {
@@ -165,4 +169,74 @@ export function prefetchStockBrokerIntelligence({ ticker, days, date = null }) {
 
 export function prefetchBrokerStockIntelligence({ code, days, date = null, limit = 25 }) {
   return getBrokerStockIntelligence({ code, days, date, limit });
+}
+
+function withQuery(path, params = {}) {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value == null || value === '') continue;
+    search.set(key, String(value));
+  }
+  const qs = search.toString();
+  return qs ? `${path}?${qs}` : path;
+}
+
+export function getDisclosures(filters = {}) {
+  return request(withQuery('/api/disclosures', filters));
+}
+
+export function getDisclosureDetail(eventId) {
+  return request(withQuery('/api/disclosures/detail', { eventId }));
+}
+
+export function getDisclosureTimeline(filters = {}) {
+  return request(withQuery('/api/disclosures/timeline', filters));
+}
+
+export function getDisclosureAnomalies(filters = {}) {
+  return request(withQuery('/api/disclosures/anomalies', filters));
+}
+
+export function getDisclosureDocuments(filters = {}) {
+  return request(withQuery('/api/disclosures/documents', filters));
+}
+
+export function getFundamentalStatements(filters = {}) {
+  return request(withQuery('/api/fundamentals/statements', filters));
+}
+
+export function getFundamentalsSnapshot(ticker) {
+  return request(withQuery('/api/fundamentals/snapshot', { ticker }));
+}
+
+export function getFundamentalsPeriods(ticker) {
+  return request(withQuery('/api/fundamentals/periods', { ticker }));
+}
+
+export function getFundamentalsFacts(filters = {}) {
+  return request(withQuery('/api/fundamentals/facts', filters));
+}
+
+export function getFundamentalsFiling(filters = {}) {
+  return request(withQuery('/api/fundamentals/filing', filters));
+}
+
+export function getFundamentalsDerived(filters = {}) {
+  return request(withQuery('/api/fundamentals/derived', filters));
+}
+
+export function getFundamentalsSources(filters = {}) {
+  return request(withQuery('/api/fundamentals/sources', filters));
+}
+
+export function getCollectorHealth() {
+  return request('/api/collector/health');
+}
+
+export function getNewsDetector(date) {
+  return request(withQuery('/api/news-detector', { date }));
+}
+
+export function runNewsDetector(date) {
+  return request(withQuery('/api/news-detector/scan', { date }), { method: 'POST' });
 }
