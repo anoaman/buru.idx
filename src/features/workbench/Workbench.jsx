@@ -212,7 +212,6 @@ export default function Workbench() {
               ticker={data.ticker}
               supportResistance={data.supportResistance}
               riskGeometry={data.riskGeometry}
-              setupGeometry={data.setupGeometry}
             />
           </>
         );
@@ -221,7 +220,7 @@ export default function Workbench() {
       case 'changed':
         return <WhatChangedPanel data={data} />;
       case 'risk':
-        return <RiskSimulator ticker={data.ticker} geometry={data.setupGeometry || data.riskGeometry} />;
+        return <RiskSimulator ticker={data.ticker} geometry={data.riskGeometry} />;
       case 'methodology':
         return (
           <EvidenceSummary
@@ -261,7 +260,7 @@ export default function Workbench() {
             <div className="wb-chart-panel">
               <MarketChart
                 chart={displayed.data.chart}
-                geometry={displayed.data.setupGeometry || displayed.data.riskGeometry}
+                geometry={displayed.data.riskGeometry}
                 ticker={displayed.data.ticker}
               />
             </div>

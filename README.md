@@ -36,16 +36,6 @@ The root route redirects to `/workbench`.
 
 The repository contains a Vite/React frontend plus two production boundaries:
 
-All first-party requests are made through `src/lib/api/client.js` and are
-prefixed with `VITE_API_BASE`. Leave `VITE_API_BASE` empty for same-origin
-dev/`npm start`. Keterbukaan and Fundamentals GETs are served locally from
-`trading-db` when `TRADING_DB_PATH` is set. Production `server.js` fails
-closed if that path is missing. The demo fixture
-`fixtures/keterbukaan-demo.sqlite` is created only when
-`STOCK_ANALYSIS_DISCLOSURE_FIXTURE=1` is set for Vite; never production
-`idx.db` as a side effect. Analyze and Broker Flow still proxy to the
-delayed analysis API on `:8787`.
-
 - `server.js` serves the production build and proxies an allowlisted subset of
   the analysis API for private-network deployments.
 - `worker/index.js` provides the equivalent static and API boundary for
@@ -89,19 +79,3 @@ The platform is decision-support software built on delayed, cached, or
 asynchronously refreshed market data. It is not a live quote terminal,
 brokerage connection, order-entry system, or recommendation engine. Coverage
 and methodology disclosures must remain visible wherever evidence is shown.
-
-## Deployment lanes
-
-- `develop` deploys to the Access-protected staging environment at
-  `staging.analysis.tombaklepas.app`.
-- `main` deploys to production at `analysis.tombaklepas.app`.
-- Feature work starts from `develop`; an explicitly requested tiny production
-  fix may start from `main`.
-
-The deployment commands fail when the checked-out branch does not match the
-target environment:
-
-```bash
-npm run deploy:staging
-npm run deploy:production
-```

@@ -13,7 +13,7 @@ import {
  * @param {object} props.priceHistory - The priceHistory block from analyze.
  * @param {object} props.ticker - The ticker block (for volume vs baseline).
  */
-export default function TechnicalEvidence({ priceHistory, ticker, supportResistance, riskGeometry, setupGeometry }) {
+export default function TechnicalEvidence({ priceHistory, ticker, supportResistance, riskGeometry }) {
   if (!priceHistory || priceHistory.note) {
     return (
       <div className="wb-tech-evidence">
@@ -26,7 +26,7 @@ export default function TechnicalEvidence({ priceHistory, ticker, supportResista
   const ma = priceHistory.movingAverages || {};
   const maPosture = ma.stack || 'unavailable';
   const volBaseline = ticker?.volumeVsBaseline;
-  const best = (setupGeometry || riskGeometry)?.bestSetup;
+  const best = riskGeometry?.bestSetup;
 
   const returns = [
     { label: '5-day', value: priceHistory.ret5d },

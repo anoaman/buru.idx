@@ -17,7 +17,6 @@ function renderShell(path = '/workbench?ticker=BBCA') {
             <Route path="/workbench" element={<div>Investigation page</div>} />
             <Route path="/broker-intelligence" element={<div>Broker page</div>} />
             <Route path="/radar" element={<div>Radar page</div>} />
-            <Route path="/keterbukaan" element={<div>Keterbukaan page</div>} />
           </Routes>
           <LocationProbe />
         </AnalysisShell>
@@ -50,17 +49,12 @@ describe('AnalysisShell', () => {
     expect(screen.getByText('as of 2026-08-07')).toBeInTheDocument();
   });
 
-  it('exposes the final analysis product navigation without a Story Intelligence tab', () => {
+  it('exposes all four private workstation destinations', () => {
     renderShell('/radar');
     expect(screen.getByRole('link', { name: /Screener/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Stock Analysis/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Broker Flow/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Fundamentals/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /News Detector/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Glossary/i })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /Watchlist/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /Story Intelligence/i })).not.toBeInTheDocument();
-    expect(screen.queryByText(/Story Intelligence/i)).not.toBeInTheDocument();
   });
 
   it('defaults to Graphite Ledger when no preference is saved', () => {

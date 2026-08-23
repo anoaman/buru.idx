@@ -6,7 +6,7 @@ import { formatIDR, formatNumber, formatPct, formatPrice } from '../../lib/forma
 export default function RiskSimulator({ ticker, geometry }) {
   const best = geometry?.bestSetup;
   const [form, setForm] = useState({
-    entry: best?.entry || ticker?.close || '',
+    entry: ticker?.close || '',
     stop: best?.stop || '',
     target: best?.target || '',
     capital: 100_000_000,
@@ -22,13 +22,13 @@ export default function RiskSimulator({ ticker, geometry }) {
     requestRef.current += 1;
     setForm((current) => ({
       ...current,
-      entry: best?.entry || ticker?.close || '',
+      entry: ticker?.close || '',
       stop: best?.stop || '',
       target: best?.target || '',
     }));
     setState({ loading: false, data: null, error: null });
     return () => { requestRef.current += 1; };
-  }, [ticker?.symbol, ticker?.close, best?.entry, best?.stop, best?.target]);
+  }, [ticker?.symbol, ticker?.close, best?.stop, best?.target]);
 
   if (!ticker || !best) return null;
 

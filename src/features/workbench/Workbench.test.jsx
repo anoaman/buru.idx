@@ -30,10 +30,9 @@ vi.mock('../../lib/api/client.js', () => ({
   analyzeTicker: vi.fn(),
   simulateRisk: vi.fn(),
   getStockBrokerIntelligence: vi.fn(),
-  getFundamentalStatements: vi.fn(),
 }));
 
-import { analyzeTicker, getFundamentalStatements, getStockBrokerIntelligence, simulateRisk } from '../../lib/api/client.js';
+import { analyzeTicker, getStockBrokerIntelligence, simulateRisk } from '../../lib/api/client.js';
 
 describe('Workbench', () => {
   const mockData = {
@@ -93,17 +92,6 @@ describe('Workbench', () => {
       },
       note: 'Risk-reward is balanced',
     },
-    scenarioGeometry: {
-      available: true,
-      framing: 'long_setup',
-      scenario: 'compression_breakout',
-      confirmation: { price: 4550 },
-      trigger: { price: 4550 },
-      invalidation: { price: 4300 },
-      target: { price: 4700 },
-      risk: { stopDistPct: 5.49, targetDistPct: 3.3, rr: 0.6, netRR: 0.52, costPct: 0.3 },
-      labels: { confirmation: 'Close above range resistance' },
-    },
     chart: {
       candles: [
         { date: '2026-07-15', open: 4400, high: 4450, low: 4380, close: 4420, volume: 10000000 },
@@ -156,7 +144,6 @@ describe('Workbench', () => {
 
   beforeEach(() => {
     sessionStorage.clear();
-    getFundamentalStatements.mockResolvedValue({ success: true, data: { items: [], total: 0 } });
     getStockBrokerIntelligence.mockResolvedValue({
       success: true,
       data: {
@@ -204,9 +191,6 @@ describe('Workbench', () => {
     expect(screen.getByText(/Bank Rakyat Indonesia/i)).toBeInTheDocument();
     expect(screen.getByText('Price & volume')).toBeInTheDocument();
     expect(screen.getByText(/Cost drag/i)).toBeInTheDocument();
-    expect(screen.getByText('Close above range resistance')).toBeInTheDocument();
-    expect(screen.getByText('-5.49% from entry')).toHaveClass('text-negative');
-    expect(screen.getByText('+3.30% from entry')).toHaveClass('text-positive');
 
     fireEvent.click(screen.getByRole('tab', { name: /Indicators/i }));
     expect(screen.getByText(/Technical indicators/i)).toBeInTheDocument();

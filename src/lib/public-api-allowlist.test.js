@@ -2,17 +2,6 @@ import { describe, it, expect } from 'vitest';
 import { resolvePublicApiRequest, checkRateLimit } from './public-api-allowlist.js';
 
 describe('public API allowlist', () => {
-  it('allows only POST for the bounded News Detector scan actuator', () => {
-    expect(resolvePublicApiRequest('POST', '/api/news-detector/scan?date=2026-08-15&ignored=x')).toEqual({
-      ok: true,
-      path: '/api/news-detector/scan?date=2026-08-15',
-    });
-    expect(resolvePublicApiRequest('GET', '/api/news-detector/scan?date=2026-08-15').status).toBe(405);
-    expect(resolvePublicApiRequest('GET', '/api/news-detector?date=2026-08-15')).toEqual({
-      ok: true,
-      path: '/api/news-detector?date=2026-08-15',
-    });
-  });
   it('forwards the routes the public product actually uses', () => {
     expect(resolvePublicApiRequest('GET', '/api/analyze?ticker=BBCA')).toEqual({
       ok: true,
@@ -35,15 +24,7 @@ describe('public API allowlist', () => {
       ok: true,
       path: '/api/radar/scout?recipe=quiet_accumulation&brokerSessions=7',
     });
-    expect(resolvePublicApiRequest('GET', '/api/radar/scout/conditions').ok).toBe(true);
     expect(resolvePublicApiRequest('GET', '/api/watchlist').ok).toBe(true);
-    expect(resolvePublicApiRequest('GET', '/api/disclosures?ticker=BBCA').ok).toBe(true);
-    expect(resolvePublicApiRequest('GET', '/api/disclosures/detail?eventId=div-1').ok).toBe(true);
-    expect(resolvePublicApiRequest('GET', '/api/disclosures/timeline?ticker=BBCA').ok).toBe(true);
-    expect(resolvePublicApiRequest('GET', '/api/disclosures/anomalies?severity=high').ok).toBe(true);
-    expect(resolvePublicApiRequest('GET', '/api/disclosures/documents?eventId=div-1').ok).toBe(true);
-    expect(resolvePublicApiRequest('GET', '/api/fundamentals/statements?ticker=BBCA').ok).toBe(true);
-    expect(resolvePublicApiRequest('GET', '/api/collector/health').ok).toBe(true);
   });
 
   it('forwards Scout custom broker dates and lead-broker minimum to upstream', () => {
@@ -59,12 +40,6 @@ describe('public API allowlist', () => {
     expect(sent.get('minLeadBrokerValue')).toBe('500000000');
     expect(sent.get('useLeadBrokerValue')).toBe('true');
     expect(sent.get('limit')).toBe('25');
-  });
-
-  it('preserves the bounded Scout condition payload', () => {
-    const conditions = JSON.stringify([{ id: 'max_price', value: 1000 }]);
-    const result = resolvePublicApiRequest('GET', `/api/radar/scout?conditions=${encodeURIComponent(conditions)}`);
-    expect(new URL(result.path, 'http://internal').searchParams.get('conditions')).toBe(conditions);
   });
 
   it('drops unknown Scout parameters while keeping the route GET/HEAD-only', () => {
@@ -96,9 +71,6 @@ describe('public API allowlist', () => {
       '/api/broker-intelligence/stock?ticker=BBCA&days=1&from=2026-01-01&to=2026-08-07',
       '/api/broker-intelligence/broker?code=ZP&days=30&limit=25',
       '/api/broker-intelligence/broker?code=ZP&days=7&limit=25&date=2026-08-07',
-      '/api/disclosures?ticker=BBCA&from=2026-08-01&to=2026-08-14&category=dividend&severity=high&signal=correction&cursor=0&limit=25',
-      '/api/fundamentals/statements?ticker=BBCA&period=2026-Q1&statementType=income_statement',
-      '/api/collector/health',
       '/api/radar/scout?recipe=dominant_broker&brokerSessions=7&consolidationSessions=10&supportSessions=20&maxPrice=1000&minAverageValue=500000000&limit=10&useBroker=true&useSupport=false&useSideways=false&useMaxPrice=true&useLiquidity=true',
       '/api/radar/scout?recipe=quiet_accumulation&brokerPreset=custom&brokerFrom=2026-01-01&brokerTo=2026-08-01&minLeadBrokerValue=1000000&useLeadBrokerValue=true&limit=50',
     ];
@@ -142,10 +114,8 @@ describe('public API allowlist', () => {
   });
 
   it('drops query parameters that are not part of the route', () => {
-    expect(resolvePublicApiRequest('GET', '/api/analyze?ticker=BBCA&mode=live&debug=1&dbPath=/etc/passwd').path).toBe('/api/analyze?ticker=BBCA&mode=delayed');
-    const disclosure = resolvePublicApiRequest('GET', '/api/disclosures?ticker=BBCA&sql=drop%20table&path=/etc/passwd');
-    expect(disclosure.ok).toBe(true);
-    expect(disclosure.path).toBe('/api/disclosures?ticker=BBCA');
+    const result = resolvePublicApiRequest('GET', '/api/analyze?ticker=BBCA&mode=live&debug=1&dbPath=/etc/passwd');
+    expect(result.path).toBe('/api/analyze?ticker=BBCA&mode=delayed');
   });
 
   it('does not treat a prefix match as the allowlisted route', () => {
@@ -155,36 +125,6 @@ describe('public API allowlist', () => {
 
   it('rejects a malformed target instead of forwarding it', () => {
     expect(resolvePublicApiRequest('GET', '//%').ok).toBe(false);
-  });
-
-  it('forwards v18 Fundamentals routes with allowed params only', () => {
-    expect(resolvePublicApiRequest('GET', '/api/fundamentals/snapshot?ticker=BBCA').ok).toBe(true);
-    expect(resolvePublicApiRequest('GET', '/api/fundamentals/periods?ticker=BBCA').ok).toBe(true);
-    expect(resolvePublicApiRequest('GET', '/api/fundamentals/filing?ticker=BBCA&filingId=BBCA-2024-A-fs').ok).toBe(true);
-    expect(resolvePublicApiRequest('GET', '/api/fundamentals/derived?ticker=BBCA&filingId=BBCA-2024-A-fs').ok).toBe(true);
-    expect(resolvePublicApiRequest('GET', '/api/fundamentals/sources?ticker=BBCA').ok).toBe(true);
-    const factsResult = resolvePublicApiRequest(
-      'GET',
-      '/api/fundamentals/facts?ticker=BBCA&filingId=BBCA-2024-A-fs&statementType=income_statement&periodLabel=FY2024&cursor=0&limit=50',
-    );
-    expect(factsResult.ok).toBe(true);
-    const params = new URL(factsResult.path, 'http://internal').searchParams;
-    expect(params.get('ticker')).toBe('BBCA');
-    expect(params.get('filingId')).toBe('BBCA-2024-A-fs');
-    expect(params.get('statementType')).toBe('income_statement');
-    expect(params.get('periodLabel')).toBe('FY2024');
-  });
-
-  it('drops filesystem paths and SQL from v18 fundamentals params', () => {
-    const snapshot = resolvePublicApiRequest(
-      'GET',
-      '/api/fundamentals/snapshot?ticker=BBCA&dbPath=/etc/passwd&sql=drop',
-    );
-    expect(snapshot.ok).toBe(true);
-    const params = new URL(snapshot.path, 'http://internal').searchParams;
-    expect(params.get('dbPath')).toBeNull();
-    expect(params.get('sql')).toBeNull();
-    expect(params.get('ticker')).toBe('BBCA');
   });
 });
 
