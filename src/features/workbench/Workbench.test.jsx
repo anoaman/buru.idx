@@ -205,7 +205,7 @@ describe('Workbench', () => {
     expect(screen.getByText('Price & volume')).toBeInTheDocument();
     expect(screen.getByText(/Cost drag/i)).toBeInTheDocument();
     expect(screen.getByText('Close above range resistance')).toBeInTheDocument();
-    expect(screen.getByText('-5.49% from entry')).toHaveClass('text-negative');
+    expect(screen.getByText('-4.44% from current price')).toHaveClass('text-negative');
     expect(screen.getByText('+3.30% from entry')).toHaveClass('text-positive');
 
     fireEvent.click(screen.getByRole('tab', { name: /Indicators/i }));

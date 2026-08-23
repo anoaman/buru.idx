@@ -83,7 +83,7 @@ describe('public Stock Analysis contracts', () => {
     });
 
     expect(geometry.bestSetup.entry).toBe(100);
-    expect(geometry.downsidePct).toBe(-5);
+    expect(geometry.downsidePct).toBeCloseTo(-20.83, 2);
     expect(geometry.upsidePct).toBe(20);
   });
 
