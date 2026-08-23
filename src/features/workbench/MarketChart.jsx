@@ -158,7 +158,8 @@ export default function MarketChart({ chart, geometry, ticker }) {
     }
     const best = geometry?.bestSetup;
     const tradeLines = [
-      [best?.stop, colors.stop, 'SETUP FAILS BELOW'], [best?.target, colors.target, `TARGET · R:R ${(best?.netRR ?? best?.rr)?.toFixed(2) || '—'}`],
+      [best?.stop ?? geometry?.invalidation, colors.stop, 'SETUP FAILS BELOW'],
+      [best?.target ?? geometry?.target, colors.target, `TARGET · R:R ${(best?.netRR ?? best?.rr)?.toFixed(2) || '—'}`],
     ];
     tradeLines.forEach(([price, color, title]) => addOverlayLine(price, { color, lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title }));
 
@@ -211,8 +212,8 @@ export default function MarketChart({ chart, geometry, ticker }) {
         </div>
         <div className="wb-market-chart__setup">
           <span>Confirmation entry <strong className="tabular">{formatPrice(geometry?.bestSetup?.entry)}</strong></span>
-          <span>Setup fails below <strong className="tabular text-negative">{formatPrice(geometry?.bestSetup?.stop)}</strong></span>
-          <span>Target <strong className="tabular">{formatPrice(geometry?.bestSetup?.target)}</strong></span>
+          <span>Setup fails below <strong className="tabular text-negative">{formatPrice(geometry?.bestSetup?.stop ?? geometry?.invalidation)}</strong></span>
+          <span>Target <strong className="tabular">{(geometry?.bestSetup?.target ?? geometry?.target) != null ? formatPrice(geometry?.bestSetup?.target ?? geometry?.target) : 'No confirmed target'}</strong></span>
           <span>Reward / risk <strong className="tabular">{(geometry?.bestSetup?.netRR ?? geometry?.bestSetup?.rr)?.toFixed(2) || '—'}</strong></span>
         </div>
       </footer>

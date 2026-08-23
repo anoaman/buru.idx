@@ -2,6 +2,12 @@ function setupFinite(value) {
   return Number.isFinite(value) ? value : null;
 }
 
+function negativeDistanceFromCurrent(currentPrice, levelPrice) {
+  const current = setupFinite(currentPrice);
+  const level = setupFinite(levelPrice);
+  return current > 0 && level != null ? -Math.abs(((current - level) / current) * 100) : null;
+}
+
 export function normalizeSetupGeometry(data) {
   const legacy = data?.riskGeometry || {};
   const legacyBest = legacy.bestSetup || null;
@@ -12,7 +18,7 @@ export function normalizeSetupGeometry(data) {
     return {
       nearestSupport: setupFinite(legacy.nearestSupport),
       nearestResistance: setupFinite(legacy.nearestResistance),
-      downsidePct: null,
+      downsidePct: negativeDistanceFromCurrent(data?.ticker?.close, scenario.invalidation?.price),
       upsidePct: null,
       rewardRisk: null,
       netRewardRisk: null,
@@ -28,7 +34,7 @@ export function normalizeSetupGeometry(data) {
     const target = setupFinite(legacyBest?.target) ?? setupFinite(legacy.nearestResistance);
     return {
       ...legacy,
-      downsidePct: legacy.downsidePct == null ? null : -Math.abs(legacy.downsidePct),
+      downsidePct: negativeDistanceFromCurrent(data?.ticker?.close, legacyBest?.stop ?? legacy.nearestSupport),
       upsidePct: entry > 0 && target != null ? ((target - entry) / entry) * 100 : null,
       confirmationLabel: 'Current structure reference',
       bestSetup: legacyBest ? { ...legacyBest, entry } : null,
@@ -41,7 +47,7 @@ export function normalizeSetupGeometry(data) {
   return {
     nearestSupport: setupFinite(legacy.nearestSupport),
     nearestResistance: setupFinite(legacy.nearestResistance),
-    downsidePct: scenario.risk?.stopDistPct == null ? null : -Math.abs(scenario.risk.stopDistPct),
+    downsidePct: negativeDistanceFromCurrent(data?.ticker?.close, stop),
     upsidePct: setupFinite(scenario.risk?.targetDistPct),
     rewardRisk: setupFinite(scenario.risk?.rr),
     netRewardRisk: setupFinite(scenario.risk?.netRR),
