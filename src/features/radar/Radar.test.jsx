@@ -297,8 +297,7 @@ describe('Radar', () => {
     renderRadar();
     fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
     await selectQuietTemplate();
-    const advanced = document.querySelector('.scout-advanced');
-    expect(advanced).not.toHaveAttribute('open');
+    expect(document.querySelector('.scout-advanced')).not.toBeInTheDocument();
     const addCondition = document.querySelector('.scout-add-condition');
     fireEvent.click(addCondition.querySelector('summary'));
     fireEvent.click(screen.getByRole('button', { name: /Exclude FCA/ }));
@@ -318,7 +317,6 @@ describe('Radar', () => {
     renderRadar();
     fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
     await selectQuietTemplate();
-    fireEvent.click(document.querySelector('.scout-advanced summary'));
     fireEvent.change(screen.getByLabelText('Broker window'), { target: { value: 'custom' } });
     fireEvent.change(screen.getByLabelText('From'), { target: { value: '2026-07-01' } });
     fireEvent.change(screen.getByLabelText('To'), { target: { value: '2026-07-31' } });
@@ -340,7 +338,6 @@ describe('Radar', () => {
     renderRadar();
     fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
     await selectQuietTemplate();
-    fireEvent.click(document.querySelector('.scout-advanced summary'));
     fireEvent.change(screen.getByLabelText('Broker window'), { target: { value: '14d' } });
     fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 

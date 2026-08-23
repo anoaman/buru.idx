@@ -96,17 +96,6 @@ function EvidenceSummary({ grade, stance, scorecard, dataQuality }) {
   );
 }
 
-function CompactGrade({ grade, stance }) {
-  return (
-    <div className="wb-evidence-summary" aria-label="Score summary">
-      <div><span>Grade</span><strong>{grade?.grade || '—'}</strong></div>
-      <div><span>Regime</span><strong>{grade?.regime || 'Unknown'}</strong></div>
-      <div><span>Pattern</span><strong>{grade?.structurePhase || 'Unknown'}</strong></div>
-      <div><span>Bias</span><strong>{stance?.stance ? stance.stance.replace('_', ' ').toLowerCase() : 'neutral'}</strong></div>
-    </div>
-  );
-}
-
 function WhatChangedPanel({ data }) {
   const contradictions = data?.investigation?.contradictions || [];
   return (
@@ -201,35 +190,14 @@ export default function Workbench() {
     const data = displayed.data;
     if (!data) return null;
     switch (active) {
-      case 'levels':
-        return <LevelsPanel data={data} />;
+      case 'setup':
+        return <><LevelsPanel data={data} /><WhatChangedPanel data={data} /></>;
       case 'indicators':
-        return (
-          <>
-            <CompactGrade grade={data.grade} stance={data.stance} />
-            <TechnicalEvidence
-              priceHistory={data.priceHistory}
-              ticker={data.ticker}
-              supportResistance={data.supportResistance}
-              riskGeometry={data.riskGeometry}
-            />
-          </>
-        );
+        return <TechnicalEvidence priceHistory={data.priceHistory} ticker={data.ticker} />;
       case 'broker':
         return <BrokerEvidence broker={data.broker} />;
-      case 'changed':
-        return <WhatChangedPanel data={data} />;
       case 'risk':
         return <RiskSimulator ticker={data.ticker} geometry={data.riskGeometry} />;
-      case 'methodology':
-        return (
-          <EvidenceSummary
-            grade={data.grade}
-            stance={data.stance}
-            scorecard={data.scorecard}
-            dataQuality={data.dataQuality}
-          />
-        );
       default:
         return null;
     }
@@ -270,6 +238,15 @@ export default function Workbench() {
             >
               {renderDrawer}
             </DetailDrawer>
+            <details className="wb-methodology">
+              <summary>Methodology & data quality</summary>
+              <EvidenceSummary
+                grade={displayed.data.grade}
+                stance={displayed.data.stance}
+                scorecard={displayed.data.scorecard}
+                dataQuality={displayed.data.dataQuality}
+              />
+            </details>
           </div>
         </div>
       )}

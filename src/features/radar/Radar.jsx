@@ -29,15 +29,6 @@ const BROKER_PRESET_SESSIONS = Object.freeze({
   '14d': 14,
   '1m': 22,
 });
-const SAVED_SCREENS_KEY = 'nalar-saved-screens-v1';
-
-function readSavedScreens() {
-  try {
-    const value = JSON.parse(localStorage.getItem(SAVED_SCREENS_KEY) || '[]');
-    return Array.isArray(value) ? value.filter((item) => item?.id && item?.name && item?.filters) : [];
-  } catch { return []; }
-}
-
 function scoutRequestPayload(filters) {
   const payload = { ...filters };
   if (filters.brokerPreset === 'custom') {
@@ -432,8 +423,6 @@ function Scout({ onInvestigate, onActors }) {
     }
     return next;
   });
-  const [savedScreens, setSavedScreens] = useState(readSavedScreens);
-  const [saveName, setSaveName] = useState('');
   const [catalog, setCatalog] = useState({ loading: true, error: null, conditions: [], templates: {} });
   const [conditionSearch, setConditionSearch] = useState('');
   const [state, setState] = useState({ loading: false, error: null, data: null });
@@ -464,14 +453,6 @@ function Scout({ onInvestigate, onActors }) {
     const params = new URLSearchParams();
     for (const [key, value] of Object.entries(nextFilters)) if (value !== '' && value !== false) params.set(key, Array.isArray(value) ? JSON.stringify(value) : String(value));
     setSearchParams(params, { replace: true });
-  };
-  const saveScreen = () => {
-    const name = saveName.trim();
-    if (!name) return;
-    const next = [...savedScreens.filter((item) => item.name !== name), { id: `${Date.now()}`, name, filters }];
-    localStorage.setItem(SAVED_SCREENS_KEY, JSON.stringify(next));
-    setSavedScreens(next);
-    setSaveName('');
   };
   const selectRecipe = (recipeId) => {
     setFilters((current) => ({ ...current, recipe: recipeId, conditions: (catalog.templates[recipeId] || []).map((item) => ({ ...item })) }));
@@ -506,8 +487,16 @@ function Scout({ onInvestigate, onActors }) {
             <div><span className="scout-eyebrow">Deterministic screener</span><h2>Build a trade shortlist</h2></div>
             <label className="scout-template">Start from template<select aria-label="Start from template" value={filters.recipe} onChange={(event) => selectRecipe(event.target.value)}><option value="">Custom conditions</option>{RECIPES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
           </div>
-          <section className="scout-builder" aria-label="Active screening conditions">
-            <header><div><h3>Active conditions</h3><span>{filters.conditions.length} enabled · all must pass</span></div></header>
+          <section className="scout-builder" aria-label="Screener filters">
+            <header><div><h3>Filters</h3><span>Set the evidence window, then enable only the boundaries you need</span></div></header>
+            <div className="scout-execution-settings" aria-label="Date and evidence windows">
+              <label>Broker window<select value={filters.brokerPreset} onChange={(event) => setFilters((current) => ({ ...current, brokerPreset: event.target.value }))}>{BROKER_RANGES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+              {filters.brokerPreset === 'custom' && <><label>From<input type="date" value={filters.brokerFrom} onChange={(event) => setFilters((current) => ({ ...current, brokerFrom: event.target.value }))} /></label><label>To<input type="date" value={filters.brokerTo} onChange={(event) => setFilters((current) => ({ ...current, brokerTo: event.target.value }))} /></label></>}
+              <label>Support window<input type="number" min="5" max="120" value={filters.supportSessions} onChange={update('supportSessions')} /></label>
+              <label>Range window<input type="number" min="5" max="60" value={filters.consolidationSessions} onChange={update('consolidationSessions')} /></label>
+              <label>As-of date<input type="date" value={filters.asOf} onChange={(event) => setFilters((current) => ({ ...current, asOf: event.target.value }))} /></label>
+            </div>
+            <div className="scout-builder__status"><strong>{filters.conditions.length} active filters</strong><span>All active filters must pass</span></div>
             {catalog.loading && <Skeleton label="Loading condition catalog…" />}
             {catalog.error && <p className="is-degraded">{catalog.error}</p>}
             {!catalog.loading && filters.conditions.length === 0 && <p className="scout-builder__empty">Choose a template or add conditions to define the shortlist.</p>}
@@ -515,25 +504,14 @@ function Scout({ onInvestigate, onActors }) {
               {filters.conditions.map((condition) => {
                 const definition = definitions.get(condition.id);
                 if (!definition) return null;
-                return <div className="scout-condition-row" key={condition.id}><div><span>{definition.category}</span><strong>{definition.label}</strong></div><label><span className="sr-only">{definition.label}</span>{definition.type === 'boolean' ? <select value={String(condition.value)} onChange={(event) => updateCondition(condition.id, event.target.value === 'true')}><option value="true">Required</option><option value="false">Must be false</option></select> : definition.type === 'select' ? <select value={condition.value} onChange={(event) => updateCondition(condition.id, event.target.value)}>{definition.options.map((option) => <option key={option}>{option}</option>)}</select> : <span className="scout-condition-row__value"><input aria-label={definition.label} type="number" min={definition.min} max={definition.max} step={definition.step || 1} value={condition.value} onChange={(event) => updateCondition(condition.id, Number(event.target.value))} />{definition.unit && <small>{definition.unit}</small>}</span>}</label><button type="button" className="ui-btn ui-btn--ghost" aria-label={`Remove ${definition.label}`} onClick={() => removeCondition(condition.id)}>Remove</button></div>;
+                return <div className="scout-condition-row" key={condition.id}><div><span>{definition.category}</span><strong>{definition.label} {definition.description && <button type="button" className="scout-help" aria-label={`About ${definition.label}`} title={definition.description}>?</button>}</strong></div><label><span className="sr-only">{definition.label}</span>{definition.type === 'boolean' ? <select value={String(condition.value)} onChange={(event) => updateCondition(condition.id, event.target.value === 'true')}><option value="true">Required</option><option value="false">Must be false</option></select> : definition.type === 'select' ? <select value={condition.value} onChange={(event) => updateCondition(condition.id, event.target.value)}>{definition.options.map((option) => <option key={option}>{option}</option>)}</select> : <span className="scout-condition-row__value"><input aria-label={definition.label} type="number" min={definition.min} max={definition.max} step={definition.step || 1} value={condition.value} onChange={(event) => updateCondition(condition.id, Number(event.target.value))} />{definition.unit && <small>{definition.unit}</small>}</span>}</label><button type="button" className="ui-btn ui-btn--ghost" aria-label={`Remove ${definition.label}`} onClick={() => removeCondition(condition.id)}>Remove</button></div>;
               })}
             </div>
             <details className="scout-add-condition">
               <summary>+ Add condition</summary>
-              <div className="scout-add-condition__panel"><input aria-label="Search conditions" value={conditionSearch} onChange={(event) => setConditionSearch(event.target.value)} placeholder="Search price, broker, foreign…" /><div>{availableConditions.map((definition) => <button type="button" key={definition.id} onClick={() => addCondition(definition)}><span>{definition.category}</span><strong>{definition.label}</strong></button>)}</div></div>
+              <div className="scout-add-condition__panel"><input aria-label="Search conditions" value={conditionSearch} onChange={(event) => setConditionSearch(event.target.value)} placeholder="Search price, broker, foreign…" /><div>{availableConditions.map((definition) => <button type="button" key={definition.id} onClick={() => addCondition(definition)} title={definition.description}><span>{definition.category}</span><strong>{definition.label}</strong><small>{definition.description}</small></button>)}</div></div>
             </details>
           </section>
-          <details className="scout-advanced">
-            <summary><span><strong>Window, date and saved screens</strong><small>Change evidence periods only when the strategy requires it</small></span><span aria-hidden="true">+</span></summary>
-            <div className="scout-execution-settings">
-              <label>Broker window<select value={filters.brokerPreset} onChange={(event) => setFilters((current) => ({ ...current, brokerPreset: event.target.value }))}>{BROKER_RANGES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-              {filters.brokerPreset === 'custom' && <><label>From<input type="date" value={filters.brokerFrom} onChange={(event) => setFilters((current) => ({ ...current, brokerFrom: event.target.value }))} /></label><label>To<input type="date" value={filters.brokerTo} onChange={(event) => setFilters((current) => ({ ...current, brokerTo: event.target.value }))} /></label></>}
-              <label>Support window<input type="number" min="5" max="120" value={filters.supportSessions} onChange={update('supportSessions')} /></label>
-              <label>Range window<input type="number" min="5" max="60" value={filters.consolidationSessions} onChange={update('consolidationSessions')} /></label>
-              <label>As-of date<input type="date" value={filters.asOf} onChange={(event) => setFilters((current) => ({ ...current, asOf: event.target.value }))} /></label>
-            </div>
-            <div className="scout-saved"><label>Saved screen<select aria-label="Saved screens" defaultValue="" onChange={(event) => { const saved = savedScreens.find((item) => item.id === event.target.value); if (saved) setFilters({ ...DEFAULT_SCOUT_FILTERS, ...saved.filters }); }}><option value="">Load saved</option>{savedScreens.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label>Save as<input aria-label="Save current screen as" value={saveName} onChange={(event) => setSaveName(event.target.value)} placeholder="Morning breakout" /></label><button type="button" className="ui-btn ui-btn--ghost" onClick={saveScreen} disabled={!saveName.trim()}>Save</button></div>
-          </details>
           <div className="scout-controls__footer">
             <div className="scout-run-context"><div><strong>{recipe?.label || 'Custom screen'}</strong><small>No AI · end-of-day data · every active condition must pass</small></div></div>
             <div className="scout-controls__actions">

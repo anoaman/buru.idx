@@ -199,6 +199,10 @@ function normalizeBrokerStockRow(row) {
     consistency: normalizeConsistency(row.consistency),
     estimatedInventoryLots: preserveFiniteOrZero(row.estimatedInventoryLots),
     estimatedAverageCost: preserveFiniteOrNull(row.estimatedAverageCost),
+    currentPrice: preserveFiniteOrNull(row.currentPrice),
+    averageTradedValue: preserveFiniteOrNull(row.averageTradedValue),
+    foreignNetValue: preserveFiniteOrNull(row.foreignNetValue),
+    isFca: Boolean(row.isFca),
     curve: normalizeCurve(row.curve),
   };
 }
@@ -541,6 +545,7 @@ export function guardRadarScoutConditions(raw) {
   const conditions = data.conditions.filter((item) => item?.id && item?.label && item?.category && ['number', 'boolean', 'select'].includes(item.type)).map((item) => ({
     id: String(item.id), label: String(item.label), category: String(item.category), type: item.type,
     comparison: item.comparison || 'equals', unit: item.unit || null,
+    description: item.description ? String(item.description) : '',
     defaultValue: item.defaultValue, min: item.min, max: item.max, step: item.step,
     options: Array.isArray(item.options) ? item.options.map(String) : [],
   }));

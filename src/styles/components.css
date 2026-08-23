@@ -2133,11 +2133,13 @@
 .scout-builder > header { display: flex; justify-content: space-between; margin-bottom: var(--space-3); }
 .scout-builder > header h3 { margin: 0 0 3px; font-size: var(--type-control); }
 .scout-builder > header span, .scout-builder__empty { color: var(--text-tertiary); font-size: var(--type-meta); }
+.scout-builder__status { display: flex; justify-content: space-between; gap: 8px; margin: 4px 0 10px; padding-top: 10px; border-top: 1px solid var(--border-subtle); color: var(--text-secondary); font-size: var(--type-meta); }
 .scout-condition-list { display: grid; gap: 7px; }
 .scout-condition-row { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(130px, 190px) auto; align-items: center; gap: var(--space-3); padding: 9px 10px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); background: var(--bg-surface); }
 .scout-condition-row > div { display: grid; gap: 2px; }
 .scout-condition-row > div span { color: var(--text-tertiary); font-size: var(--type-meta); }
 .scout-condition-row > div strong { color: var(--text-primary); font-size: var(--type-control); }
+.scout-controls .scout-help { display: inline-grid; place-items: center; width: 18px; height: 18px; margin-left: 4px; padding: 0; border: 1px solid var(--border-strong); border-radius: 50%; color: var(--text-secondary); font-size: 11px; line-height: 1; vertical-align: middle; }
 .scout-condition-row__value { display: flex; align-items: center; gap: 6px; }
 .scout-condition-row__value input { width: 100%; }
 .scout-condition-row__value small { color: var(--text-tertiary); white-space: nowrap; }
@@ -2149,7 +2151,8 @@
 .scout-add-condition__panel > div { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; max-height: 260px; overflow-y: auto; }
 .scout-controls .scout-add-condition__panel button { display: grid; gap: 3px; padding: 9px; border-color: var(--border-subtle); background: var(--bg-surface); color: var(--text-primary); text-align: left; }
 .scout-add-condition__panel button span { color: var(--text-tertiary); font-size: var(--type-meta); font-weight: 400; }
-.scout-execution-settings { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 0 var(--space-4) var(--space-3); }
+.scout-add-condition__panel button small { color: var(--text-tertiary); font-size: 11px; font-weight: 400; line-height: 1.35; }
+.scout-execution-settings { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 0 0 var(--space-3); }
 .scout-execution-settings label { display: grid; gap: 4px; }
 .scout-controls button { border: 1px solid var(--color-accent); background: transparent; color: var(--color-accent); padding: 9px 14px; border-radius: var(--radius-sm); cursor: pointer; }
 .scout-controls button:disabled { opacity: .55; cursor: wait; }
@@ -2163,6 +2166,15 @@
 .scout-toolbar h2 { margin: 3px 0 0; font-size: var(--type-title); }
 .scout-eyebrow { color: var(--color-accent); font-size: var(--type-meta); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .scout-saved { display: grid; grid-template-columns: minmax(130px, 1fr) minmax(150px, 1fr) auto; gap: 8px; align-items: end; }
+.bi-market-filters { display: grid; grid-template-columns: repeat(3, minmax(150px, 1fr)); gap: 10px; margin-bottom: var(--space-4); padding: var(--space-4); border: 1px solid var(--border-default); border-radius: var(--radius-md); background: var(--bg-elevated); }
+.bi-market-filters__heading { grid-column: 1 / -1; display: grid; gap: 3px; }
+.bi-market-filters__heading span { color: var(--text-tertiary); font-size: var(--type-meta); }
+.bi-market-filters label { display: grid; gap: 5px; color: var(--text-secondary); font-size: var(--type-caption); font-weight: 600; }
+.bi-market-filters input:not([type="checkbox"]), .bi-market-filters select { min-width: 0; padding: 8px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); background: var(--bg-base); color: var(--text-primary); }
+.bi-market-filters .bi-market-filters__check { display: flex; align-items: center; gap: 8px; }
+.wb-methodology { margin-top: var(--space-3); border-top: 1px solid var(--border-subtle); color: var(--text-secondary); }
+.wb-methodology > summary { padding: var(--space-3) 0; cursor: pointer; font-size: var(--type-caption); font-weight: 700; }
+@media (max-width: 720px) { .bi-market-filters { grid-template-columns: 1fr; } }
 .scout-saved label { display: grid; gap: 4px; }
 .scout-advanced { border-top: 1px solid var(--border-default); }
 .scout-advanced summary { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: 12px var(--space-4); cursor: pointer; list-style: none; }

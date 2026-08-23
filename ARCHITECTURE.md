@@ -10,11 +10,9 @@ case tracking from the retiring cockpit without duplicating backend engines.
 
 - `src/features/workbench/` owns ticker analysis presentation and chart views.
   Layout order is market overview, full-width market chart, then a docked
-  accessible `DetailDrawer` with tabs: Levels · Indicators · Broker Flow ·
-  What Changed · Risk Simulator · Methodology · Fundamentals. Fundamentals
-  mounts only when selected and renders parsed statement periods, facts,
-  parser status, confidence, and evidence. It does not compute ratios or
-  inferred values. The chart uses TradingView
+  accessible `DetailDrawer` with tabs: Setup · Indicators · Broker Flow ·
+  Risk Simulator. Setup owns levels and meaningful changes; Methodology is a
+  compact disclosure below the drawer. The chart uses TradingView
   Lightweight Charts so first-party levels remain auditable. Nothing on the
   page may be labelled from a stale request: cold loads use skeletons; warm
   ticker switches keep the previous completed frame (still labelled with its
@@ -24,15 +22,14 @@ case tracking from the retiring cockpit without duplicating backend engines.
   a prior good frame.
 - `src/features/workbench/DetailDrawer.jsx` owns tablist/tab/tabpanel
   semantics and keyboard Left/Right/Home/End navigation. Network-triggering
-  panels (BrokerEvidence, FundamentalsPanel) mount only when their tab is
-  selected.
+  panels such as BrokerEvidence mount only when their tab is selected.
 - `src/features/keterbukaan/` owns the legacy Keterbukaan Informasi passive
   feed, filters, event/signal cards, anomaly indicators, correction timeline,
   evidence, official IDX links, and Collector freshness. `/keterbukaan` will
   temporarily redirect to `/news-detector` once News Detector reaches parity;
   the Keterbukaan feature is removed only after that redirect is verified.
   Story Intelligence remains a backend engine and has no user-facing tab.
-- `src/features/fundamentals/` owns the standalone Fundamentals product.
+- `src/features/fundamentals/` retains the parked standalone Fundamentals product.
   Sections: snapshot, key numbers, trends, profitability, health, cash
   quality, per-share, full statements, learning explanations, and sources.
   Every derived metric exposes its formula, input facts, evidence page/quote,
@@ -40,16 +37,19 @@ case tracking from the retiring cockpit without duplicating backend engines.
   denominator. Bank-specific metrics activate only when company_type is
   `bank`. The feature never invents figures: all values must trace to a
   `fundamental_facts` row with confidence ≥ threshold and a linked
-  `official_source_url`. The Workbench Fundamentals tab remains until the
-  standalone route is verified at parity.
-- `src/features/news-detector/` owns the News Detector product: selected-date
+  `official_source_url`. Its navigation is hidden and route redirects to Stock
+  Analysis until coverage and freshness are reliable enough for daily use.
+- `src/features/news-detector/` retains the parked News Detector product: selected-date
   EOD scan trigger, scan progress, ranked material digest, signal score
   breakdown, suppressed-count summary with reasons, evidence drawer, and
   `All Disclosures` view. Users select a date and trigger an on-demand scan;
   the backend runs metadata-first suppression then bounded deep-parse for
   candidates. The feature renders results from `news_detector_scan_runs` and
-  `news_detector_scan_items` and never contacts the IDX API directly.
-- `src/features/broker-intelligence/` owns stock/broker lenses, the merged
+  `news_detector_scan_items` and never contacts the IDX API directly. Its
+  navigation is hidden and route redirects to Stock Analysis while parked.
+- `src/features/broker-intelligence/` owns stock/broker lenses, bounded
+  across-market filters for price, liquidity, broker net value, foreign flow,
+  and FCA status, the merged
   signed ranking table (frontend display merge of accumulation + distribution
   arrays only), and inventory curve presentation.
 - `src/lib/api/client.js` is the only first-party network boundary and prefixes
@@ -87,14 +87,13 @@ case tracking from the retiring cockpit without duplicating backend engines.
   qualification and ranking; React only submits bounded filters and renders the returned evidence,
   component score breakdown, evidence band, and separately labelled near misses.
   Recipe parameters, FCA exclusion and IHSG-relative-strength filters are sent
-  unchanged to the backend; React never evaluates their formulas. Saved screen
-  definitions are local browser preferences, while qualification history and
+  unchanged to the backend; React never evaluates their formulas. The saved-screen
+  UI is parked and existing local browser data is left untouched. Qualification history and
   New/Still/Dropped daily diffs come only from the backend response. Query state
   is permalinkable and may pin the displayed as-of date.
-- Trader-facing labels use Screener / Stock Analysis / Broker Flow /
-  Fundamentals / News Detector / Glossary. Internal route names remain stable.
-  The subnav order is fixed: Screener → Stock Analysis → Broker Flow →
-  Fundamentals → News Detector → Glossary. The
+- Trader-facing labels use Screener / Stock Analysis / Broker Flow / Glossary.
+  Parked route names remain stable as redirects. The subnav order is fixed:
+  Screener → Stock Analysis → Broker Flow → Glossary. The
   global ticker selection is shared by Stock Analysis and Broker Flow; Screener
   handoffs open in new tabs so the originating result set is preserved.
 - Broker Flow and Custom Screener expose named and custom calendar ranges while

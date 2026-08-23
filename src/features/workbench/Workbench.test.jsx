@@ -206,13 +206,12 @@ describe('Workbench', () => {
     fireEvent.click(screen.getByRole('tab', { name: /^Broker Flow$/i }));
     expect(await screen.findByRole('heading', { name: /^Broker Flow$/i })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('tab', { name: /Methodology/i }));
     expect(screen.getAllByText('Regime').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Pattern').length).toBeGreaterThan(0);
     expect(screen.getAllByText('B+').length).toBeGreaterThan(0);
     expect(screen.queryByText('Data')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('tab', { name: /What Changed/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /Setup/i }));
     expect(screen.getByText(/What supports or challenges the setup/i)).toBeInTheDocument();
   });
 
@@ -226,12 +225,11 @@ describe('Workbench', () => {
 
     expect(await screen.findByText('Price & volume')).toBeInTheDocument();
     const tablist = screen.getByRole('tablist', { name: /Analysis detail sections/i });
-    expect(within(tablist).getByRole('tab', { name: /^Levels$/i })).toBeInTheDocument();
+    expect(within(tablist).getByRole('tab', { name: /^Setup$/i })).toBeInTheDocument();
     expect(within(tablist).getByRole('tab', { name: /^Indicators$/i })).toBeInTheDocument();
     expect(within(tablist).getByRole('tab', { name: /^Broker Flow$/i })).toBeInTheDocument();
-    expect(within(tablist).getByRole('tab', { name: /^What Changed$/i })).toBeInTheDocument();
     expect(within(tablist).getByRole('tab', { name: /^Risk Simulator$/i })).toBeInTheDocument();
-    expect(within(tablist).getByRole('tab', { name: /^Methodology$/i })).toBeInTheDocument();
+    expect(within(tablist).queryByRole('tab', { name: /^Methodology$/i })).not.toBeInTheDocument();
   });
 
   it('shows cost drag on the Levels tab', async () => {
@@ -243,7 +241,7 @@ describe('Workbench', () => {
     );
 
     expect(await screen.findByText(/Cost drag/i)).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /^Levels$/i })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: /^Setup$/i })).toHaveAttribute('aria-selected', 'true');
   });
 
   it('uses one TradingView-powered NALAR market chart', async () => {

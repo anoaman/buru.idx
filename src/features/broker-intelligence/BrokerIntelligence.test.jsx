@@ -309,7 +309,7 @@ describe('BrokerIntelligence', () => {
   it('restores ticker, code, and days from URL', async () => {
     renderAt('/broker-intelligence?lens=broker&code=yp&days=14');
     await waitFor(() => {
-      expect(getBrokerStockIntelligence).toHaveBeenCalledWith({ code: 'YP', days: 14, limit: 25 });
+      expect(getBrokerStockIntelligence).toHaveBeenCalledWith({ code: 'YP', days: 14, limit: 50, filters: expect.any(Object) });
     });
     expect(screen.getByRole('button', { name: /^14D$/i })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByDisplayValue('YP')).toBeInTheDocument();

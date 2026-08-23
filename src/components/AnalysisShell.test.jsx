@@ -55,8 +55,8 @@ describe('AnalysisShell', () => {
     expect(screen.getByRole('link', { name: /Screener/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Stock Analysis/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Broker Flow/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Fundamentals/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /News Detector/i })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Fundamentals/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /News Detector/i })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Glossary/i })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /Watchlist/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /Story Intelligence/i })).not.toBeInTheDocument();

@@ -45,7 +45,7 @@ const PUBLIC_ROUTES = new Map([
   ['/api/watchlist', { params: [] }],
   ['/api/broker-intelligence/health', { params: [] }],
   ['/api/broker-intelligence/stock', { params: ['ticker', 'days', 'date', 'preset', 'from', 'to'] }],
-  ['/api/broker-intelligence/broker', { params: ['code', 'days', 'limit', 'date', 'preset', 'from', 'to'] }],
+  ['/api/broker-intelligence/broker', { params: ['code', 'days', 'limit', 'date', 'preset', 'from', 'to', 'maxPrice', 'minAverageValue', 'minBrokerNetValue', 'foreignDirection', 'minForeignValue', 'excludeFca'] }],
   ['/api/disclosures', { params: ['ticker', 'from', 'to', 'category', 'severity', 'signal', 'cursor', 'limit'] }],
   ['/api/disclosures/detail', { params: ['eventId'] }],
   ['/api/disclosures/timeline', { params: ['ticker', 'from', 'to', 'limit'] }],

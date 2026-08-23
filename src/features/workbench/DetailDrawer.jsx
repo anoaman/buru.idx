@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 
 const DEFAULT_TABS = [
-  { id: 'levels', label: 'Levels' },
+  { id: 'setup', label: 'Setup' },
   { id: 'indicators', label: 'Indicators' },
   { id: 'broker', label: 'Broker Flow' },
-  { id: 'changed', label: 'What Changed' },
   { id: 'risk', label: 'Risk Simulator' },
-  { id: 'methodology', label: 'Methodology' },
 ];
 
 function readStoredTab(storageKey, tabItems) {
@@ -38,13 +36,13 @@ export default function DetailDrawer({
   const tabRefs = useRef({});
   const hydratedKeyRef = useRef(undefined);
   const [active, setActive] = useState(
-    () => readStoredTab(storageKey, tabItems) || tabItems[0]?.id || 'levels',
+    () => readStoredTab(storageKey, tabItems) || tabItems[0]?.id || 'setup',
   );
 
   useEffect(() => {
     if (hydratedKeyRef.current === storageKey) return;
     hydratedKeyRef.current = storageKey;
-    const next = readStoredTab(storageKey, tabItems) || tabItems[0]?.id || 'levels';
+    const next = readStoredTab(storageKey, tabItems) || tabItems[0]?.id || 'setup';
     setActive(next);
   }, [storageKey, tabItems]);
 

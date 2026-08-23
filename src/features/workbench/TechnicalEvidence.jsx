@@ -1,11 +1,9 @@
-import {
-  formatPrice, formatPct, formatNumber, formatVolume,
-} from '../../lib/format/market.js';
+import { formatPrice, formatPct, formatVolume } from '../../lib/format/market.js';
 
 /**
  * TechnicalEvidence — returns, RSI, ATR, MA posture, and volume evidence.
  *
- * Reads from the existing analysis contract (priceHistory, ticker, supportResistance).
+ * Reads from the existing analysis contract (priceHistory and ticker).
  * No analysis logic is duplicated — this is a read-only presentation of
  * server-computed values.
  *
@@ -13,7 +11,7 @@ import {
  * @param {object} props.priceHistory - The priceHistory block from analyze.
  * @param {object} props.ticker - The ticker block (for volume vs baseline).
  */
-export default function TechnicalEvidence({ priceHistory, ticker, supportResistance, riskGeometry }) {
+export default function TechnicalEvidence({ priceHistory, ticker }) {
   if (!priceHistory || priceHistory.note) {
     return (
       <div className="wb-tech-evidence">
@@ -26,7 +24,6 @@ export default function TechnicalEvidence({ priceHistory, ticker, supportResista
   const ma = priceHistory.movingAverages || {};
   const maPosture = ma.stack || 'unavailable';
   const volBaseline = ticker?.volumeVsBaseline;
-  const best = riskGeometry?.bestSetup;
 
   const returns = [
     { label: '5-day', value: priceHistory.ret5d },
@@ -121,24 +118,6 @@ export default function TechnicalEvidence({ priceHistory, ticker, supportResista
           </div>
         </div>
 
-        <div className="wb-tech-evidence__section">
-          <span className="wb-tech-evidence__label text-tertiary">Static levels</span>
-          <div className="wb-tech-evidence__rows">
-            <div className="wb-tech-evidence__row"><span className="text-secondary">Support</span><span className="tabular text-positive">{formatPrice(riskGeometry?.nearestSupport)}</span></div>
-            <div className="wb-tech-evidence__row"><span className="text-secondary">Resistance</span><span className="tabular text-negative">{riskGeometry?.nearestResistance != null ? formatPrice(riskGeometry.nearestResistance) : 'None confirmed'}</span></div>
-            {riskGeometry?.nearestResistance == null && ticker?.high > ticker?.close && <div className="wb-tech-evidence__row"><span className="text-secondary">Daily high reference</span><span className="tabular text-warning">{formatPrice(ticker.high)} · unconfirmed</span></div>}
-            <div className="wb-tech-evidence__row"><span className="text-secondary">60d range</span><span className="tabular text-secondary">{formatPrice(supportResistance?.low60d)}–{formatPrice(supportResistance?.high60d)}</span></div>
-          </div>
-        </div>
-
-        <div className="wb-tech-evidence__section">
-          <span className="wb-tech-evidence__label text-tertiary">Risk / reward</span>
-          <div className="wb-tech-evidence__rows">
-            <div className="wb-tech-evidence__row"><span className="text-secondary">Setup fails below</span><span className="tabular text-negative">{formatPrice(best?.stop)}</span></div>
-            <div className="wb-tech-evidence__row"><span className="text-secondary">Target</span><span className="tabular text-positive">{formatPrice(best?.target)}</span></div>
-            <div className="wb-tech-evidence__row"><span className="text-secondary">Reward / risk</span><span className="tabular text-secondary">{(best?.netRR ?? best?.rr)?.toFixed(2) || '—'}</span></div>
-          </div>
-        </div>
       </div>
     </div>
   );

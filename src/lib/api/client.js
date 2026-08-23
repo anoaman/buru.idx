@@ -151,7 +151,7 @@ export function getStockBrokerIntelligence({ ticker, days = 1, date = null, pres
   return request(`/api/broker-intelligence/stock?${params.toString()}`);
 }
 
-export function getBrokerStockIntelligence({ code, days = 1, date = null, preset = null, from = null, to = null, limit = 25 }) {
+export function getBrokerStockIntelligence({ code, days = 1, date = null, preset = null, from = null, to = null, limit = 25, filters = {} }) {
   const params = new URLSearchParams();
   params.set('code', String(code || '').toUpperCase());
   params.set('days', String(days));
@@ -160,6 +160,9 @@ export function getBrokerStockIntelligence({ code, days = 1, date = null, preset
   if (preset) params.set('preset', preset);
   if (from) params.set('from', from);
   if (to) params.set('to', to);
+  for (const [key, value] of Object.entries(filters)) {
+    if (value !== '' && value !== false && value != null) params.set(key, String(value));
+  }
   return request(`/api/broker-intelligence/broker?${params.toString()}`);
 }
 
