@@ -1,3 +1,64 @@
+function setupFinite(value) {
+  return Number.isFinite(value) ? value : null;
+}
+
+export function normalizeSetupGeometry(data) {
+  const legacy = data?.riskGeometry || {};
+  const legacyBest = legacy.bestSetup || null;
+  const scenario = data?.scenarioGeometry;
+  const actionable = scenario?.available === true && scenario?.framing === 'long_setup';
+
+  if (scenario && !actionable) {
+    return {
+      nearestSupport: setupFinite(legacy.nearestSupport),
+      nearestResistance: setupFinite(legacy.nearestResistance),
+      downsidePct: null,
+      upsidePct: null,
+      rewardRisk: null,
+      netRewardRisk: null,
+      confirmationLabel: scenario.labels?.confirmation || scenario.unavailableReason || 'No confirmed entry',
+      invalidation: setupFinite(scenario.invalidation?.price),
+      target: setupFinite(scenario.target?.price),
+      bestSetup: null,
+    };
+  }
+
+  if (!actionable) {
+    const entry = setupFinite(legacyBest?.entry) ?? setupFinite(data?.ticker?.close);
+    const target = setupFinite(legacyBest?.target) ?? setupFinite(legacy.nearestResistance);
+    return {
+      ...legacy,
+      downsidePct: legacy.downsidePct == null ? null : -Math.abs(legacy.downsidePct),
+      upsidePct: entry > 0 && target != null ? ((target - entry) / entry) * 100 : null,
+      confirmationLabel: 'Current structure reference',
+      bestSetup: legacyBest ? { ...legacyBest, entry } : null,
+    };
+  }
+
+  const entry = setupFinite(scenario.confirmation?.price) ?? setupFinite(scenario.trigger?.price);
+  const stop = setupFinite(scenario.invalidation?.price);
+  const target = setupFinite(scenario.target?.price);
+  return {
+    nearestSupport: setupFinite(legacy.nearestSupport),
+    nearestResistance: setupFinite(legacy.nearestResistance),
+    downsidePct: scenario.risk?.stopDistPct == null ? null : -Math.abs(scenario.risk.stopDistPct),
+    upsidePct: setupFinite(scenario.risk?.targetDistPct),
+    rewardRisk: setupFinite(scenario.risk?.rr),
+    netRewardRisk: setupFinite(scenario.risk?.netRR),
+    confirmationLabel: scenario.labels?.confirmation || 'Scenario confirmation',
+    invalidation: stop,
+    target,
+    bestSetup: entry != null && stop != null ? {
+      entry,
+      stop,
+      target,
+      rr: setupFinite(scenario.risk?.rr),
+      netRR: setupFinite(scenario.risk?.netRR),
+      costPct: setupFinite(scenario.risk?.costPct),
+    } : null,
+  };
+}
+
 export function guardAnalyze(raw) {
   if (!raw || raw.success === false) {
     return { ok: false, error: raw?.error || 'Invalid response', data: null };
@@ -67,6 +128,7 @@ export function guardAnalyze(raw) {
       dynamicLevels: normalizedDynamicLevels,
       chart: normalizedChart,
       broker,
+      setupGeometry: normalizeSetupGeometry(data),
     },
   };
 }

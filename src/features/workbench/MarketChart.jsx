@@ -210,8 +210,8 @@ export default function MarketChart({ chart, geometry, ticker }) {
           <span><i style={{ background: legendColors.support }} />Support</span><span><i style={{ background: legendColors.resistance }} />Resistance</span>
         </div>
         <div className="wb-market-chart__setup">
-          <span>Confirmation entry <strong className="tabular">{formatPrice(geometry?.bestSetup?.entry ?? ticker?.close)}</strong></span>
-          <span>Setup fails below <strong className="tabular">{formatPrice(geometry?.bestSetup?.stop)}</strong></span>
+          <span>Confirmation entry <strong className="tabular">{formatPrice(geometry?.bestSetup?.entry)}</strong></span>
+          <span>Setup fails below <strong className="tabular text-negative">{formatPrice(geometry?.bestSetup?.stop)}</strong></span>
           <span>Target <strong className="tabular">{formatPrice(geometry?.bestSetup?.target)}</strong></span>
           <span>Reward / risk <strong className="tabular">{(geometry?.bestSetup?.netRR ?? geometry?.bestSetup?.rr)?.toFixed(2) || '—'}</strong></span>
         </div>

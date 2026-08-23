@@ -272,7 +272,7 @@ export default function Workbench() {
       case 'broker':
         return <BrokerEvidence broker={data.broker} />;
       case 'risk':
-        return <RiskSimulator ticker={data.ticker} geometry={data.riskGeometry} />;
+        return <RiskSimulator ticker={data.ticker} geometry={data.setupGeometry || data.riskGeometry} />;
       default:
         return null;
     }
@@ -310,7 +310,7 @@ export default function Workbench() {
             <div className="wb-chart-panel">
               <MarketChart
                 chart={displayed.data.chart}
-                geometry={displayed.data.riskGeometry}
+                geometry={displayed.data.setupGeometry || displayed.data.riskGeometry}
                 ticker={displayed.data.ticker}
               />
             </div>

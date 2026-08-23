@@ -20,6 +20,7 @@ import {
   guardRadarScout,
   guardStockBrokerIntelligence,
   officialIdxUrl,
+  normalizeSetupGeometry,
   normalizeServing,
 } from './contracts.js';
 
@@ -64,6 +65,26 @@ describe('public Stock Analysis contracts', () => {
     expect(result.data.chart.candles[0].close).toBe(9050);
     expect(result.data.chart.levels).toEqual({ supports: [], resistances: [] });
     expect(result.data.broker.symbol).toBe('BBCA');
+  });
+
+  it('uses scenario entry for upside and signs invalidation as downside', () => {
+    const geometry = normalizeSetupGeometry({
+      ticker: { close: 120 },
+      riskGeometry: { nearestSupport: 95, nearestResistance: 120, upsidePct: 0 },
+      scenarioGeometry: {
+        available: true,
+        framing: 'long_setup',
+        confirmation: { price: 100 },
+        invalidation: { price: 95 },
+        target: { price: 120 },
+        risk: { stopDistPct: 5, targetDistPct: 20, rr: 4, netRR: 3.7, costPct: 0.3 },
+        labels: { confirmation: 'Close above range resistance' },
+      },
+    });
+
+    expect(geometry.bestSetup.entry).toBe(100);
+    expect(geometry.downsidePct).toBe(-5);
+    expect(geometry.upsidePct).toBe(20);
   });
 
   it('guards archive health without inventing coverage', () => {
