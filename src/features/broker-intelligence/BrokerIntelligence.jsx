@@ -24,6 +24,16 @@ const DEFAULT_MARKET_FILTERS = Object.freeze({
   foreignDirection: 'any', minForeignValue: '', excludeFca: false,
 });
 
+function parseMarketAmount(value) {
+  const clean = String(value || '').trim().toUpperCase().replaceAll(',', '');
+  if (!clean) return '';
+  const match = clean.match(/^(\d+(?:\.\d+)?)\s*([KMBT])?$/);
+  if (!match) return null;
+  const scale = { K: 1e3, M: 1e6, B: 1e9, T: 1e12 }[match[2]] || 1;
+  const amount = Number(match[1]) * scale;
+  return Number.isFinite(amount) ? amount : null;
+}
+
 function normalizeLens(raw) {
   return raw === 'broker' ? 'broker' : 'stock';
 }
@@ -299,6 +309,8 @@ const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
   const [selectedKey, setSelectedKey] = useState(null);
   const [lensRetry, setLensRetry] = useState(0);
   const [marketFilters, setMarketFilters] = useState(DEFAULT_MARKET_FILTERS);
+  const [marketFilterDraft, setMarketFilterDraft] = useState(DEFAULT_MARKET_FILTERS);
+  const [marketFilterError, setMarketFilterError] = useState('');
   const requestRef = useRef(0);
 
   useEffect(() => {
@@ -510,6 +522,21 @@ const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
     : /^[A-Z]{2}$/i.test(searchInput.trim());
 
   const retryLens = () => setLensRetry((n) => n + 1);
+  const applyMarketFilters = () => {
+    const numericKeys = ['maxPrice', 'minAverageValue', 'minBrokerNetValue', 'minForeignValue'];
+    const parsed = Object.fromEntries(numericKeys.map((key) => [key, parseMarketAmount(marketFilterDraft[key])]));
+    if (Object.values(parsed).some((value) => value == null)) {
+      setMarketFilterError('Use plain numbers or K/M/B/T abbreviations, for example 200, 500M, or 1B.');
+      return;
+    }
+    setMarketFilterError('');
+    setMarketFilters({ ...marketFilterDraft, ...parsed });
+  };
+  const clearMarketFilters = () => {
+    setMarketFilterDraft(DEFAULT_MARKET_FILTERS);
+    setMarketFilters(DEFAULT_MARKET_FILTERS);
+    setMarketFilterError('');
+  };
   return (
     <div className="bi-page">
       <header className="bi-intro">
@@ -589,13 +616,14 @@ const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
       {lens === 'broker' && (
         <section className="bi-market-filters" aria-label="Across-market stock filters">
           <div className="bi-market-filters__heading"><strong>Sharpen across-market results</strong><span>Stock liquidity and foreign flow are separate from the selected broker’s net value.</span></div>
-          <label>Maximum price<input type="number" min="1" value={marketFilters.maxPrice} onChange={(event) => setMarketFilters((current) => ({ ...current, maxPrice: event.target.value }))} placeholder="200" /></label>
-          <label>Minimum average traded value<input type="number" min="0" step="100000000" value={marketFilters.minAverageValue} onChange={(event) => setMarketFilters((current) => ({ ...current, minAverageValue: event.target.value }))} placeholder="500000000" /></label>
-          <label>Minimum broker net value<input type="number" min="0" step="100000000" value={marketFilters.minBrokerNetValue} onChange={(event) => setMarketFilters((current) => ({ ...current, minBrokerNetValue: event.target.value }))} placeholder="1000000000" /></label>
-          <label>Foreign direction<select value={marketFilters.foreignDirection} onChange={(event) => setMarketFilters((current) => ({ ...current, foreignDirection: event.target.value }))}><option value="any">Any</option><option value="buy">Net buy</option><option value="sell">Net sell</option></select></label>
-          <label>Minimum foreign value<input type="number" min="0" step="100000000" value={marketFilters.minForeignValue} onChange={(event) => setMarketFilters((current) => ({ ...current, minForeignValue: event.target.value }))} placeholder="0" /></label>
-          <label className="bi-market-filters__check"><input type="checkbox" checked={marketFilters.excludeFca} onChange={(event) => setMarketFilters((current) => ({ ...current, excludeFca: event.target.checked }))} />Exclude FCA</label>
-          <button type="button" className="ui-btn ui-btn--ghost" onClick={() => setMarketFilters(DEFAULT_MARKET_FILTERS)}>Clear filters</button>
+          <label>Maximum price<input inputMode="numeric" value={marketFilterDraft.maxPrice} onChange={(event) => setMarketFilterDraft((current) => ({ ...current, maxPrice: event.target.value }))} placeholder="200" /></label>
+          <label>Minimum average traded value<input inputMode="decimal" value={marketFilterDraft.minAverageValue} onChange={(event) => setMarketFilterDraft((current) => ({ ...current, minAverageValue: event.target.value }))} placeholder="500M" /></label>
+          <label>Minimum broker net value<input inputMode="decimal" value={marketFilterDraft.minBrokerNetValue} onChange={(event) => setMarketFilterDraft((current) => ({ ...current, minBrokerNetValue: event.target.value }))} placeholder="1B" /></label>
+          <label>Foreign direction<select value={marketFilterDraft.foreignDirection} onChange={(event) => setMarketFilterDraft((current) => ({ ...current, foreignDirection: event.target.value }))}><option value="any">Any</option><option value="buy">Net buy</option><option value="sell">Net sell</option></select></label>
+          <label>Minimum foreign value<input inputMode="decimal" value={marketFilterDraft.minForeignValue} onChange={(event) => setMarketFilterDraft((current) => ({ ...current, minForeignValue: event.target.value }))} placeholder="500M" /></label>
+          <label className="bi-market-filters__check"><input type="checkbox" checked={marketFilterDraft.excludeFca} onChange={(event) => setMarketFilterDraft((current) => ({ ...current, excludeFca: event.target.checked }))} />Exclude FCA</label>
+          {marketFilterError && <p className="bi-market-filters__error" role="alert">{marketFilterError}</p>}
+          <div className="bi-market-filters__actions"><button type="button" className="ui-btn ui-btn--primary" onClick={applyMarketFilters}>Apply filters</button><button type="button" className="ui-btn ui-btn--ghost" onClick={clearMarketFilters}>Clear</button></div>
         </section>
       )}
 

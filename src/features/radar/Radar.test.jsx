@@ -16,9 +16,9 @@ const CONDITION_CATALOG = {
   success: true,
   data: {
     conditions: [
-      { id: 'max_price', label: 'Maximum price', category: 'Universe', type: 'number', comparison: 'at_most', unit: 'Rp', defaultValue: 1000, min: 1, max: 100000, step: 1 },
+      { id: 'max_price', label: 'Maximum price', category: 'Universe', type: 'number', comparison: 'at_most', unit: 'IDR', defaultValue: 1000, min: 1, max: 100000, step: 1 },
       { id: 'exclude_fca', label: 'Exclude FCA', category: 'Universe', type: 'boolean', comparison: 'equals', defaultValue: true, options: [] },
-      { id: 'min_lead_net_buy', label: 'Lead broker net buy', category: 'Broker behaviour', type: 'number', comparison: 'at_least', unit: 'Rp', defaultValue: 1000000000, min: 0, max: 1000000000000, step: 100000000 },
+      { id: 'min_lead_net_buy', label: 'Lead broker net buy', category: 'Confirmation', type: 'number', comparison: 'at_least', unit: 'IDR', defaultValue: 1000000000, min: 0, max: 1000000000000, step: 100000000 },
     ],
     templates: {
       quiet_accumulation: [{ id: 'max_price', value: 1000 }],
@@ -265,7 +265,7 @@ describe('Radar', () => {
     renderRadar();
     fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
     await selectQuietTemplate();
-    expect(screen.getByLabelText('Maximum price')).toHaveValue(1000);
+    expect(screen.getByLabelText('Maximum price value')).toHaveValue('1,000');
     expect(screen.queryByText(/Range resolution/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Foreign flow divergence/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Capitulation reversal/)).not.toBeInTheDocument();
@@ -298,9 +298,7 @@ describe('Radar', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
     await selectQuietTemplate();
     expect(document.querySelector('.scout-advanced')).not.toBeInTheDocument();
-    const addCondition = document.querySelector('.scout-add-condition');
-    fireEvent.click(addCondition.querySelector('summary'));
-    fireEvent.click(screen.getByRole('button', { name: /Exclude FCA/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /Exclude FCA/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
     const changes = await screen.findByRole('region', { name: 'Daily qualification changes' });
@@ -354,9 +352,9 @@ describe('Radar', () => {
     renderRadar();
     fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
     await selectQuietTemplate();
-    fireEvent.click(document.querySelector('.scout-add-condition summary'));
-    fireEvent.click(screen.getByRole('button', { name: /Lead broker net buy/ }));
-    fireEvent.change(screen.getByLabelText('Lead broker net buy'), { target: { value: '2500000000' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: /Lead broker net buy/ }));
+    fireEvent.change(screen.getByLabelText('Lead broker net buy value'), { target: { value: '2.5B' } });
+    fireEvent.blur(screen.getByLabelText('Lead broker net buy value'));
     fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
     await waitFor(() => expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({

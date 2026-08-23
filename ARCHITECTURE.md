@@ -75,10 +75,11 @@ case tracking from the retiring cockpit without duplicating backend engines.
   contracts through `contracts.js` like every other feature. They rank nothing,
   score nothing, and decide no material change; those all arrive already
   computed. Radar's lane filter only hides rows the backend already ranked.
-  Custom Screener uses a condition-builder + results layout. It fetches the
+  Custom Screener uses grouped checkbox filters + results layout. It fetches the
   backend-owned registry from `/api/radar/scout/conditions`, submits at most 20
   explicit condition/value pairs, and forwards broker evidence windows through
-  the public allowlist.
+  the public allowlist. Numeric inputs accept readable K/M/B/T abbreviations;
+  the compact filter UI never owns or reimplements condition formulas.
 - `confidence` is a deprecated pre-1.2 alias for source freshness and coverage,
   not outcome probability. The view models expose it as `dataQuality` and drop
   the alias, so no component can render it under the wrong label.
@@ -103,6 +104,9 @@ case tracking from the retiring cockpit without duplicating backend engines.
   The broker lens may render backend-ranked accumulation persistence and streaks.
   It always identifies requested versus observed sessions and warns that a
   broker code aggregates unrelated clients; it never infers a single actor.
+  Across-market Broker Flow filters use draft state and only request new data
+  after the trader presses Apply filters; typing in a numeric field never
+  triggers a network request.
 - `src/styles/tokens.css` owns the Paper Ledger (light) and Graphite Ledger
   (dark) semantic theme contract plus motion tokens. Feature styles consume
   semantic tokens rather than theme-specific color literals.

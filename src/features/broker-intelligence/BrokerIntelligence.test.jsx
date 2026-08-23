@@ -315,6 +315,19 @@ describe('BrokerIntelligence', () => {
     expect(screen.getByDisplayValue('YP')).toBeInTheDocument();
   });
 
+  it('waits for Apply before requesting across-market filters and accepts compact values', async () => {
+    renderAt('/broker-intelligence?lens=broker&code=YP&days=7');
+    await waitFor(() => expect(getBrokerStockIntelligence).toHaveBeenCalled());
+    getBrokerStockIntelligence.mockClear();
+    fireEvent.change(screen.getByLabelText('Maximum price'), { target: { value: '200' } });
+    fireEvent.change(screen.getByLabelText('Minimum average traded value'), { target: { value: '500M' } });
+    expect(getBrokerStockIntelligence).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }));
+    await waitFor(() => expect(getBrokerStockIntelligence).toHaveBeenCalledWith(expect.objectContaining({
+      filters: expect.objectContaining({ maxPrice: 200, minAverageValue: 500_000_000 }),
+    })));
+  });
+
   it('validates and normalizes search input', async () => {
     renderAt('/broker-intelligence?lens=stock&ticker=BBCA&days=30');
     await screen.findByText('Bank Central Asia');
