@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router';
 import { useAnalysisContext } from './AnalysisContext.jsx';
+import FreshnessBar from './FreshnessBar.jsx';
 
 const NAV = [
   { path: '/radar', label: 'Screener', mark: 'SC' },
@@ -124,7 +125,10 @@ export default function AnalysisShell({ children }) {
             {theme === 'light' ? 'Graphite' : 'Paper'}
           </button>
         </header>
-        <main className="app-shell__content">{children}</main>
+        <main className="app-shell__content">
+          <FreshnessBar />
+          {children}
+        </main>
       </div>
     </div>
   );

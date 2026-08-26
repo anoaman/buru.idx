@@ -347,72 +347,31 @@ function normalizeOpportunityFreshness(raw) {
   };
 }
 
-function normalizeOpportunityRow(row) {
-  if (!row || typeof row !== 'object' || !row.ticker) return null;
-  const features = row.features && typeof row.features === 'object' ? row.features : {};
+/**
+ * The margin by which a near miss failed its one condition.
+ *
+ * `gap` is the size of the miss and `gapPct` is that size against the threshold,
+ * which is what separates a stock worth re-tuning for from one that was never
+ * close. Both are null when the backend had no evidence to compare, and that is
+ * a different statement from a gap of zero.
+ */
+function normalizeMissDetail(raw) {
+  if (!raw || typeof raw !== 'object' || !raw.id) return null;
   return {
-    ticker: String(row.ticker).toUpperCase(),
-    lane: row.lane || null,
-    rank: Number.isFinite(row.rank) ? row.rank : null,
-    score: preserveFiniteOrNull(row.score),
-    evidenceBand: ['high', 'medium', 'low'].includes(row.evidenceBand) ? row.evidenceBand : 'low',
-    failedCondition: typeof row.failedCondition === 'string' ? row.failedCondition : null,
-    scoreBreakdown: row.scoreBreakdown && typeof row.scoreBreakdown === 'object'
-      ? Object.fromEntries(Object.entries(row.scoreBreakdown).map(([key, value]) => [key, preserveFiniteOrNull(value)]))
-      : {},
-    dataQuality: normalizeDataQuality(row.dataQuality ?? row.confidence),
-    // Absent is not the same as false. The default scan query only returns
-    // eligible rows, so only an explicit false may be shown as a gate failure.
-    ineligible: row.eligible === false,
-    isFca: features.isFca === true,
-    levels: normalizeOpportunityLevels(row.levels, features.risk?.netRewardRisk),
-    freshness: normalizeOpportunityFreshness(row.freshness),
-    reasons: normalizeStringList(row.reasons, 6),
-    risks: normalizeStringList(row.risks, 8),
-  };
-}
-
-export function guardOpportunities(raw) {
-  if (!raw || raw.success === false) {
-    return { ok: false, error: raw?.error || 'Invalid response', data: null };
-  }
-  const data = raw.data;
-  if (!data || typeof data !== 'object') {
-    return { ok: false, error: 'Missing scan data', data: null };
-  }
-
-  const run = data.run && typeof data.run === 'object' ? data.run : null;
-  const candidates = Array.isArray(data.opportunities)
-    ? data.opportunities.map(normalizeOpportunityRow).filter(Boolean)
-    : [];
-
-  // A tally, not a re-score. Radar shows how many candidates the backend graded
-  // at each data-quality level so a shortlist built on thin sources is visible
-  // before any row is opened.
-  const dataQualityTally = { high: 0, medium: 0, low: 0, unknown: 0 };
-  for (const candidate of candidates) dataQualityTally[candidate.dataQuality] += 1;
-
-  return {
-    ok: true,
-    error: null,
-    data: {
-      run: run
-        ? {
-            id: Number.isFinite(run.id) ? run.id : null,
-            scannedAt: run.scanned_at || null,
-            dataAsOf: run.data_as_of || null,
-            universe: run.universe || null,
-            configVersion: run.config_version || null,
-            totalSeen: Number.isFinite(run.total_seen) ? run.total_seen : null,
-            totalEligible: Number.isFinite(run.total_eligible) ? run.total_eligible : null,
-            totalShortlisted: Number.isFinite(run.total_shortlisted) ? run.total_shortlisted : null,
-            marketCacheAsOf: run.market_cache_as_of || null,
-          }
-        : null,
-      candidates,
-      lanes: [...new Set(candidates.map((row) => row.lane).filter(Boolean))].sort(),
-      dataQualityTally,
-    },
+    id: String(raw.id),
+    label: raw.label ? String(raw.label) : String(raw.id),
+    unit: raw.unit ? String(raw.unit) : null,
+    comparison: ['min', 'max', 'equals'].includes(raw.comparison) ? raw.comparison : null,
+    available: raw.available === true,
+    expected: typeof raw.expected === 'boolean' || typeof raw.expected === 'string'
+      ? raw.expected
+      : preserveFiniteOrNull(raw.expected),
+    observed: typeof raw.observed === 'boolean' || typeof raw.observed === 'string'
+      ? raw.observed
+      : preserveFiniteOrNull(raw.observed),
+    gap: preserveFiniteOrNull(raw.gap),
+    gapPct: preserveFiniteOrNull(raw.gapPct),
+    reason: ['threshold', 'unavailable', 'mismatch'].includes(raw.reason) ? raw.reason : null,
   };
 }
 
@@ -428,6 +387,7 @@ function normalizeScoutCandidate(row) {
     score: preserveFiniteOrNull(row.score),
     evidenceBand: ['high', 'medium', 'low'].includes(row.evidenceBand) ? row.evidenceBand : 'low',
     failedCondition: typeof row.failedCondition === 'string' ? row.failedCondition : null,
+    failedDetail: normalizeMissDetail(row.failedDetail),
     qualificationState: ['new', 'still', 'dropped'].includes(row.qualificationState) ? row.qualificationState : null,
     qualificationStreak: Number.isFinite(row.qualificationStreak) ? row.qualificationStreak : null,
     isFca: row.isFca === true,
@@ -1444,6 +1404,51 @@ export function guardCollectorHealth(raw) {
       available: data.available === true,
       status: data.status || 'unavailable',
       feeds,
+    },
+  };
+}
+
+/**
+ * Data freshness, reduced to the one thing a reader has to decide: whether the
+ * screen in front of them is current enough to act on.
+ *
+ * The backend reports several caches with independent ages. The oldest one
+ * governs, because a screen is only as current as the slowest input feeding it.
+ */
+export function guardDataHealth(raw) {
+  if (!raw || raw.success === false) {
+    return { ok: false, error: raw?.error || 'Invalid response', data: null };
+  }
+  const data = raw.data;
+  if (!data || typeof data !== 'object') {
+    return { ok: false, error: 'Missing data-health payload', data: null };
+  }
+
+  const cache = (source) => {
+    const entry = data[source] && typeof data[source] === 'object' ? data[source] : {};
+    return {
+      freshness: typeof entry.freshness === 'string' ? entry.freshness : 'unknown',
+      ageDays: preserveFiniteOrNull(entry.ageDays),
+      sessionsBehind: preserveFiniteOrNull(entry.sessionsBehind),
+      lastDate: entry.lastDate || null,
+    };
+  };
+
+  const price = cache('priceCache');
+  const broker = cache('brokerCache');
+  const behind = [price.sessionsBehind, broker.sessionsBehind].filter((value) => Number.isFinite(value));
+
+  return {
+    ok: true,
+    error: null,
+    data: {
+      overall: typeof data.overall === 'string' ? data.overall : 'unknown',
+      priceCache: price,
+      brokerCache: broker,
+      // The worst cache sets the headline. Averaging would let a fresh feed
+      // disguise a stale one, which is the failure this bar exists to prevent.
+      worstSessionsBehind: behind.length ? Math.max(...behind) : null,
+      lastCompletedSession: data.tradingCalendar?.lastCompletedSession || null,
     },
   };
 }

@@ -30,13 +30,12 @@ describe('public API allowlist', () => {
       ok: true,
       path: '/api/broker-intelligence/stock?ticker=BBCA&days=7',
     });
-    expect(resolvePublicApiRequest('GET', '/api/opportunities').ok).toBe(true);
     expect(resolvePublicApiRequest('GET', '/api/radar/scout?recipe=quiet_accumulation&brokerSessions=7')).toEqual({
       ok: true,
       path: '/api/radar/scout?recipe=quiet_accumulation&brokerSessions=7',
     });
     expect(resolvePublicApiRequest('GET', '/api/radar/scout/conditions').ok).toBe(true);
-    expect(resolvePublicApiRequest('GET', '/api/watchlist').ok).toBe(true);
+    expect(resolvePublicApiRequest('GET', '/api/data-health').ok).toBe(true);
     expect(resolvePublicApiRequest('GET', '/api/disclosures?ticker=BBCA').ok).toBe(true);
     expect(resolvePublicApiRequest('GET', '/api/disclosures/detail?eventId=div-1').ok).toBe(true);
     expect(resolvePublicApiRequest('GET', '/api/disclosures/timeline?ticker=BBCA').ok).toBe(true);
@@ -120,7 +119,7 @@ describe('public API allowlist', () => {
 
   it('closes the private workflow store to writes', () => {
     for (const method of ['POST', 'PATCH', 'DELETE', 'PUT']) {
-      const result = resolvePublicApiRequest(method, '/api/watchlist');
+      const result = resolvePublicApiRequest(method, '/api/data-health');
       expect(result.ok).toBe(false);
       expect(result.status).toBe(405);
     }
@@ -132,8 +131,11 @@ describe('public API allowlist', () => {
       '/api/journal',
       '/api/calibration',
       '/api/market-overview',
-      '/api/data-health',
       '/api/fca',
+      // The watchlist carries private positions and thesis notes, and the
+      // shortlist scan is the edge. Neither has any business on this surface.
+      '/api/watchlist',
+      '/api/opportunities',
     ]) {
       const result = resolvePublicApiRequest('GET', path);
       expect(result.ok).toBe(false);

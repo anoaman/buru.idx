@@ -2066,41 +2066,10 @@
 .tip-popover .tp-title { display: block; font-size: 11px; font-weight: 700; color: var(--text-primary); margin-bottom: 3px; }
 .tip-popover .tp-def { display: block; font-size: 12px; font-weight: 400; color: var(--text-secondary); line-height: 1.5; }
 
-.actor-map {
-  margin-top: var(--space-3); padding: var(--space-4); border: 1px solid var(--border-default);
-  border-radius: var(--radius-md); background: linear-gradient(135deg, rgba(111, 255, 189, .045), transparent 58%);
-}
-.actor-map__header { display: flex; justify-content: space-between; gap: var(--space-4); align-items: flex-start; }
-.actor-map__header h3 { margin: 4px 0; font-size: 22px; letter-spacing: -.02em; }
-.actor-map__header p { margin: 0; }
-.actor-map__eyebrow { color: var(--color-accent); font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
-.actor-map__quadrant { min-width: 190px; padding: 10px 12px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); }
-.actor-map__quadrant span, .actor-map__quadrant strong { display: block; }
-.actor-map__quadrant span { color: var(--text-tertiary); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
-.actor-map__quadrant strong { margin-top: 4px; font-size: 12px; text-transform: capitalize; }
-.actor-map__metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin: var(--space-4) 0; background: var(--border-default); }
-.actor-map__metrics > div { display: flex; flex-direction: column; gap: 5px; padding: 12px; background: var(--bg-surface); }
-.actor-map__metrics span { color: var(--text-tertiary); font-size: 11px; }
-.actor-map__metrics strong { font-size: 17px; }
-.actor-map__replay-head { display: flex; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-2); }
-.actor-map__sessions { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 5px; }
-.actor-map__session { min-width: 54px; display: grid; gap: 3px; text-align: center; color: var(--text-tertiary); font-size: 10px; }
-.actor-map__session strong { color: var(--text-secondary); font-size: 10px; }
-.actor-map__bar-zone { height: 70px; display: flex; align-items: flex-end; justify-content: center; border-bottom: 1px solid var(--border-default); }
-.actor-map__replay--single .actor-map__bar-zone { height: 44px; }
-.actor-map__replay--single .actor-map__sessions { justify-content: center; }
-.actor-map__bar { width: 9px; min-height: 3px; border-radius: 3px 3px 0 0; background: var(--text-tertiary); }
-.actor-map__bar.is-positive { background: var(--color-positive); }
-.actor-map__bar.is-negative { background: var(--color-negative); }
-
 @media (max-width: 640px) {
   .wb-overview-grid { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
   .wb-market-chart header { flex-direction: column; }
   .wb-broker__custom { flex-direction: column; }
-  .actor-map { padding: var(--space-3); }
-  .actor-map__header { flex-direction: column; }
-  .actor-map__quadrant { width: 100%; }
-  .actor-map__metrics { grid-template-columns: 1fr; }
 }
 
 .module-heading { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); margin-bottom: var(--space-4); }
@@ -2907,9 +2876,17 @@
   line-height: 1.5;
 }
 .scout-near-miss__missed {
+  display: flex; flex-direction: column; gap: 2px;
   color: var(--color-warning);
   font-weight: 600;
 }
+.scout-near-miss__missed strong { font-weight: 700; }
+.scout-near-miss__missed small {
+  color: var(--text-secondary); font-weight: 400;
+  font-size: var(--type-meta); font-variant-numeric: tabular-nums;
+}
+/* A miss inside 15% of the threshold is a tuning decision, not a rejection. */
+.scout-near-miss__missed--close { color: var(--color-accent); }
 
 /* ============================================
    Phase 5 — Screener tables (Market Shortlist + Custom Screener)
@@ -3384,3 +3361,66 @@
 .glossary-page dt { font-weight: 700; }
 .glossary-page dd { margin: var(--space-1) 0 0; color: var(--text-secondary); }
 @media (max-width: 760px) { .nd-header { align-items: stretch; flex-direction: column; } }
+
+/* ============================================
+   Verdict panel — the grade and its counter-evidence, above the fold
+   ============================================ */
+.wb-verdict {
+  display: grid; gap: var(--space-4);
+  margin-top: var(--space-3); padding: var(--space-4);
+  border: 1px solid var(--border-default); border-radius: var(--radius-md);
+  background: var(--bg-surface);
+}
+.wb-verdict__head { display: flex; flex-wrap: wrap; align-items: stretch; gap: var(--space-4); }
+.wb-verdict__grade {
+  display: flex; flex-direction: column; justify-content: center; gap: 2px;
+  min-width: 132px; padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-default); border-radius: var(--radius-sm);
+}
+.wb-verdict__grade > span { color: var(--text-tertiary); font-size: var(--type-meta); text-transform: uppercase; letter-spacing: .08em; }
+.wb-verdict__grade > strong { font-size: 46px; line-height: 1; letter-spacing: -.04em; }
+.wb-verdict__grade > small { color: var(--text-tertiary); font-size: var(--type-meta); }
+.wb-verdict__grade[data-grade="A"] > strong { color: var(--color-positive); }
+.wb-verdict__grade[data-grade="D"] > strong { color: var(--color-negative); }
+.wb-verdict__reads {
+  flex: 1 1 320px; display: grid; gap: var(--space-3) var(--space-4); margin: 0;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); align-content: center;
+}
+.wb-verdict__reads dt { color: var(--text-tertiary); font-size: var(--type-meta); text-transform: uppercase; letter-spacing: .08em; }
+.wb-verdict__reads dd { margin: 3px 0 0; font-weight: 700; text-transform: capitalize; }
+.wb-verdict__tally { display: flex; flex-wrap: wrap; gap: 8px; font-size: var(--type-caption); font-weight: 600; text-transform: none; }
+.wb-verdict__factors { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; margin: 0; padding: 0; list-style: none; background: var(--border-default); }
+.wb-verdict__factors li { display: flex; flex-direction: column; gap: 3px; padding: 9px 11px; background: var(--bg-surface); border-left: 2px solid transparent; }
+.wb-verdict__factors li strong { font-size: var(--type-caption); font-weight: 600; }
+.wb-verdict__factors li span { color: var(--text-tertiary); font-size: var(--type-meta); text-transform: uppercase; letter-spacing: .06em; }
+.wb-verdict__factors li.is-positive { border-left-color: var(--color-positive); }
+.wb-verdict__factors li.is-negative { border-left-color: var(--color-negative); }
+.wb-verdict__counter { padding-top: var(--space-3); border-top: 1px solid var(--border-subtle); }
+.wb-verdict__counter h3 { margin: 0 0 var(--space-2); font-size: var(--type-caption); text-transform: uppercase; letter-spacing: .08em; color: var(--text-tertiary); }
+.wb-verdict__counter p { margin: 0; font-size: var(--type-caption); }
+.wb-verdict__counter ul { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.wb-verdict__counter li { display: flex; flex-direction: column; gap: 2px; padding-left: 10px; border-left: 2px solid var(--color-warning); }
+.wb-verdict__counter li strong { font-size: var(--type-caption); }
+.wb-verdict__counter li span { font-size: var(--type-meta); }
+.wb-verdict__warnings p { margin: 0; font-size: var(--type-caption); }
+
+@media (max-width: 640px) {
+  .wb-verdict { padding: var(--space-3); }
+  .wb-verdict__grade { min-width: 100%; }
+  .wb-verdict__grade > strong { font-size: 38px; }
+}
+
+/* ============================================
+   Freshness bar — silent unless the data is actually behind
+   ============================================ */
+.freshness-bar {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-3); padding: 8px 12px;
+  border: 1px solid var(--border-default); border-left-width: 3px; border-radius: var(--radius-sm);
+  font-size: var(--type-caption); color: var(--text-secondary);
+}
+.freshness-bar strong { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.freshness-bar__note { color: var(--text-tertiary); }
+.freshness-bar.is-warning { border-left-color: var(--color-warning); }
+.freshness-bar.is-critical { border-left-color: var(--color-negative); }
+.freshness-bar.is-critical strong { color: var(--color-negative); }

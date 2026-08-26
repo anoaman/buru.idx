@@ -55,66 +55,141 @@ function TickerHeader({ ticker, priceHistory }) {
   );
 }
 
-function EvidenceSummary({ grade, stance, scorecard, dataQuality }) {
+/**
+ * The verdict and its counter-evidence, side by side, above the fold.
+ *
+ * This all used to live inside a collapsed <details> labelled "Methodology &
+ * data quality", two clicks from the surface, so the screen opened on a price
+ * header and a chart and said nothing about what it thought. The grade is the
+ * reason this page exists; it belongs where it can be read.
+ *
+ * Contradictions sit in the same block deliberately. The product's claim is
+ * evidence over verdict, and a grade shown alone, with its disagreements folded
+ * away somewhere else, quietly makes the opposite claim.
+ */
+function VerdictPanel({ grade, stance, scorecard, investigation, dataQuality }) {
   const warnings = dataQuality?.warnings || [];
   const factors = scorecard?.factors || [];
-  return (
-    <section className="wb-method">
-      <div className="wb-evidence-summary">
-        <div><span>Grade <InfoTip title="Grade">Weighted broker-flow, momentum, structure and risk score. A ≥82%, B ≥68%, C ≥54%, D ≥40%.</InfoTip></span><strong>{grade?.grade || '—'}</strong></div>
-        <div><span>Regime <InfoTip title="Regime">Trending when MA separation, returns and distance from MA20 produce strength ≥7; otherwise rangebound.</InfoTip></span><strong>{grade?.regime || 'Unknown'}</strong></div>
-        <div><span>Pattern <InfoTip title="Pattern">Uses the 60-day range, returns, volume trend, and moving-average alignment.</InfoTip></span><strong>{grade?.structurePhase || 'Unknown'}</strong></div>
-        <div><span>Bias <InfoTip title="Bias">Summarizes whether the current setup leans constructive, defensive, or neutral.</InfoTip></span><strong>{stance?.stance ? stance.stance.replace('_', ' ').toLowerCase() : 'neutral'}</strong></div>
-        {warnings.length > 0 && <div><span>Data warning</span><strong className="text-warning">Check data</strong></div>}
-        {warnings.map((warning) => <p key={warning} className="text-warning">⚠ {warning}</p>)}
-      </div>
-      <details className="wb-method__details">
-        <summary>How this score was calculated</summary>
-        <div className="wb-method__lenses">
-          {Object.values(grade?.lenses || {}).map((lens) => (
-            <div key={lens.name}>
-              <strong>{lens.name}</strong>
-              <span>{Math.round((lens.score || 0) * 100)} score · {Math.round((lens.weight || 0) * 100)}% weight</span>
-              <small>{(lens.topReasons || []).join(' · ')}</small>
-            </div>
-          ))}
-        </div>
-        <h4>Scorecard <InfoTip title="Scorecard">Eight deterministic factors counted as positive, negative or neutral. It is not a win probability.</InfoTip></h4>
-        <div className="wb-method__factors">
-          {factors.map((factor) => (
-            <div key={factor.factor}>
-              <span>{factor.factor}</span>
-              <strong className={factor.signal > 0 ? 'text-positive' : factor.signal < 0 ? 'text-negative' : 'text-secondary'}>
-                {factor.signal > 0 ? 'Positive' : factor.signal < 0 ? 'Negative' : 'Neutral'}
-              </strong>
-              <small>{factor.reason}</small>
-            </div>
-          ))}
-        </div>
-      </details>
-    </section>
-  );
-}
+  const contradictions = investigation?.contradictions || [];
+  const tally = factors.reduce((acc, factor) => {
+    if (factor.signal > 0) acc.positive += 1;
+    else if (factor.signal < 0) acc.negative += 1;
+    else acc.neutral += 1;
+    return acc;
+  }, { positive: 0, negative: 0, neutral: 0 });
 
-function WhatChangedPanel({ data }) {
-  const contradictions = data?.investigation?.contradictions || [];
   return (
-    <div className="wb-changed-panel">
-      <InvestigationBrief investigation={data?.investigation} />
-      <EvidenceDebate debate={data?.debate} stance={data?.stance} />
-      {contradictions.length > 0 && (
-        <section className="wb-contradictions" aria-label="Investigation contradictions">
-          <h3 className="wb-section__title text-tertiary">Contradictions</h3>
+    <section className="wb-verdict" aria-label="Verdict and counter-evidence">
+      <div className="wb-verdict__head">
+        <div className="wb-verdict__grade" data-grade={grade?.grade || 'none'}>
+          <span>
+            Grade
+            <InfoTip title="Grade">Weighted broker-flow, momentum, structure and risk score. A ≥82%, B ≥68%, C ≥54%, D ≥40%.</InfoTip>
+          </span>
+          <strong>{grade?.grade || '—'}</strong>
+          <small>not a win probability</small>
+        </div>
+        <dl className="wb-verdict__reads">
+          <div>
+            <dt>Regime <InfoTip title="Regime">Trending when MA separation, returns and distance from MA20 produce strength ≥7; otherwise rangebound.</InfoTip></dt>
+            <dd>{grade?.regime || 'Unknown'}</dd>
+          </div>
+          <div>
+            <dt>Pattern <InfoTip title="Pattern">Uses the 60-day range, returns, volume trend, and moving-average alignment.</InfoTip></dt>
+            <dd>{grade?.structurePhase || 'Unknown'}</dd>
+          </div>
+          <div>
+            <dt>Bias <InfoTip title="Bias">Summarizes whether the current setup leans constructive, defensive, or neutral.</InfoTip></dt>
+            <dd>{stance?.stance ? stance.stance.replace('_', ' ').toLowerCase() : 'neutral'}</dd>
+          </div>
+          <div>
+            <dt>Scorecard <InfoTip title="Scorecard">Eight deterministic factors counted as positive, negative or neutral. It is not a win probability.</InfoTip></dt>
+            <dd className="wb-verdict__tally">
+              <span className="text-positive">{tally.positive} for</span>
+              <span className="text-negative">{tally.negative} against</span>
+              <span className="text-secondary">{tally.neutral} neutral</span>
+            </dd>
+          </div>
+        </dl>
+      </div>
+
+      {factors.length > 0 && (
+        <ul className="wb-verdict__factors">
+          {factors.map((factor) => (
+            <li
+              key={factor.factor}
+              className={factor.signal > 0 ? 'is-positive' : factor.signal < 0 ? 'is-negative' : 'is-neutral'}
+              title={factor.reason}
+            >
+              <strong>{factor.factor}</strong>
+              <span>{factor.signal > 0 ? 'For' : factor.signal < 0 ? 'Against' : 'Neutral'}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="wb-verdict__counter">
+        <h3>Contradictions</h3>
+        {contradictions.length === 0 ? (
+          <p className="text-secondary">No factor disagreed with another on this reading.</p>
+        ) : (
           <ul>
             {contradictions.map((item) => (
               <li key={item.code || item.title}>
                 <strong>{item.title || item.code}</strong>
-                <p className="text-secondary">{(item.evidence || []).join(' · ') || item.detail || ''}</p>
+                <span className="text-secondary">{(item.evidence || []).join(' · ') || item.detail || ''}</span>
               </li>
             ))}
           </ul>
-        </section>
+        )}
+      </div>
+
+      {warnings.length > 0 && (
+        <div className="wb-verdict__warnings">
+          {warnings.map((warning) => <p key={warning} className="text-warning">⚠ {warning}</p>)}
+        </div>
       )}
+    </section>
+  );
+}
+
+function MethodologyDetail({ grade, scorecard }) {
+  const factors = scorecard?.factors || [];
+  return (
+    <section className="wb-method">
+      <div className="wb-method__lenses">
+        {Object.values(grade?.lenses || {}).map((lens) => (
+          <div key={lens.name}>
+            <strong>{lens.name}</strong>
+            <span>{Math.round((lens.score || 0) * 100)} score · {Math.round((lens.weight || 0) * 100)}% weight</span>
+            <small>{(lens.topReasons || []).join(' · ')}</small>
+          </div>
+        ))}
+      </div>
+      <h4>Factor reasoning</h4>
+      <div className="wb-method__factors">
+        {factors.map((factor) => (
+          <div key={factor.factor}>
+            <span>{factor.factor}</span>
+            <strong className={factor.signal > 0 ? 'text-positive' : factor.signal < 0 ? 'text-negative' : 'text-secondary'}>
+              {factor.signal > 0 ? 'Positive' : factor.signal < 0 ? 'Negative' : 'Neutral'}
+            </strong>
+            <small>{factor.reason}</small>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// Contradictions moved up into VerdictPanel, where they sit against the grade
+// they argue with. Repeating them here would only make the same disagreement
+// look like two separate ones.
+function WhatChangedPanel({ data }) {
+  return (
+    <div className="wb-changed-panel">
+      <InvestigationBrief investigation={data?.investigation} />
+      <EvidenceDebate debate={data?.debate} stance={data?.stance} />
     </div>
   );
 }
@@ -225,6 +300,13 @@ export default function Workbench() {
           )}
           <div className="wb-result" data-displayed-ticker={displayed.ticker}>
             <TickerHeader ticker={displayed.data.ticker} priceHistory={displayed.data.priceHistory} />
+            <VerdictPanel
+              grade={displayed.data.grade}
+              stance={displayed.data.stance}
+              scorecard={displayed.data.scorecard}
+              investigation={displayed.data.investigation}
+              dataQuality={displayed.data.dataQuality}
+            />
             <div className="wb-chart-panel">
               <MarketChart
                 chart={displayed.data.chart}
@@ -239,13 +321,8 @@ export default function Workbench() {
               {renderDrawer}
             </DetailDrawer>
             <details className="wb-methodology">
-              <summary>Methodology & data quality</summary>
-              <EvidenceSummary
-                grade={displayed.data.grade}
-                stance={displayed.data.stance}
-                scorecard={displayed.data.scorecard}
-                dataQuality={displayed.data.dataQuality}
-              />
+              <summary>How this score was calculated</summary>
+              <MethodologyDetail grade={displayed.data.grade} scorecard={displayed.data.scorecard} />
             </details>
           </div>
         </div>

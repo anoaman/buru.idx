@@ -116,8 +116,8 @@ export function simulateRisk({ entry, stop, target, capital, maxRiskPct }) {
   return request(`/api/risk-simulation?${params.toString()}`);
 }
 
-export function getOpportunities() {
-  return request('/api/opportunities');
+export function getDataHealth() {
+  return request('/api/data-health');
 }
 
 export function getRadarScout(options = {}) {

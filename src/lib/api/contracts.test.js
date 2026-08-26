@@ -16,7 +16,7 @@ import {
   guardFundamentalsDerived,
   guardFundamentalsSources,
   guardNewsDetector,
-  guardOpportunities,
+  guardDataHealth,
   guardRadarScout,
   guardStockBrokerIntelligence,
   officialIdxUrl,
@@ -154,126 +154,7 @@ describe('public Stock Analysis contracts', () => {
     expect(guardBrokerArchiveHealth(null).ok).toBe(false);
     expect(guardStockBrokerIntelligence({ success: true, data: {} }).ok).toBe(false);
     expect(guardBrokerStockIntelligence({ success: true, data: {} }).ok).toBe(false);
-    expect(guardOpportunities({ success: false, error: 'scan store unavailable' }).ok).toBe(false);
-    expect(guardOpportunities({ success: true }).ok).toBe(false);
     expect(guardCases({ success: false, error: 'offline' }).ok).toBe(false);
-  });
-
-  it('normalizes a scan run into a view model and drops the deprecated alias', () => {
-    const result = guardOpportunities({
-      success: true,
-      data: {
-        run: {
-          id: 41,
-          scanned_at: '2026-08-10T02:15:00.000Z',
-          data_as_of: '2026-08-07',
-          total_seen: 812,
-          total_eligible: 96,
-          total_shortlisted: 2,
-        },
-        opportunities: [
-          {
-            ticker: 'bbri',
-            lane: 'first-liner',
-            eligible: true,
-            rank: 1,
-            score: 74.2,
-            dataQuality: 'high',
-            confidence: 'high',
-            levels: { trigger: 4550, invalidation: 4180, netRewardRisk: 2.4 },
-            features: { isFca: true },
-            reasons: ['compression resolved', ''],
-            risks: ['thin traded value'],
-            freshness: { priceDate: '2026-08-07', priceAgeDays: 1 },
-          },
-          { lane: 'orphan-row-without-ticker' },
-        ],
-      },
-    });
-
-    expect(result.ok).toBe(true);
-    expect(result.data.run.dataAsOf).toBe('2026-08-07');
-    expect(result.data.run.totalShortlisted).toBe(2);
-    expect(result.data.candidates).toHaveLength(1);
-
-    const [candidate] = result.data.candidates;
-    expect(candidate.ticker).toBe('BBRI');
-    expect(candidate.dataQuality).toBe('high');
-    expect(candidate).not.toHaveProperty('confidence');
-    expect(candidate.isFca).toBe(true);
-    expect(candidate.ineligible).toBe(false);
-    expect(candidate.reasons).toEqual(['compression resolved']);
-    expect(result.data.lanes).toEqual(['first-liner']);
-    expect(result.data.dataQualityTally).toEqual({ high: 1, medium: 0, low: 0, unknown: 0 });
-  });
-
-  it('reads net reward/risk from features.risk when levels omits it', () => {
-    const result = guardOpportunities({
-      success: true,
-      data: {
-        run: null,
-        opportunities: [{
-          ticker: 'BJTM',
-          levels: { support: 500, trigger: 515, invalidation: 500 },
-          features: { risk: { netRewardRisk: 9.27 } },
-        }],
-      },
-    });
-
-    expect(result.ok).toBe(true);
-    expect(result.data.candidates[0].levels.netRewardRisk).toBe(9.27);
-  });
-
-  it('prefers netRewardRisk on levels over the features.risk fallback', () => {
-    const result = guardOpportunities({
-      success: true,
-      data: {
-        run: null,
-        opportunities: [{
-          ticker: 'BJTM',
-          levels: { netRewardRisk: 2.4 },
-          features: { risk: { netRewardRisk: 9.27 } },
-        }],
-      },
-    });
-
-    expect(result.data.candidates[0].levels.netRewardRisk).toBe(2.4);
-  });
-
-  it('keeps a scoreless, levelless candidate renderable and marks unknown quality', () => {
-    const result = guardOpportunities({
-      success: true,
-      data: {
-        run: null,
-        opportunities: [{ ticker: 'ADRO', score: null, rank: null, confidence: 'bogus' }],
-      },
-    });
-
-    expect(result.ok).toBe(true);
-    expect(result.data.run).toBeNull();
-    expect(result.data.candidates[0]).toMatchObject({
-      score: null,
-      rank: null,
-      dataQuality: 'unknown',
-      ineligible: false,
-      reasons: [],
-      risks: [],
-    });
-    expect(result.data.candidates[0].levels.trigger).toBeNull();
-  });
-
-  it('only flags a candidate as gated when the scan says so explicitly', () => {
-    const gated = guardOpportunities({
-      success: true,
-      data: { run: null, opportunities: [{ ticker: 'ABCD', eligible: false }] },
-    });
-    expect(gated.data.candidates[0].ineligible).toBe(true);
-
-    const unstated = guardOpportunities({
-      success: true,
-      data: { run: null, opportunities: [{ ticker: 'ABCD' }] },
-    });
-    expect(unstated.data.candidates[0].ineligible).toBe(false);
   });
 
   it('preserves frozen case evidence and backend monitoring state', () => {
@@ -411,6 +292,42 @@ describe('Radar Scout contracts', () => {
       failedCondition: 'Missed liquidity floor ≥ Rp500M/day',
       scoreBreakdown: { broker: 20, support: 18, liquidity: null },
     });
+    // No detail on the wire is null, not a fabricated zero-sized miss.
+    expect(result.data.nearMisses[0].failedDetail).toBeNull();
+  });
+
+  it('carries the miss margin, and keeps an unmeasurable miss distinct from a zero one', () => {
+    const nearMiss = (failedDetail) => ({
+      ticker: 'ELSA', rank: 1, score: 55, evidenceBand: 'low',
+      failedCondition: failedDetail.id, failedDetail, price: scoutPrice, reasons: [], risks: [],
+    });
+    const result = guardRadarScout({
+      success: true,
+      data: {
+        recipe: { id: 'quiet_accumulation', label: 'Quiet accumulation' },
+        candidates: [],
+        nearMisses: [
+          nearMiss({
+            id: 'min_average_value', label: 'Liquidity floor', unit: 'IDR', comparison: 'min',
+            available: true, expected: 500_000_000, observed: 40_000_000,
+            gap: 460_000_000, gapPct: 92, reason: 'threshold',
+          }),
+          nearMiss({
+            id: 'min_rs_vs_ihsg_pct', label: 'Minimum RS versus IHSG', unit: '%', comparison: 'min',
+            available: false, expected: 2, observed: null, gap: null, gapPct: null, reason: 'unavailable',
+          }),
+        ],
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.data.nearMisses[0].failedDetail).toMatchObject({
+      label: 'Liquidity floor', unit: 'IDR', available: true, gap: 460_000_000, gapPct: 92,
+    });
+    const unmeasured = result.data.nearMisses[1].failedDetail;
+    expect(unmeasured.available).toBe(false);
+    expect(unmeasured.gap).toBeNull();
+    expect(unmeasured.reason).toBe('unavailable');
   });
 
   it('preserves roadmap evidence, qualification history, FCA and requested coverage without turning unavailable into zero', () => {
@@ -780,5 +697,37 @@ describe('v18 Fundamentals contracts', () => {
     expect(result.data.run.materialCount).toBe(1);
     expect(result.data.items[0].eventId).toBe('e1');
     expect(result.data.items[0].officialSourceUrl).toBe('https://www.idx.co.id/e1');
+  });
+});
+
+describe('data health contract', () => {
+  it('lets the oldest cache set the headline rather than averaging it away', () => {
+    const result = guardDataHealth({
+      success: true,
+      data: {
+        overall: 'stale',
+        tradingCalendar: { lastCompletedSession: '2026-08-25' },
+        priceCache: { freshness: 'stale', ageDays: 11.9, sessionsBehind: 7, lastDate: '2026-08-14' },
+        brokerCache: { freshness: 'stale', ageDays: 13.9, sessionsBehind: 9, lastDate: '2026-08-12' },
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    // A fresh price cache must not be allowed to disguise a nine-session-old
+    // broker cache; the screen is only as current as its slowest input.
+    expect(result.data.worstSessionsBehind).toBe(9);
+    expect(result.data.lastCompletedSession).toBe('2026-08-25');
+  });
+
+  it('reports unknown lag as unknown instead of zero', () => {
+    const result = guardDataHealth({ success: true, data: { overall: 'unknown' } });
+    expect(result.ok).toBe(true);
+    expect(result.data.worstSessionsBehind).toBeNull();
+    expect(result.data.priceCache.freshness).toBe('unknown');
+  });
+
+  it('fails closed on an error envelope', () => {
+    expect(guardDataHealth({ success: false, error: 'db locked' }).ok).toBe(false);
+    expect(guardDataHealth({ success: true }).ok).toBe(false);
   });
 });

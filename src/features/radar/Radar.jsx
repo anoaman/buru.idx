@@ -1,14 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { getOpportunities, getRadarScout, getRadarScoutConditions } from '../../lib/api/client.js';
-import { guardOpportunities, guardRadarScout, guardRadarScoutConditions } from '../../lib/api/contracts.js';
-import { formatDate, formatIDR, formatPct, formatPrice, formatRatio, formatRelativeDays } from '../../lib/format/market.js';
+import { getRadarScout, getRadarScoutConditions } from '../../lib/api/client.js';
+import { guardRadarScout, guardRadarScoutConditions } from '../../lib/api/contracts.js';
+import { formatDate, formatIDR, formatPct, formatPrice, formatRatio } from '../../lib/format/market.js';
 import EmptyState from '../../components/EmptyState.jsx';
 import ErrorState from '../../components/ErrorState.jsx';
 import Skeleton from '../../components/Skeleton.jsx';
 import { useAnalysisContext } from '../../components/AnalysisContext.jsx';
 
-const ALL_LANES = 'all';
 const RECIPES = [
   { id: 'quiet_accumulation', label: 'Quiet accumulation', description: 'Looks for moderate, persistent buying—not extreme broker dominance—near independently confirmed support.' },
   { id: 'dominant_broker', label: 'Dominant broker', description: 'Prioritizes stocks where one broker accumulated materially more than the second-largest positive buyer.' },
@@ -122,96 +121,6 @@ function breakdownLabel(key) {
 function EvidenceBandBadge({ band }) {
   const key = EVIDENCE_BAND_LABEL[band] ? band : 'low';
   return <span className={`badge ${EVIDENCE_BAND_TONE[key]}`}>{EVIDENCE_BAND_LABEL[key]}</span>;
-}
-
-function ScanProvenance({ run, candidateCount }) {
-  if (!run) return null;
-  return (
-    <div className="radar-run">
-      <strong>{formatDate(run.dataAsOf)}</strong>
-      <span className={`radar-run__age${run.dataAsOf ? '' : ' radar-run__age--missing'}`}>
-        data {formatRelativeDays(run.dataAsOf)}
-      </span>
-      <span>{candidateCount} stocks</span>
-    </div>
-  );
-}
-
-// Dense table, not card-bands: rank, ticker+lane, score, why/against, levels, actions.
-function ShortlistRow({ row, onInvestigate, onActors }) {
-  const primaryReason = row.reasons[0];
-  const primaryRisk = row.risks[0];
-  return (
-    <tr className="ui-row">
-      <td className="tabular text-tertiary">{formatRank(row.rank)}</td>
-      <td>
-        <div className="radar-cell-ticker">
-          <strong>{row.ticker}</strong>
-          <span>
-            {row.lane || 'lane unknown'}
-            {row.isFca ? ' · FCA' : ''}
-            {row.ineligible ? ' · gated' : ''}
-          </span>
-        </div>
-      </td>
-      <td className="tabular">
-        <strong>{Number.isFinite(row.score) ? row.score.toFixed(1) : '—'}</strong>
-        {row.dataQuality !== 'high' && <span className="is-degraded">{row.dataQuality} data quality</span>}
-      </td>
-      <td>
-        <div className="radar-cell-why">
-          <strong>{primaryReason || 'Qualified structure'}</strong>
-          {primaryRisk ? <span className="radar-row__risk">Against: {primaryRisk}</span> : null}
-        </div>
-      </td>
-      <td className="tabular">
-        <div className="radar-cell-levels">
-          <span>Breakout above <strong>{formatPrice(row.levels.trigger)}</strong></span>
-          <span>Setup fails below <strong>{formatPrice(row.levels.invalidation)}</strong></span>
-          <span>Reward / risk <strong>{formatRatio(row.levels.netRewardRisk)}</strong></span>
-        </div>
-      </td>
-      <td>
-        <div className="radar-row__actions">
-          <button type="button" className="ui-btn ui-btn--ghost" aria-label={`Open ${row.ticker} analysis`} onClick={onInvestigate}>
-            Open Analysis
-          </button>
-          <button type="button" className="ui-btn ui-btn--ghost" aria-label={`Open ${row.ticker} broker flow`} onClick={onActors}>
-            Broker Flow
-          </button>
-        </div>
-      </td>
-    </tr>
-  );
-}
-
-function ShortlistTable({ rows, onInvestigate, onActors }) {
-  return (
-    <div className="ui-table-wrap">
-      <table className="ui-table ui-table--shortlist" aria-label="Shortlisted candidates">
-        <thead>
-          <tr>
-            <th className="tabular">#</th>
-            <th>Ticker</th>
-            <th className="tabular">Score</th>
-            <th>Why</th>
-            <th className="tabular">Levels</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <ShortlistRow
-              key={row.ticker}
-              row={row}
-              onInvestigate={() => onInvestigate(row.ticker)}
-              onActors={() => onActors(row.ticker)}
-            />
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
 }
 
 // Shared by qualified and near-miss Scout rows: reasons, risks, broker context and
@@ -359,7 +268,84 @@ function ScoutQualifiedTable({ rows, onInvestigate, onActors }) {
   );
 }
 
+/**
+ * What the screen actually ran against, stated rather than implied.
+ *
+ * Two things here are easy to miss and change how a result should be read. The
+ * broker window silently shrinks when the archive is short of the requested
+ * span, so asking for 7 sessions and scoring on 5 looks identical to asking for
+ * 5. And a recipe with no broker leg anchors to a later price date than one with
+ * it, so two strategies on this page can legitimately disagree about "today".
+ */
+function ScoutProvenance({ data, requestedSessions }) {
+  const requested = data.asOf.requestedBrokerSessions ?? requestedSessions;
+  const observed = data.asOf.brokerSessions;
+  const degraded = Number.isFinite(requested) && Number.isFinite(observed) && observed < requested;
+  return (
+    <div className="radar-run">
+      <strong>{data.recipe.label}</strong>
+      <span>Prices through {formatDate(data.asOf.priceDate)}</span>
+      {data.asOf.brokerFrom ? (
+        <span className={degraded ? 'radar-run__age--missing' : undefined}>
+          Broker flow {formatDate(data.asOf.brokerFrom)}–{formatDate(data.asOf.brokerTo)}
+          {degraded
+            ? ` · ${observed} of ${requested} sessions available`
+            : ` · ${observed} trading days`}
+        </span>
+      ) : (
+        <span>No broker window in this screen</span>
+      )}
+      <span>{data.coverage.matched} matched</span>
+      <span>Showing {data.coverage.returned}</span>
+    </div>
+  );
+}
+
 const NEAR_MISS_COLUMNS = 6;
+
+// Condition thresholds are read in the same units the filter was typed in, so a
+// gap has to be rendered the same way the input was. Rupiah compacts, everything
+// else keeps its suffix.
+function formatConditionValue(value, unit) {
+  if (!Number.isFinite(value)) return '—';
+  if (unit === 'IDR') return `Rp${compactNumber(value)}`;
+  if (unit === '%') return `${Number(value.toFixed(2))}%`;
+  if (unit === 'x') return `${Number(value.toFixed(2))}×`;
+  return String(Number(value.toFixed(2)));
+}
+
+/**
+ * A near miss that only names the condition it failed is a label, not a finding.
+ * Missing the liquidity floor by 3% and missing it by 92% are different stocks,
+ * and only one of them is worth opening.
+ */
+function MissedCondition({ detail, fallback }) {
+  if (!detail) {
+    return <span className="scout-near-miss__missed">Missed: {fallback || 'unspecified condition'}</span>;
+  }
+  if (!detail.available) {
+    return (
+      <span className="scout-near-miss__missed">
+        <strong>{detail.label}</strong>
+        <small>no evidence available</small>
+      </span>
+    );
+  }
+  const gapText = Number.isFinite(detail.gapPct)
+    ? `off by ${formatConditionValue(detail.gap, detail.unit)} (${detail.gapPct}%)`
+    : `off by ${formatConditionValue(detail.gap, detail.unit)}`;
+  // Under 15% of the threshold is close enough that the stock is arguably a
+  // tuning decision rather than a rejection.
+  const near = Number.isFinite(detail.gapPct) && detail.gapPct <= 15;
+  return (
+    <span className={`scout-near-miss__missed${near ? ' scout-near-miss__missed--close' : ''}`}>
+      <strong>{detail.label}</strong>
+      <small>
+        {formatConditionValue(detail.observed, detail.unit)} vs {formatConditionValue(detail.expected, detail.unit)} · {gapText}
+      </small>
+    </span>
+  );
+}
 
 function NearMissRow({ row, onInvestigate, onActors }) {
   const [expanded, setExpanded] = useState(false);
@@ -375,7 +361,7 @@ function NearMissRow({ row, onInvestigate, onActors }) {
         </td>
         <td className="tabular"><strong>{Number.isFinite(row.score) ? row.score.toFixed(1) : '—'}</strong></td>
         <td><EvidenceBandBadge band={row.evidenceBand} /></td>
-        <td><span className="scout-near-miss__missed">Missed: {row.failedCondition || 'unspecified condition'}</span></td>
+        <td><MissedCondition detail={row.failedDetail} fallback={row.failedCondition} /></td>
         <td>
           <div className="radar-row__actions">
             <button type="button" className="ui-btn ui-btn--ghost" aria-label={`Open ${row.ticker} analysis`} onClick={onInvestigate}>Open Analysis</button>
@@ -406,7 +392,10 @@ function ScoutNearMissSection({ rows, onInvestigate, onActors }) {
   return (
     <section className="scout-near-miss" aria-label="Almost matched stocks">
       <h3 className="scout-near-miss__title">Almost Matched</h3>
-      <p className="scout-near-miss__intro">These stocks missed one enabled condition.</p>
+      <p className="scout-near-miss__intro">
+        These stocks missed exactly one enabled condition. The margin is shown against the
+        threshold you set, so a narrow miss is a tuning decision and a wide one is a rejection.
+      </p>
       <div className="ui-table-wrap">
         <table className="ui-table ui-table--near-miss" aria-label="Almost matched stocks">
           <thead>
@@ -582,7 +571,7 @@ function Scout({ onInvestigate, onActors }) {
           {!state.data && state.loading && <Skeleton label="Screening…" />}
           {!state.data && !state.loading && !state.error && <EmptyState title={recipe ? `${recipe.label} is ready` : 'Custom Screener is ready'} message="Choose a template or enable filters, then press Run Screener to find matching stocks." />}
           {state.data && <>
-            <div className="radar-run"><strong>{state.data.recipe.label}</strong><span>Prices through {formatDate(state.data.asOf.priceDate)}</span><span>Broker flow {formatDate(state.data.asOf.brokerFrom)}–{formatDate(state.data.asOf.brokerTo)} · requested {state.data.asOf.requestedBrokerSessions ?? filters.brokerSessions}, observed {state.data.asOf.brokerSessions} trading days</span><span>{state.data.coverage.matched} matched</span><span>Showing {state.data.coverage.returned}</span></div>
+            <ScoutProvenance data={state.data} requestedSessions={filters.brokerSessions} />
             <DailyDiff diff={state.data.dailyDiff} />
             {state.data.candidates.length === 0
               ? <EmptyState title="No stocks passed this screen" message="That is a valid screen result. Widen a boundary only if it still matches your intended trade universe." />
@@ -596,124 +585,25 @@ function Scout({ onInvestigate, onActors }) {
   );
 }
 
+/**
+ * One screener, not two.
+ *
+ * This page used to carry a second tab, "Market Shortlist", reading the nightly
+ * batch scan off /api/opportunities. It ran a different methodology against a
+ * different as-of date than the screener beside it, so the same ticker could
+ * qualify in one tab and not the other with nothing on screen explaining why.
+ * Removed 2026-08-25; the batch scan still runs and is still readable from the
+ * private cockpit, it just no longer competes with the live screener here.
+ */
 export default function Radar() {
   const { openInvestigationTab, openBrokerFlowTab } = useAnalysisContext();
-  const [state, setState] = useState({ loading: true, error: null, data: null });
-  const [lane, setLane] = useState(ALL_LANES);
-  const [view, setView] = useState('scout');
-
-  const load = useCallback(() => {
-    let cancelled = false;
-    setState({ loading: true, error: null, data: null });
-    getOpportunities()
-      .then((raw) => {
-        if (cancelled) return;
-        const result = guardOpportunities(raw);
-        setState({ loading: false, error: result.ok ? null : result.error, data: result.data });
-      })
-      .catch((error) => {
-        if (cancelled) return;
-        setState({ loading: false, error: error.message || 'Scan request failed', data: null });
-      });
-    return () => { cancelled = true; };
-  }, []);
-
-  useEffect(load, [load]);
-
-  const candidates = state.data?.candidates || [];
-  const lanes = state.data?.lanes || [];
-  // Filtering only hides rows the backend already ranked. Nothing is re-scored,
-  // re-ranked or re-ordered here.
-  const visible = useMemo(
-    () => (lane === ALL_LANES ? candidates : candidates.filter((row) => row.lane === lane)),
-    [candidates, lane],
-  );
 
   return (
     <section className="radar-page" aria-labelledby="radar-title">
       <header className="module-heading">
         <div><h2 id="radar-title">Screener</h2></div>
       </header>
-
-      <div className="radar-view-tabs" role="tablist" aria-label="Screener views">
-        <button type="button" role="tab" aria-selected={view === 'scout'} className={view === 'scout' ? 'is-active' : ''} onClick={() => setView('scout')}>Custom Screener</button>
-        <button type="button" role="tab" aria-selected={view === 'scan'} className={view === 'scan' ? 'is-active' : ''} onClick={() => setView('scan')}>Market Shortlist</button>
-      </div>
-
-      {view === 'scout' && <Scout onInvestigate={openInvestigationTab} onActors={openBrokerFlowTab} />}
-
-      {view === 'scan' && <>
-
-      {state.loading && <Skeleton label="Loading the latest qualified scan…" />}
-
-      {state.error && !state.loading && (
-        <ErrorState title="Scan unavailable" error={state.error} onRetry={load} />
-      )}
-
-      {!state.loading && !state.error && state.data && (
-        <>
-          <ScanProvenance
-            run={state.data.run}
-            candidateCount={visible.length}
-          />
-
-          <details className="radar-criteria">
-            <summary>How stocks qualify</summary>
-            <p>Stocks need sufficient price history and liquidity, must hold near support inside a compressed range, and need either broker-flow or volume confirmation. The shortlist also requires acceptable reward / risk after costs. Results are ranked by support, compression, broker flow, risk, volume, and market context.</p>
-          </details>
-
-          {lanes.length > 1 && (
-            <div className="radar-lanes" role="group" aria-label="Filter candidates by lane">
-              {[ALL_LANES, ...lanes].map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  className={lane === value ? 'is-active' : ''}
-                  aria-pressed={lane === value}
-                  onClick={() => setLane(value)}
-                >
-                  {value === ALL_LANES ? `all (${candidates.length})` : value}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {!state.data.run && candidates.length === 0 && (
-            <EmptyState
-              title="No scan has been recorded"
-              message="The Market Shortlist has not been generated yet."
-            />
-          )}
-
-          {state.data.run && candidates.length === 0 && (
-            <EmptyState
-              title="Scan completed with no candidates"
-              message={`Scan #${state.data.run.id ?? '—'} evaluated ${state.data.run.totalSeen ?? 'the universe'} and shortlisted nothing. An empty shortlist is a result, not a failure.`}
-            />
-          )}
-
-          {candidates.length > 0 && visible.length === 0 && (
-            <EmptyState
-              title="No candidates in this lane"
-              message="The current scan shortlisted nothing in the selected lane."
-              action={(
-                <button type="button" onClick={() => setLane(ALL_LANES)}>
-                  Show all lanes
-                </button>
-              )}
-            />
-          )}
-
-          {visible.length > 0 && (
-            <ShortlistTable
-              rows={visible}
-              onInvestigate={openInvestigationTab}
-              onActors={openBrokerFlowTab}
-            />
-          )}
-        </>
-      )}
-      </>}
+      <Scout onInvestigate={openInvestigationTab} onActors={openBrokerFlowTab} />
     </section>
   );
 }
