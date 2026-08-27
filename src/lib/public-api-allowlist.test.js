@@ -126,6 +126,11 @@ describe('public API allowlist', () => {
   it('rejects a malformed target instead of forwarding it', () => {
     expect(resolvePublicApiRequest('GET', '//%').ok).toBe(false);
   });
+
+  it('rejects oversized request targets and allowed parameter values', () => {
+    expect(resolvePublicApiRequest('GET', `/api/analyze?ticker=${'A'.repeat(8_192)}`).status).toBe(414);
+    expect(resolvePublicApiRequest('GET', `/api/radar/scout?recipe=${'x'.repeat(4_097)}`).status).toBe(414);
+  });
 });
 
 describe('rate limiting', () => {
