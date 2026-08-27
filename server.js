@@ -16,6 +16,13 @@ const HOST = process.env.STOCK_ANALYSIS_HOST || '127.0.0.1';
 const PORT = Number(process.env.STOCK_ANALYSIS_PORT || 8792);
 const API_ORIGIN = new URL(process.env.STOCK_ANALYSIS_API_ORIGIN || 'http://127.0.0.1:8787');
 const disclosureStore = createPythonDisclosureStore({ allowFixture: false });
+const BASE_SECURITY_HEADERS = {
+  'cross-origin-opener-policy': 'same-origin',
+  'permissions-policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
+  'referrer-policy': 'strict-origin-when-cross-origin',
+  'x-content-type-options': 'nosniff',
+  'x-frame-options': 'DENY',
+};
 
 const contentTypes = {
   '.css': 'text/css; charset=utf-8',
@@ -31,7 +38,7 @@ function sendJson(res, status, body, extraHeaders = {}) {
   res.writeHead(status, {
     'content-type': 'application/json; charset=utf-8',
     'cache-control': 'no-store',
-    'x-content-type-options': 'nosniff',
+    ...BASE_SECURITY_HEADERS,
     ...extraHeaders,
   });
   res.end(JSON.stringify(body));
@@ -91,7 +98,7 @@ function proxyApi(req, res) {
       'cache-control': status === 200
         ? 'public, max-age=60, stale-while-revalidate=300'
         : 'no-store',
-      'x-content-type-options': 'nosniff',
+      ...BASE_SECURITY_HEADERS,
     });
     upstreamRes.pipe(res);
   });
@@ -136,8 +143,8 @@ function handle(req, res) {
   res.writeHead(200, {
     'content-type': contentTypes[extname(path)] || 'application/octet-stream',
     'cache-control': path.endsWith('index.html') ? 'no-store' : 'public, max-age=31536000, immutable',
-    'x-content-type-options': 'nosniff',
-    'x-frame-options': 'DENY',
+    ...BASE_SECURITY_HEADERS,
+    'content-security-policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
   });
   createReadStream(path).pipe(res);
 }

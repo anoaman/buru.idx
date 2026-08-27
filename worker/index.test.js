@@ -19,6 +19,7 @@ describe('public Worker API boundary', () => {
 
     const response = await worker.fetch(new Request(
       'https://analysis.example.test/api/analyze?ticker=BBCA&mode=live&internal=secret',
+      { headers: { authorization: 'Bearer browser-token', cookie: 'session=private' } },
     ), env);
 
     expect(response.status).toBe(200);
@@ -27,6 +28,43 @@ describe('public Worker API boundary', () => {
     expect(url.searchParams.get('ticker')).toBe('BBCA');
     expect(url.searchParams.get('mode')).toBe('delayed');
     expect(url.searchParams.has('internal')).toBe(false);
+    expect(upstream.headers.get('authorization')).toBeNull();
+    expect(upstream.headers.get('cookie')).toBeNull();
+    expect(response.headers.get('content-security-policy')).toContain("default-src 'self'");
+  });
+
+  it('fails closed on oversized inputs and unavailable upstreams', async () => {
+    const fetchMock = vi.fn(async () => { throw new Error('private origin details'); });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const oversized = await worker.fetch(new Request(
+      `https://analysis.example.test/api/radar/scout?conditions=${'x'.repeat(4_097)}`,
+    ), env);
+    const unavailable = await worker.fetch(new Request(
+      'https://analysis.example.test/api/analyze?ticker=BBCA',
+    ), env);
+
+    expect(oversized.status).toBe(414);
+    expect(unavailable.status).toBe(502);
+    expect(await unavailable.json()).toEqual({
+      success: false,
+      error: 'Analysis service is temporarily unavailable.',
+    });
+  });
+
+  it('fails closed when origin configuration or JSON is invalid', async () => {
+    const missingConfig = await worker.fetch(new Request(
+      'https://analysis.example.test/api/analyze?ticker=BBCA',
+    ), { API_ORIGIN: env.API_ORIGIN });
+    expect(missingConfig.status).toBe(502);
+
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('not-json', {
+      headers: { 'content-type': 'application/json' },
+    })));
+    const invalidJson = await worker.fetch(new Request(
+      'https://analysis.example.test/api/analyze?ticker=BBCA',
+    ), env);
+    expect(invalidJson.status).toBe(502);
   });
 
   it('blocks unknown routes and write methods before reaching the origin', async () => {

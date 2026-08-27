@@ -159,6 +159,11 @@ describe('public API allowlist', () => {
     expect(resolvePublicApiRequest('GET', '//%').ok).toBe(false);
   });
 
+  it('rejects oversized request targets and allowed parameter values', () => {
+    expect(resolvePublicApiRequest('GET', `/api/analyze?ticker=${'A'.repeat(8_192)}`).status).toBe(414);
+    expect(resolvePublicApiRequest('GET', `/api/radar/scout?conditions=${'x'.repeat(4_097)}`).status).toBe(414);
+  });
+
   it('forwards v18 Fundamentals routes with allowed params only', () => {
     expect(resolvePublicApiRequest('GET', '/api/fundamentals/snapshot?ticker=BBCA').ok).toBe(true);
     expect(resolvePublicApiRequest('GET', '/api/fundamentals/periods?ticker=BBCA').ok).toBe(true);

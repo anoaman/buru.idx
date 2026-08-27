@@ -46,6 +46,9 @@ const PRIVATE_KEYS = new Set([
   'sourceThroughDate',
   'sources',
 ]);
+const UPSTREAM_TIMEOUT_MS = 30_000;
+const MAX_REQUEST_TARGET_LENGTH = 8_192;
+const MAX_QUERY_VALUE_LENGTH = 4_096;
 
 function publicText(value) {
   return value
@@ -91,64 +94,90 @@ function secure(response) {
 }
 
 function originRequest(request, env, url) {
+  if (!env.API_ORIGIN || !env.CF_ACCESS_CLIENT_ID || !env.CF_ACCESS_CLIENT_SECRET) {
+    throw new Error('Origin configuration is unavailable.');
+  }
   const origin = new URL(env.API_ORIGIN);
   origin.pathname = url.pathname;
   const route = PUBLIC_ROUTES.get(url.pathname);
   const query = new URLSearchParams();
   for (const name of route?.params || []) {
     const value = url.searchParams.get(name);
+    if (value != null && value.length > MAX_QUERY_VALUE_LENGTH) {
+      throw new RangeError('Request parameter is too long.');
+    }
     if (value != null && value !== '') query.set(name, value);
   }
   for (const [name, value] of Object.entries(route?.force || {})) query.set(name, value);
   origin.search = query.toString();
-  const headers = new Headers(request.headers);
-  headers.set('accept', 'application/json');
-  headers.set('cf-access-client-id', env.CF_ACCESS_CLIENT_ID);
-  headers.set('cf-access-client-secret', env.CF_ACCESS_CLIENT_SECRET);
-  headers.delete('cookie');
+  const headers = new Headers({
+    accept: 'application/json',
+    'cf-access-client-id': env.CF_ACCESS_CLIENT_ID,
+    'cf-access-client-secret': env.CF_ACCESS_CLIENT_SECRET,
+  });
   return new Request(origin, {
     method: request.method,
     headers,
     redirect: 'manual',
+    signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
   });
 }
 
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname.length + url.search.length > MAX_REQUEST_TARGET_LENGTH) {
+      return secure(json(414, 'Request target is too long.'));
+    }
     if (url.pathname === '/healthz') {
-      return Response.json({ status: 'ok' }, {
+      return secure(Response.json({ status: 'ok' }, {
         headers: { 'cache-control': 'no-store' },
-      });
+      }));
     }
 
     if (url.pathname === '/readyz') {
-      const response = await fetch(originRequest(request, env, new URL('/readyz', url)));
-      return Response.json({ status: response.ok ? 'ready' : 'unavailable' }, {
-        status: response.status,
-        headers: { 'cache-control': 'no-store' },
-      });
+      try {
+        const response = await fetch(originRequest(request, env, new URL('/readyz', url)));
+        return secure(Response.json({ status: response.ok ? 'ready' : 'unavailable' }, {
+          status: response.status,
+          headers: { 'cache-control': 'no-store' },
+        }));
+      } catch {
+        return secure(json(502, 'Analysis service is temporarily unavailable.'));
+      }
     }
 
     if (url.pathname.startsWith('/api/')) {
       const route = PUBLIC_ROUTES.get(url.pathname);
-      if (!route) return json(404, 'Not found.');
+      if (!route) return secure(json(404, 'Not found.'));
       if (!(route.methods || ['GET', 'HEAD']).includes(request.method)) {
-        return json(405, 'This method is not allowed.');
+        return secure(json(405, 'This method is not allowed.'));
       }
-      const response = await fetch(originRequest(request, env, url));
+      let response;
+      try {
+        response = await fetch(originRequest(request, env, url));
+      } catch (error) {
+        const status = error instanceof RangeError ? 414 : 502;
+        const message = status === 414 ? error.message : 'Analysis service is temporarily unavailable.';
+        return secure(json(status, message));
+      }
       const contentType = response.headers.get('content-type') || '';
       if (!contentType.includes('application/json')) {
-        return json(response.ok ? 502 : response.status, 'Analysis service returned an invalid response.');
+        return secure(json(response.ok ? 502 : response.status, 'Analysis service returned an invalid response.'));
       }
-      const payload = sanitize(await response.json());
-      return Response.json(payload, {
+      let payload;
+      try {
+        payload = sanitize(await response.json());
+      } catch {
+        return secure(json(502, 'Analysis service returned an invalid response.'));
+      }
+      return secure(Response.json(payload, {
         status: response.status,
         headers: {
           'cache-control': 'no-store',
           'x-content-type-options': 'nosniff',
         },
-      });
+      }));
     }
 
     return secure(await env.ASSETS.fetch(request));

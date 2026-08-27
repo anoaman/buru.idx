@@ -169,6 +169,9 @@ identity, so a later rename changes Cloudflare routes without moving data or
 rewriting application code. The Worker reaches the loopback API only through a
 Tunnel hostname protected by a Cloudflare Access service token stored as Worker
 secrets; neither credential nor the origin hostname enters the browser bundle.
+The Worker forwards a newly constructed minimal header set, applies a 30-second
+origin deadline, bounds request targets and allowlisted parameter values, and
+returns sanitized failures with the same security headers as static responses.
 
 Production is deployed only from `main` to `analysis.tombaklepas.app`. Staging
 is deployed only from `develop` to `staging.analysis.tombaklepas.app`; normal

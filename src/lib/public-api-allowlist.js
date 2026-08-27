@@ -91,6 +91,8 @@ export const DISCLOSURE_PATHS = new Set([
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = Number(process.env.STOCK_ANALYSIS_RATE_LIMIT || 120);
 export const UPSTREAM_TIMEOUT_MS = Number(process.env.STOCK_ANALYSIS_UPSTREAM_TIMEOUT_MS || 30_000);
+const MAX_REQUEST_TARGET_LENGTH = 8_192;
+const MAX_QUERY_VALUE_LENGTH = 4_096;
 const rateBuckets = new Map();
 
 const RATE_LIMIT_MAX_BUCKETS = 5000;
@@ -142,6 +144,9 @@ export function checkRateLimit(key, nowMs, buckets = rateBuckets) {
  */
 export function resolvePublicApiRequest(method, rawUrl) {
   let url;
+  if (String(rawUrl || '').length > MAX_REQUEST_TARGET_LENGTH) {
+    return { ok: false, status: 414, error: 'Request target is too long.' };
+  }
   const rawPath = String(rawUrl || '').split('?')[0];
   if (/(^|\/)\.\.?($|\/)/.test(rawPath)) {
     return { ok: false, status: 400, error: 'Malformed request.' };
@@ -162,6 +167,9 @@ export function resolvePublicApiRequest(method, rawUrl) {
   const forwarded = new URLSearchParams();
   for (const name of route.params) {
     const value = url.searchParams.get(name);
+    if (value != null && value.length > MAX_QUERY_VALUE_LENGTH) {
+      return { ok: false, status: 414, error: 'Request parameter is too long.' };
+    }
     if (value != null && value !== '') forwarded.set(name, value);
   }
   for (const [name, value] of Object.entries(route.force || {})) {
