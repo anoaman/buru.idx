@@ -1,8 +1,9 @@
 const PUBLIC_ROUTES = new Map([
   ['/api/analyze', { params: ['ticker'], force: { mode: 'delayed' } }],
-  ['/api/broker-intelligence/broker', { params: ['code', 'days', 'limit', 'date', 'preset', 'from', 'to'] }],
+  ['/api/broker-intelligence/broker', { params: ['code', 'days', 'limit', 'date', 'preset', 'from', 'to', 'maxPrice', 'minAverageValue', 'minBrokerNetValue', 'foreignDirection', 'minForeignValue', 'excludeFca'] }],
   ['/api/broker-intelligence/stock', { params: ['ticker', 'days', 'date', 'preset', 'from', 'to'] }],
-  ['/api/opportunities', { params: [] }],
+  ['/api/broker-intelligence/health', { params: [] }],
+  ['/api/data-health', { params: [] }],
   ['/api/radar/scout/conditions', { params: [] }],
   ['/api/radar/scout', { params: [
     'recipe', 'conditions', 'asOf', 'brokerSessions', 'brokerPreset', 'brokerFrom', 'brokerTo',
@@ -12,20 +13,6 @@ const PUBLIC_ROUTES = new Map([
     'minRsVsIhsgPct', 'useRsVsIhsg', 'excludeFca',
   ] }],
   ['/api/risk-simulation', { params: ['entry', 'stop', 'target', 'capital', 'maxRiskPct'] }],
-  ['/api/disclosures', { params: ['ticker', 'from', 'to', 'category', 'severity', 'signal', 'cursor', 'limit'] }],
-  ['/api/disclosures/detail', { params: ['eventId'] }],
-  ['/api/disclosures/timeline', { params: ['ticker', 'from', 'to', 'limit'] }],
-  ['/api/disclosures/anomalies', { params: ['ticker', 'severity', 'signal', 'from', 'to', 'cursor', 'limit'] }],
-  ['/api/disclosures/documents', { params: ['documentId', 'eventId'] }],
-  ['/api/fundamentals/statements', { params: ['ticker', 'period', 'statementType', 'cursor', 'limit'] }],
-  ['/api/fundamentals/snapshot', { params: ['ticker'] }],
-  ['/api/fundamentals/periods', { params: ['ticker'] }],
-  ['/api/fundamentals/facts', { params: ['ticker', 'filingId', 'statementType', 'periodLabel', 'cursor', 'limit'] }],
-  ['/api/fundamentals/filing', { params: ['ticker', 'filingId'] }],
-  ['/api/fundamentals/derived', { params: ['ticker', 'filingId', 'periodLabel'] }],
-  ['/api/fundamentals/sources', { params: ['ticker', 'filingId'] }],
-  ['/api/news-detector', { params: ['date'] }],
-  ['/api/news-detector/scan', { params: ['date'], methods: ['POST'] }],
   ['/api/collector/health', { params: [] }],
 ]);
 

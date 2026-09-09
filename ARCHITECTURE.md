@@ -144,19 +144,12 @@ and rate limiting remain as defense in depth. Radar and Cases may add private
 read/write routes only after their exact contracts are reviewed; they must not
 turn the proxy into a wildcard forwarder.
 
-Keterbukaan Informasi and Fundamentals use allowlisted GET pathnames only:
-`/api/disclosures`, `/api/disclosures/detail`,
-`/api/disclosures/timeline`, `/api/disclosures/anomalies`,
-`/api/disclosures/documents`, `/api/fundamentals/statements`,
-`/api/fundamentals/filing`, `/api/fundamentals/facts`,
-`/api/fundamentals/snapshot`, `/api/fundamentals/periods`,
-`/api/fundamentals/derived`, `/api/fundamentals/sources`,
-`/api/news-detector`, and
-`/api/collector/health`. Validated ticker/date/category/severity/signal
-filters and bounded pagination are forwarded; filesystem paths, SQL, and PDF
-blobs are never exposed. News Detector scan triggers use a POST to
-`/api/news-detector/scan` with a date parameter only — no unbounded query
-parameters are forwarded. Production `server.js` serves those routes only
+Parked Keterbukaan, Fundamentals, and News Detector routes are not exposed by
+the anonymous proxy. Disclosure ingestion and analysis remain private backend
+capabilities. A future ticker-context disclosure strip must add one narrow,
+server-bounded read with a forced 30-day window rather than restoring the old
+route family. `/api/collector/health` remains public because the live shell
+uses it for freshness status. Production `server.js` serves that route only
 when `TRADING_DB_PATH` is set and fails closed otherwise. Demo fixture creation requires
 `STOCK_ANALYSIS_DISCLOSURE_FIXTURE=1` and is allowed only in the Vite
 middleware, never as the `server.js` default. Analyze/broker routes still

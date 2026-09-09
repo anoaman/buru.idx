@@ -4,11 +4,11 @@ import { extname, join, normalize } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import {
   checkRateLimit,
-  DISCLOSURE_PATHS,
+  LOCAL_DATA_PATHS,
   resolvePublicApiRequest,
   UPSTREAM_TIMEOUT_MS,
 } from './src/lib/public-api-allowlist.js';
-import { handleDisclosureHttp, handleNewsDetectorScanHttp } from './src/lib/disclosures/http.js';
+import { handleDisclosureHttp } from './src/lib/disclosures/http.js';
 import { createPythonDisclosureStore } from './src/lib/disclosures/local-store.js';
 
 const ROOT = fileURLToPath(new URL('./dist/', import.meta.url));
@@ -62,12 +62,7 @@ function proxyApi(req, res) {
   }
 
   const pathname = new URL(decision.path, 'http://internal').pathname;
-  if (pathname === '/api/news-detector/scan') {
-    const handled = handleNewsDetectorScanHttp(req.method, req.url, { allowFixture: false });
-    return sendJson(res, handled.status, handled.body);
-  }
-
-  if (DISCLOSURE_PATHS.has(pathname)) {
+  if (LOCAL_DATA_PATHS.has(pathname)) {
     const handled = handleDisclosureHttp(req.method, req.url, disclosureStore);
     return sendJson(res, handled.status, handled.body);
   }

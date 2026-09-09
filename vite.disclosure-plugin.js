@@ -1,5 +1,4 @@
-import { DISCLOSURE_PATHS } from './src/lib/public-api-allowlist.js';
-import { handleDisclosureHttp, handleNewsDetectorScanHttp } from './src/lib/disclosures/http.js';
+import { DISCLOSURE_PATHS, handleDisclosureHttp, handleNewsDetectorScanHttp } from './src/lib/disclosures/http.js';
 import { createPythonDisclosureStore } from './src/lib/disclosures/local-store.js';
 
 const disclosureStore = createPythonDisclosureStore({ allowFixture: true });
