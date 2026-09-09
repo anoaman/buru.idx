@@ -54,7 +54,7 @@ describe('DetailDrawer selection stability', () => {
 
   it('hydrates from sessionStorage only for a new storage key', () => {
     sessionStorage.setItem('nalar-drawer:BBRI', 'risk');
-    sessionStorage.setItem('nalar-drawer:TLKM', 'methodology');
+    sessionStorage.setItem('nalar-drawer:TLKM', 'broker');
     const { rerender } = render(
       <DetailDrawer storageKey="nalar-drawer:BBRI">
         {(active) => <div data-testid="panel">{active}</div>}
@@ -68,6 +68,6 @@ describe('DetailDrawer selection stability', () => {
         {(active) => <div data-testid="panel">{active}</div>}
       </DetailDrawer>,
     );
-    expect(screen.getByTestId('panel')).toHaveTextContent('methodology');
+    expect(screen.getByTestId('panel')).toHaveTextContent('broker');
   });
 });

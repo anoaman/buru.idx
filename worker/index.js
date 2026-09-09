@@ -1,15 +1,19 @@
 const PUBLIC_ROUTES = new Map([
   ['/api/analyze', { params: ['ticker'], force: { mode: 'delayed' } }],
-  ['/api/broker-intelligence/broker', { params: ['code', 'days', 'limit', 'date', 'preset', 'from', 'to'] }],
+  ['/api/broker-intelligence/broker', { params: ['code', 'days', 'limit', 'date', 'preset', 'from', 'to', 'maxPrice', 'minAverageValue', 'minBrokerNetValue', 'foreignDirection', 'minForeignValue', 'excludeFca'] }],
   ['/api/broker-intelligence/stock', { params: ['ticker', 'days', 'date', 'preset', 'from', 'to'] }],
-  ['/api/opportunities', { params: [] }],
+  ['/api/broker-intelligence/health', { params: [] }],
+  ['/api/data-health', { params: [] }],
+  ['/api/radar/scout/conditions', { params: [] }],
   ['/api/radar/scout', { params: [
-    'recipe', 'brokerSessions', 'brokerPreset', 'brokerFrom', 'brokerTo',
+    'recipe', 'conditions', 'asOf', 'brokerSessions', 'brokerPreset', 'brokerFrom', 'brokerTo',
     'consolidationSessions', 'supportSessions', 'maxPrice', 'minAverageValue',
     'minLeadBrokerValue', 'limit', 'useBroker', 'useSupport', 'useSideways',
     'useMaxPrice', 'useLiquidity', 'useLeadBrokerValue',
+    'minRsVsIhsgPct', 'useRsVsIhsg', 'excludeFca',
   ] }],
   ['/api/risk-simulation', { params: ['entry', 'stop', 'target', 'capital', 'maxRiskPct'] }],
+  ['/api/collector/health', { params: [] }],
 ]);
 
 const PRIVATE_KEYS = new Set([
@@ -35,6 +39,7 @@ const MAX_QUERY_VALUE_LENGTH = 4_096;
 
 function publicText(value) {
   return value
+    .replace(/stockbit(?:[- ][a-z0-9]+)?/gi, 'market data')
     .replace(/\barchive\b/gi, 'dataset')
     .replace(/\bserving layer\b/gi, 'data service')
     .replace(/\bmaterialized\b/gi, 'updated');
@@ -130,10 +135,11 @@ export default {
     }
 
     if (url.pathname.startsWith('/api/')) {
-      if (!['GET', 'HEAD'].includes(request.method)) {
-        return secure(json(405, 'This endpoint is read-only.'));
+      const route = PUBLIC_ROUTES.get(url.pathname);
+      if (!route) return secure(json(404, 'Not found.'));
+      if (!(route.methods || ['GET', 'HEAD']).includes(request.method)) {
+        return secure(json(405, 'This method is not allowed.'));
       }
-      if (!PUBLIC_ROUTES.has(url.pathname)) return secure(json(404, 'Not found.'));
       let response;
       try {
         response = await fetch(originRequest(request, env, url));

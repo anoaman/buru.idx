@@ -19,12 +19,13 @@ describe('public API allowlist', () => {
       ok: true,
       path: '/api/broker-intelligence/stock?ticker=BBCA&days=7',
     });
-    expect(resolvePublicApiRequest('GET', '/api/opportunities').ok).toBe(true);
     expect(resolvePublicApiRequest('GET', '/api/radar/scout?recipe=quiet_accumulation&brokerSessions=7')).toEqual({
       ok: true,
       path: '/api/radar/scout?recipe=quiet_accumulation&brokerSessions=7',
     });
-    expect(resolvePublicApiRequest('GET', '/api/watchlist').ok).toBe(true);
+    expect(resolvePublicApiRequest('GET', '/api/radar/scout/conditions').ok).toBe(true);
+    expect(resolvePublicApiRequest('GET', '/api/data-health').ok).toBe(true);
+    expect(resolvePublicApiRequest('GET', '/api/collector/health').ok).toBe(true);
   });
 
   it('forwards Scout custom broker dates and lead-broker minimum to upstream', () => {
@@ -40,6 +41,12 @@ describe('public API allowlist', () => {
     expect(sent.get('minLeadBrokerValue')).toBe('500000000');
     expect(sent.get('useLeadBrokerValue')).toBe('true');
     expect(sent.get('limit')).toBe('25');
+  });
+
+  it('preserves the bounded Scout condition payload', () => {
+    const conditions = JSON.stringify([{ id: 'max_price', value: 1000 }]);
+    const result = resolvePublicApiRequest('GET', `/api/radar/scout?conditions=${encodeURIComponent(conditions)}`);
+    expect(new URL(result.path, 'http://internal').searchParams.get('conditions')).toBe(conditions);
   });
 
   it('drops unknown Scout parameters while keeping the route GET/HEAD-only', () => {
@@ -71,6 +78,7 @@ describe('public API allowlist', () => {
       '/api/broker-intelligence/stock?ticker=BBCA&days=1&from=2026-01-01&to=2026-08-07',
       '/api/broker-intelligence/broker?code=ZP&days=30&limit=25',
       '/api/broker-intelligence/broker?code=ZP&days=7&limit=25&date=2026-08-07',
+      '/api/collector/health',
       '/api/radar/scout?recipe=dominant_broker&brokerSessions=7&consolidationSessions=10&supportSessions=20&maxPrice=1000&minAverageValue=500000000&limit=10&useBroker=true&useSupport=false&useSideways=false&useMaxPrice=true&useLiquidity=true',
       '/api/radar/scout?recipe=quiet_accumulation&brokerPreset=custom&brokerFrom=2026-01-01&brokerTo=2026-08-01&minLeadBrokerValue=1000000&useLeadBrokerValue=true&limit=50',
     ];
@@ -92,7 +100,7 @@ describe('public API allowlist', () => {
 
   it('closes the private workflow store to writes', () => {
     for (const method of ['POST', 'PATCH', 'DELETE', 'PUT']) {
-      const result = resolvePublicApiRequest(method, '/api/watchlist');
+      const result = resolvePublicApiRequest(method, '/api/data-health');
       expect(result.ok).toBe(false);
       expect(result.status).toBe(405);
     }
@@ -104,8 +112,25 @@ describe('public API allowlist', () => {
       '/api/journal',
       '/api/calibration',
       '/api/market-overview',
-      '/api/data-health',
       '/api/fca',
+      // The watchlist carries private positions and thesis notes, and the
+      // shortlist scan is the edge. Neither has any business on this surface.
+      '/api/watchlist',
+      '/api/opportunities',
+      '/api/disclosures',
+      '/api/disclosures/detail',
+      '/api/disclosures/timeline',
+      '/api/disclosures/anomalies',
+      '/api/disclosures/documents',
+      '/api/fundamentals/statements',
+      '/api/fundamentals/snapshot',
+      '/api/fundamentals/periods',
+      '/api/fundamentals/facts',
+      '/api/fundamentals/filing',
+      '/api/fundamentals/derived',
+      '/api/fundamentals/sources',
+      '/api/news-detector',
+      '/api/news-detector/scan',
     ]) {
       const result = resolvePublicApiRequest('GET', path);
       expect(result.ok).toBe(false);
@@ -114,8 +139,7 @@ describe('public API allowlist', () => {
   });
 
   it('drops query parameters that are not part of the route', () => {
-    const result = resolvePublicApiRequest('GET', '/api/analyze?ticker=BBCA&mode=live&debug=1&dbPath=/etc/passwd');
-    expect(result.path).toBe('/api/analyze?ticker=BBCA&mode=delayed');
+    expect(resolvePublicApiRequest('GET', '/api/analyze?ticker=BBCA&mode=live&debug=1&dbPath=/etc/passwd').path).toBe('/api/analyze?ticker=BBCA&mode=delayed');
   });
 
   it('does not treat a prefix match as the allowlisted route', () => {
@@ -129,8 +153,9 @@ describe('public API allowlist', () => {
 
   it('rejects oversized request targets and allowed parameter values', () => {
     expect(resolvePublicApiRequest('GET', `/api/analyze?ticker=${'A'.repeat(8_192)}`).status).toBe(414);
-    expect(resolvePublicApiRequest('GET', `/api/radar/scout?recipe=${'x'.repeat(4_097)}`).status).toBe(414);
+    expect(resolvePublicApiRequest('GET', `/api/radar/scout?conditions=${'x'.repeat(4_097)}`).status).toBe(414);
   });
+
 });
 
 describe('rate limiting', () => {

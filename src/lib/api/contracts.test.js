@@ -4,9 +4,22 @@ import {
   guardBrokerArchiveHealth,
   guardBrokerStockIntelligence,
   guardCases,
-  guardOpportunities,
+  guardCollectorHealth,
+  guardDisclosureAnomalies,
+  guardDisclosureDetail,
+  guardDisclosures,
+  guardFundamentalStatements,
+  guardFundamentalsSnapshot,
+  guardFundamentalsPeriods,
+  guardFundamentalsFacts,
+  guardFundamentalsFiling,
+  guardFundamentalsDerived,
+  guardFundamentalsSources,
+  guardNewsDetector,
+  guardDataHealth,
   guardRadarScout,
   guardStockBrokerIntelligence,
+  officialIdxUrl,
   normalizeSetupGeometry,
   normalizeServing,
 } from './contracts.js';
@@ -162,126 +175,7 @@ describe('public Stock Analysis contracts', () => {
     expect(guardBrokerArchiveHealth(null).ok).toBe(false);
     expect(guardStockBrokerIntelligence({ success: true, data: {} }).ok).toBe(false);
     expect(guardBrokerStockIntelligence({ success: true, data: {} }).ok).toBe(false);
-    expect(guardOpportunities({ success: false, error: 'scan store unavailable' }).ok).toBe(false);
-    expect(guardOpportunities({ success: true }).ok).toBe(false);
     expect(guardCases({ success: false, error: 'offline' }).ok).toBe(false);
-  });
-
-  it('normalizes a scan run into a view model and drops the deprecated alias', () => {
-    const result = guardOpportunities({
-      success: true,
-      data: {
-        run: {
-          id: 41,
-          scanned_at: '2026-08-10T02:15:00.000Z',
-          data_as_of: '2026-08-07',
-          total_seen: 812,
-          total_eligible: 96,
-          total_shortlisted: 2,
-        },
-        opportunities: [
-          {
-            ticker: 'bbri',
-            lane: 'first-liner',
-            eligible: true,
-            rank: 1,
-            score: 74.2,
-            dataQuality: 'high',
-            confidence: 'high',
-            levels: { trigger: 4550, invalidation: 4180, netRewardRisk: 2.4 },
-            features: { isFca: true },
-            reasons: ['compression resolved', ''],
-            risks: ['thin traded value'],
-            freshness: { priceDate: '2026-08-07', priceAgeDays: 1 },
-          },
-          { lane: 'orphan-row-without-ticker' },
-        ],
-      },
-    });
-
-    expect(result.ok).toBe(true);
-    expect(result.data.run.dataAsOf).toBe('2026-08-07');
-    expect(result.data.run.totalShortlisted).toBe(2);
-    expect(result.data.candidates).toHaveLength(1);
-
-    const [candidate] = result.data.candidates;
-    expect(candidate.ticker).toBe('BBRI');
-    expect(candidate.dataQuality).toBe('high');
-    expect(candidate).not.toHaveProperty('confidence');
-    expect(candidate.isFca).toBe(true);
-    expect(candidate.ineligible).toBe(false);
-    expect(candidate.reasons).toEqual(['compression resolved']);
-    expect(result.data.lanes).toEqual(['first-liner']);
-    expect(result.data.dataQualityTally).toEqual({ high: 1, medium: 0, low: 0, unknown: 0 });
-  });
-
-  it('reads net reward/risk from features.risk when levels omits it', () => {
-    const result = guardOpportunities({
-      success: true,
-      data: {
-        run: null,
-        opportunities: [{
-          ticker: 'BJTM',
-          levels: { support: 500, trigger: 515, invalidation: 500 },
-          features: { risk: { netRewardRisk: 9.27 } },
-        }],
-      },
-    });
-
-    expect(result.ok).toBe(true);
-    expect(result.data.candidates[0].levels.netRewardRisk).toBe(9.27);
-  });
-
-  it('prefers netRewardRisk on levels over the features.risk fallback', () => {
-    const result = guardOpportunities({
-      success: true,
-      data: {
-        run: null,
-        opportunities: [{
-          ticker: 'BJTM',
-          levels: { netRewardRisk: 2.4 },
-          features: { risk: { netRewardRisk: 9.27 } },
-        }],
-      },
-    });
-
-    expect(result.data.candidates[0].levels.netRewardRisk).toBe(2.4);
-  });
-
-  it('keeps a scoreless, levelless candidate renderable and marks unknown quality', () => {
-    const result = guardOpportunities({
-      success: true,
-      data: {
-        run: null,
-        opportunities: [{ ticker: 'ADRO', score: null, rank: null, confidence: 'bogus' }],
-      },
-    });
-
-    expect(result.ok).toBe(true);
-    expect(result.data.run).toBeNull();
-    expect(result.data.candidates[0]).toMatchObject({
-      score: null,
-      rank: null,
-      dataQuality: 'unknown',
-      ineligible: false,
-      reasons: [],
-      risks: [],
-    });
-    expect(result.data.candidates[0].levels.trigger).toBeNull();
-  });
-
-  it('only flags a candidate as gated when the scan says so explicitly', () => {
-    const gated = guardOpportunities({
-      success: true,
-      data: { run: null, opportunities: [{ ticker: 'ABCD', eligible: false }] },
-    });
-    expect(gated.data.candidates[0].ineligible).toBe(true);
-
-    const unstated = guardOpportunities({
-      success: true,
-      data: { run: null, opportunities: [{ ticker: 'ABCD' }] },
-    });
-    expect(unstated.data.candidates[0].ineligible).toBe(false);
   });
 
   it('preserves frozen case evidence and backend monitoring state', () => {
@@ -419,5 +313,442 @@ describe('Radar Scout contracts', () => {
       failedCondition: 'Missed liquidity floor ≥ Rp500M/day',
       scoreBreakdown: { broker: 20, support: 18, liquidity: null },
     });
+    // No detail on the wire is null, not a fabricated zero-sized miss.
+    expect(result.data.nearMisses[0].failedDetail).toBeNull();
+  });
+
+  it('carries the miss margin, and keeps an unmeasurable miss distinct from a zero one', () => {
+    const nearMiss = (failedDetail) => ({
+      ticker: 'ELSA', rank: 1, score: 55, evidenceBand: 'low',
+      failedCondition: failedDetail.id, failedDetail, price: scoutPrice, reasons: [], risks: [],
+    });
+    const result = guardRadarScout({
+      success: true,
+      data: {
+        recipe: { id: 'quiet_accumulation', label: 'Quiet accumulation' },
+        candidates: [],
+        nearMisses: [
+          nearMiss({
+            id: 'min_average_value', label: 'Liquidity floor', unit: 'IDR', comparison: 'min',
+            available: true, expected: 500_000_000, observed: 40_000_000,
+            gap: 460_000_000, gapPct: 92, reason: 'threshold',
+          }),
+          nearMiss({
+            id: 'min_rs_vs_ihsg_pct', label: 'Minimum RS versus IHSG', unit: '%', comparison: 'min',
+            available: false, expected: 2, observed: null, gap: null, gapPct: null, reason: 'unavailable',
+          }),
+        ],
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.data.nearMisses[0].failedDetail).toMatchObject({
+      label: 'Liquidity floor', unit: 'IDR', available: true, gap: 460_000_000, gapPct: 92,
+    });
+    const unmeasured = result.data.nearMisses[1].failedDetail;
+    expect(unmeasured.available).toBe(false);
+    expect(unmeasured.gap).toBeNull();
+    expect(unmeasured.reason).toBe('unavailable');
+  });
+
+  it('preserves roadmap evidence, qualification history, FCA and requested coverage without turning unavailable into zero', () => {
+    const result = guardRadarScout({
+      success: true,
+      data: {
+        recipe: { id: 'range_resolution', label: 'Range resolution + participation' },
+        asOf: { brokerSessions: 7, requestedBrokerSessions: 10 },
+        candidates: [{
+          ticker: 'ANTM',
+          isFca: true,
+          relativeStrengthVsIhsgPct: null,
+          evidence: { valueExpansion: 2.1, frequencyExpansion: null, breadthPass: false },
+          price: scoutPrice,
+        }],
+        nearMisses: [],
+        dailyDiff: {
+          new: [],
+          still: [{ ticker: 'ANTM', qualificationState: 'still', qualificationStreak: 3, price: scoutPrice }],
+          dropped: [{ ticker: 'ELSA', qualificationState: 'dropped', failedCondition: 'breadth_narrow', price: scoutPrice }],
+        },
+      },
+    });
+
+    expect(result.data.asOf).toMatchObject({ brokerSessions: 7, requestedBrokerSessions: 10 });
+    expect(result.data.candidates[0]).toMatchObject({
+      isFca: true,
+      relativeStrengthVsIhsgPct: null,
+      evidence: { valueExpansion: 2.1, frequencyExpansion: null, breadthPass: false },
+    });
+    expect(result.data.dailyDiff.still[0]).toMatchObject({ qualificationState: 'still', qualificationStreak: 3 });
+    expect(result.data.dailyDiff.dropped[0].failedCondition).toBe('breadth_narrow');
+  });
+});
+
+describe('Keterbukaan and Fundamentals contracts', () => {
+  it('keeps official IDX URLs and drops filesystem paths', () => {
+    expect(officialIdxUrl('https://www.idx.co.id/news/a')).toBe('https://www.idx.co.id/news/a');
+    expect(officialIdxUrl('/home/kibz66/.openclaw/workspace/trading-db/idx.db')).toBeNull();
+  });
+
+  it('normalizes the disclosure feed and unavailable tables', () => {
+    const ready = guardDisclosures({
+      success: true,
+      data: {
+        items: [{
+          eventId: 'div-1',
+          ticker: 'bbca',
+          title: 'Dividend',
+          sourceUrl: 'https://www.idx.co.id/news/div-1',
+          hasCorrection: true,
+        }],
+        nextCursor: 25,
+        total: 40,
+      },
+    });
+    expect(ready.ok).toBe(true);
+    expect(ready.data.items[0].ticker).toBe('BBCA');
+    expect(ready.data.items[0].sourceUrl).toBe('https://www.idx.co.id/news/div-1');
+
+    const missing = guardDisclosures({
+      success: true,
+      data: { available: false, status: 'unavailable', reason: 'disclosure tables are not present.' },
+    });
+    expect(missing.ok).toBe(true);
+    expect(missing.data.available).toBe(false);
+    expect(missing.data.items).toEqual([]);
+    expect(guardDisclosures({ success: false, error: 'offline' }).ok).toBe(false);
+  });
+
+  it('strips leaked paths from detail evidence and documents', () => {
+    const result = guardDisclosureDetail({
+      success: true,
+      data: {
+        eventId: 'div-1',
+        ticker: 'BBCA',
+        sourceUrl: '/tmp/secret.pdf',
+        signals: [{
+          type: 'correction',
+          evidence: { snippet: 'koreksi', officialUrl: 'file:///tmp/x' },
+        }],
+        documents: [{ documentId: 1, sourceUrl: 'https://www.idx.co.id/a.pdf' }],
+      },
+    });
+    expect(result.ok).toBe(true);
+    expect(result.data.sourceUrl).toBeNull();
+    expect(result.data.signals[0].evidence.officialUrl).toBeNull();
+    expect(result.data.documents[0].sourceUrl).toBe('https://www.idx.co.id/a.pdf');
+  });
+
+  it('keeps statement periods separate and drops inferred facts', () => {
+    const result = guardFundamentalStatements({
+      success: true,
+      data: {
+        items: [{
+          periodLabel: 'FY2025',
+          sourceUrl: 'https://www.idx.co.id/fs.pdf',
+          parserStatus: 'ok',
+          facts: [
+            { fieldKey: 'revenue', valueNumeric: 1, statementType: 'income_statement' },
+            { fieldKey: 'pe', valueNumeric: 12, valueKind: 'inferred' },
+          ],
+        }],
+      },
+    });
+    expect(result.data.items[0].facts.map((row) => row.fieldKey)).toEqual(['revenue']);
+    expect(guardDisclosureAnomalies({ success: false, error: 'offline' }).ok).toBe(false);
+    expect(guardCollectorHealth({
+      success: true,
+      data: { available: true, status: 'ready', feeds: [{ feed: 'idx', lastSuccessAt: '2026-08-14T00:00:00Z' }] },
+    }).data.status).toBe('ready');
+  });
+});
+
+describe('v18 Fundamentals contracts', () => {
+  it('guardFundamentalsSnapshot: normalizes available snapshot', () => {
+    const result = guardFundamentalsSnapshot({
+      success: true,
+      data: {
+        available: true,
+        ticker: 'BBCA',
+        companyType: 'bank',
+        filingCount: 2,
+        latestPeriod: 'FY2024',
+        latestFiscalYear: 2024,
+        latestFilingId: 'BBCA-2024-A-fs',
+        latestExtractionStatus: 'success',
+        latestFactCount: 100,
+        latestParsedAt: '2025-01-01',
+        periods: ['FY2024', 'FY2023'],
+        filings: [
+          {
+            filingId: 'BBCA-2024-A-fs',
+            companyType: 'bank',
+            fiscalYear: 2024,
+            fiscalPeriod: 'A',
+            periodLabel: 'FY2024',
+            extractionStatus: 'success',
+            factCount: 100,
+            parsedAt: '2025-01-01',
+            sourceUrl: 'https://www.idx.co.id/bbca.pdf',
+            publishedAt: '2025-02-01',
+          },
+        ],
+      },
+    });
+    expect(result.ok).toBe(true);
+    expect(result.data.available).toBe(true);
+    expect(result.data.companyType).toBe('bank');
+    expect(result.data.filingCount).toBe(2);
+    expect(result.data.filings[0].sourceUrl).toBe('https://www.idx.co.id/bbca.pdf');
+    expect(result.data.filings[0].fiscalYear).toBe(2024);
+  });
+
+  it('guardFundamentalsSnapshot: returns unavailable when tables missing', () => {
+    const result = guardFundamentalsSnapshot({
+      success: true,
+      data: { available: false, reason: 'v18 fundamentals tables are not present.', ticker: 'BBCA' },
+    });
+    expect(result.ok).toBe(true);
+    expect(result.data.available).toBe(false);
+    expect(result.data.reason).toMatch(/v18/);
+  });
+
+  it('guardFundamentalsSnapshot: fails on error envelope', () => {
+    expect(guardFundamentalsSnapshot({ success: false, error: 'db down' }).ok).toBe(false);
+  });
+
+  it('guardFundamentalsFacts: normalizes v18 facts and handles unavailable', () => {
+    const result = guardFundamentalsFacts({
+      success: true,
+      data: {
+        available: true,
+        filingId: 'BBCA-2024-A-fs',
+        items: [
+          {
+            factId: 1,
+            filingId: 'BBCA-2024-A-fs',
+            statementType: 'income_statement',
+            section: 'revenue',
+            columnLabel: 'FY2024',
+            periodLabel: 'FY2024',
+            fieldKey: 'net_income',
+            valueNumeric: 48600000000000,
+            unit: 'IDR',
+            confidence: 0.95,
+            evidence: { page: 45, snippet: 'Laba bersih', officialUrl: 'https://www.idx.co.id/x.pdf' },
+            extractedAt: '2025-01-01',
+            companyType: 'bank',
+          },
+        ],
+        total: 1,
+        cursor: 0,
+        limit: 50,
+        nextCursor: null,
+      },
+    });
+    expect(result.ok).toBe(true);
+    expect(result.data.available).toBe(true);
+    expect(result.data.items[0].fieldKey).toBe('net_income');
+    expect(result.data.items[0].evidence.officialUrl).toBe('https://www.idx.co.id/x.pdf');
+    expect(result.data.items[0].confidence).toBe(0.95);
+
+    const missing = guardFundamentalsFacts({
+      success: true,
+      data: { available: false, reason: 'v18 fundamental_facts table is not present.' },
+    });
+    expect(missing.ok).toBe(true);
+    expect(missing.data.available).toBe(false);
+    expect(missing.data.items).toEqual([]);
+  });
+
+  it('guardFundamentalsDerived: normalizes metrics with formula and inputs', () => {
+    const result = guardFundamentalsDerived({
+      success: true,
+      data: {
+        available: true,
+        filingId: 'BBCA-2024-A-fs',
+        periodLabel: 'FY2024',
+        companyType: 'bank',
+        metrics: [
+          {
+            key: 'net_margin',
+            label: 'Net Profit Margin',
+            formula: 'net_income / revenue × 100',
+            unit: '%',
+            section: 'profitability',
+            available: true,
+            value: 31.5,
+            inputs: {
+              numerator: { factId: 1, fieldKey: 'net_income', valueNumeric: 486e11, unit: 'IDR', confidence: 0.95, evidence: { page: 45, officialUrl: 'https://www.idx.co.id/x.pdf' }, periodLabel: 'FY2024' },
+              denominator: { factId: 2, fieldKey: 'net_revenue', valueNumeric: 154.3e13, unit: 'IDR', confidence: 0.95, evidence: {}, periodLabel: 'FY2024' },
+            },
+            rejectionReason: null,
+          },
+          {
+            key: 'gross_margin',
+            label: 'Gross Margin',
+            formula: 'gross_profit / revenue × 100',
+            unit: '%',
+            section: 'profitability',
+            available: false,
+            value: null,
+            inputs: { numerator: null, denominator: null },
+            rejectionReason: 'numerator unavailable (tried: gross_profit, laba_kotor, gross_income)',
+          },
+          {
+            key: 'eps',
+            label: 'Earnings Per Share',
+            formula: 'net_income / shares',
+            unit: 'IDR',
+            section: 'per_share',
+            available: false,
+            value: null,
+            inputs: { numerator: { factId: 1, fieldKey: 'net_income', valueNumeric: 486e11, unit: 'IDR', confidence: 0.9, evidence: {}, periodLabel: 'FY2024' }, denominator: { factId: 5, fieldKey: 'shares', valueNumeric: -100, unit: 'shares', confidence: 0.5, evidence: {}, periodLabel: 'FY2024' } },
+            rejectionReason: 'denominator must be positive',
+          },
+        ],
+      },
+    });
+    expect(result.ok).toBe(true);
+    expect(result.data.available).toBe(true);
+    expect(result.data.companyType).toBe('bank');
+    expect(result.data.metrics).toHaveLength(3);
+
+    const margin = result.data.metrics.find((m) => m.key === 'net_margin');
+    expect(margin.available).toBe(true);
+    expect(margin.value).toBe(31.5);
+    expect(margin.formula).toBe('net_income / revenue × 100');
+    expect(margin.inputs.numerator.fieldKey).toBe('net_income');
+    expect(margin.inputs.numerator.evidence.officialUrl).toBe('https://www.idx.co.id/x.pdf');
+
+    const gross = result.data.metrics.find((m) => m.key === 'gross_margin');
+    expect(gross.available).toBe(false);
+    expect(gross.rejectionReason).toMatch(/numerator unavailable/);
+    expect(gross.inputs.numerator).toBeNull();
+
+    const eps = result.data.metrics.find((m) => m.key === 'eps');
+    expect(eps.available).toBe(false);
+    expect(eps.rejectionReason).toBe('denominator must be positive');
+    expect(eps.inputs.numerator).not.toBeNull();
+  });
+
+  it('guardFundamentalsDerived: handles unavailable tables', () => {
+    const result = guardFundamentalsDerived({
+      success: true,
+      data: { available: false, reason: 'v18 fundamental_facts table is not present.' },
+    });
+    expect(result.ok).toBe(true);
+    expect(result.data.available).toBe(false);
+    expect(result.data.metrics).toEqual([]);
+    expect(guardFundamentalsDerived({ success: false, error: 'offline' }).ok).toBe(false);
+  });
+
+  it('guardFundamentalsSources: strips non-IDX source URLs', () => {
+    const result = guardFundamentalsSources({
+      success: true,
+      data: {
+        available: true,
+        ticker: 'BBCA',
+        sources: [
+          {
+            filingId: 'BBCA-2024-A-fs',
+            periodLabel: 'FY2024',
+            fiscalYear: 2024,
+            fiscalPeriod: 'A',
+            eventId: 'evt-1',
+            sourceUrl: 'https://www.idx.co.id/fs.pdf',
+            publishedAt: '2025-02-01',
+            title: 'FS 2024',
+          },
+          {
+            filingId: 'BBCA-2023-A-fs',
+            periodLabel: 'FY2023',
+            fiscalYear: 2023,
+            fiscalPeriod: 'A',
+            eventId: 'evt-2',
+            sourceUrl: '/home/user/secret.pdf',
+            publishedAt: '2024-02-01',
+            title: 'FS 2023',
+          },
+        ],
+      },
+    });
+    expect(result.ok).toBe(true);
+    expect(result.data.sources[0].sourceUrl).toBe('https://www.idx.co.id/fs.pdf');
+    expect(result.data.sources[1].sourceUrl).toBeNull();
+  });
+
+  it('guardFundamentalsSnapshot and guardFundamentalsFiling preserve fiscal year as number', () => {
+    const snap = guardFundamentalsSnapshot({
+      success: true,
+      data: {
+        available: true,
+        ticker: 'BBCA',
+        companyType: 'common',
+        filingCount: 1,
+        latestPeriod: 'FY2024',
+        latestFiscalYear: 2024,
+        latestFilingId: 'x',
+        latestExtractionStatus: 'success',
+        latestFactCount: 10,
+        latestParsedAt: null,
+        periods: ['FY2024'],
+        filings: [{ filingId: 'x', companyType: 'common', fiscalYear: 2024, fiscalPeriod: 'A', periodLabel: 'FY2024', extractionStatus: 'success', factCount: 10, parsedAt: null }],
+      },
+    });
+    expect(snap.data.filings[0].fiscalYear).toBe(2024);
+  });
+
+  it('guardNewsDetector normalizes camelCase and snake_case scan payloads', () => {
+    const result = guardNewsDetector({
+      success: true,
+      data: {
+        available: true,
+        run: { id: 3, scan_date: '2026-08-04', taxonomy_version: '1', material_count: 1, total_disclosures: 2 },
+        items: [{
+          event_id: 'e1', ticker: 'ASII', title: 'Akuisisi', disposition: 'material',
+          category: 'acquisition', signal_score: 0.9,
+          official_source_url: 'https://www.idx.co.id/e1',
+          evidence: [{ kind: 'title_keyword', quote: 'Akuisisi' }],
+        }],
+      },
+    });
+    expect(result.ok).toBe(true);
+    expect(result.data.run.scanDate).toBe('2026-08-04');
+    expect(result.data.run.materialCount).toBe(1);
+    expect(result.data.items[0].eventId).toBe('e1');
+    expect(result.data.items[0].officialSourceUrl).toBe('https://www.idx.co.id/e1');
+  });
+});
+
+describe('data health contract', () => {
+  it('lets the oldest cache set the headline rather than averaging it away', () => {
+    const result = guardDataHealth({
+      success: true,
+      data: {
+        overall: 'stale',
+        tradingCalendar: { lastCompletedSession: '2026-08-25' },
+        priceCache: { freshness: 'stale', ageDays: 11.9, sessionsBehind: 7, lastDate: '2026-08-14' },
+        brokerCache: { freshness: 'stale', ageDays: 13.9, sessionsBehind: 9, lastDate: '2026-08-12' },
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    // A fresh price cache must not be allowed to disguise a nine-session-old
+    // broker cache; the screen is only as current as its slowest input.
+    expect(result.data.worstSessionsBehind).toBe(9);
+    expect(result.data.lastCompletedSession).toBe('2026-08-25');
+  });
+
+  it('reports unknown lag as unknown instead of zero', () => {
+    const result = guardDataHealth({ success: true, data: { overall: 'unknown' } });
+    expect(result.ok).toBe(true);
+    expect(result.data.worstSessionsBehind).toBeNull();
+    expect(result.data.priceCache.freshness).toBe('unknown');
+  });
+
+  it('fails closed on an error envelope', () => {
+    expect(guardDataHealth({ success: false, error: 'db locked' }).ok).toBe(false);
+    expect(guardDataHealth({ success: true }).ok).toBe(false);
   });
 });

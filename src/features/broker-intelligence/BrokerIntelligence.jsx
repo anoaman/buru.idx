@@ -19,6 +19,20 @@ const ALLOWED_DAYS = [1, 7, 14, 30, 60];
 const RANGE_PRESETS = [['latest', 'Latest'], ['previous', 'Previous'], ['7d', '7D'], ['14d', '14D'], ['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['1y', '1Y'], ['ytd', 'YTD'], ['custom', 'Custom']];
 const DEFAULT_TICKER = 'BBCA';
 const DEFAULT_DAYS = 1;
+const DEFAULT_MARKET_FILTERS = Object.freeze({
+  maxPrice: '', minAverageValue: '', minBrokerNetValue: '',
+  foreignDirection: 'any', minForeignValue: '', excludeFca: false,
+});
+
+function parseMarketAmount(value) {
+  const clean = String(value || '').trim().toUpperCase().replaceAll(',', '');
+  if (!clean) return '';
+  const match = clean.match(/^(\d+(?:\.\d+)?)\s*([KMBT])?$/);
+  if (!match) return null;
+  const scale = { K: 1e3, M: 1e6, B: 1e9, T: 1e12 }[match[2]] || 1;
+  const amount = Number(match[1]) * scale;
+  return Number.isFinite(amount) ? amount : null;
+}
 
 function normalizeLens(raw) {
   return raw === 'broker' ? 'broker' : 'stock';
@@ -59,7 +73,9 @@ function SideBadge({ side }) {
 
 function MergedRankRow({ side, row, lens, selected, onSelect }) {
   const primary = lens === 'stock' ? row.code : row.ticker;
-  const secondary = lens === 'stock' ? (row.sourceType || '—') : row.name;
+  const secondary = lens === 'stock'
+    ? (row.sourceType || '—')
+    : `${row.name}${Number.isFinite(row.currentPrice) ? ` · ${formatPrice(row.currentPrice)}` : ''}${row.isFca ? ' · FCA' : ''}`;
   const avgCost = avgCostLabel(row.estimatedAverageCost);
   const netValue = row.netValue;
   const netLots = row.netLots;
@@ -214,6 +230,14 @@ function SelectedDetail({ lens, row }) {
           <span className="tabular">{formatNumber(row.observedSessions)}</span>
         </div>
         <div>
+          <span className="text-tertiary">Accumulation persistence</span>
+          <span className="tabular">{row.accumulationSessions == null ? 'Unavailable' : `${formatNumber(row.accumulationSessions)}/${formatNumber(row.requestedSessions ?? row.observedSessions)} sessions`}</span>
+        </div>
+        <div>
+          <span className="text-tertiary">Current streak</span>
+          <span className="tabular">{row.accumulationStreak == null ? 'Unavailable' : `${formatNumber(row.accumulationStreak)} sessions`}</span>
+        </div>
+        <div>
           <span className="text-tertiary">Est. inventory</span>
           <span className={`tabular ${row.estimatedInventoryLots > 0 ? 'text-positive' : row.estimatedInventoryLots < 0 ? 'text-negative' : ''}`}>
             {signedLots(row.estimatedInventoryLots)}
@@ -284,6 +308,9 @@ const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
   });
   const [selectedKey, setSelectedKey] = useState(null);
   const [lensRetry, setLensRetry] = useState(0);
+  const [marketFilters, setMarketFilters] = useState(DEFAULT_MARKET_FILTERS);
+  const [marketFilterDraft, setMarketFilterDraft] = useState(DEFAULT_MARKET_FILTERS);
+  const [marketFilterError, setMarketFilterError] = useState('');
   const requestRef = useRef(0);
 
   useEffect(() => {
@@ -328,7 +355,7 @@ const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
     }
     const request = lens === 'stock'
       ? getStockBrokerIntelligence({ ticker, days, ...range })
-      : getBrokerStockIntelligence({ code, days, ...range, limit: 25 });
+      : getBrokerStockIntelligence({ code, days, ...range, limit: 50, filters: marketFilters });
 
     request
       .then((raw) => {
@@ -358,7 +385,7 @@ const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
       });
 
     return () => { cancelled = true; };
-  }, [lens, ticker, code, days, date, preset, presetParam, from, to, lensRetry]);
+  }, [lens, ticker, code, days, date, preset, presetParam, from, to, lensRetry, marketFilters]);
 
   // Prefetch other windows after first successful identity load
   useEffect(() => {
@@ -495,6 +522,21 @@ const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
     : /^[A-Z]{2}$/i.test(searchInput.trim());
 
   const retryLens = () => setLensRetry((n) => n + 1);
+  const applyMarketFilters = () => {
+    const numericKeys = ['maxPrice', 'minAverageValue', 'minBrokerNetValue', 'minForeignValue'];
+    const parsed = Object.fromEntries(numericKeys.map((key) => [key, parseMarketAmount(marketFilterDraft[key])]));
+    if (Object.values(parsed).some((value) => value == null)) {
+      setMarketFilterError('Use plain numbers or K/M/B/T abbreviations, for example 200, 500M, or 1B.');
+      return;
+    }
+    setMarketFilterError('');
+    setMarketFilters({ ...marketFilterDraft, ...parsed });
+  };
+  const clearMarketFilters = () => {
+    setMarketFilterDraft(DEFAULT_MARKET_FILTERS);
+    setMarketFilters(DEFAULT_MARKET_FILTERS);
+    setMarketFilterError('');
+  };
   return (
     <div className="bi-page">
       <header className="bi-intro">
@@ -571,6 +613,20 @@ const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
         </div>
       </div>
 
+      {lens === 'broker' && (
+        <section className="bi-market-filters" aria-label="Across-market stock filters">
+          <div className="bi-market-filters__heading"><strong>Sharpen across-market results</strong><span>Stock liquidity and foreign flow are separate from the selected broker’s net value.</span></div>
+          <label>Maximum price<input inputMode="numeric" value={marketFilterDraft.maxPrice} onChange={(event) => setMarketFilterDraft((current) => ({ ...current, maxPrice: event.target.value }))} placeholder="200" /></label>
+          <label>Minimum average traded value<input inputMode="decimal" value={marketFilterDraft.minAverageValue} onChange={(event) => setMarketFilterDraft((current) => ({ ...current, minAverageValue: event.target.value }))} placeholder="500M" /></label>
+          <label>Minimum broker net value<input inputMode="decimal" value={marketFilterDraft.minBrokerNetValue} onChange={(event) => setMarketFilterDraft((current) => ({ ...current, minBrokerNetValue: event.target.value }))} placeholder="1B" /></label>
+          <label>Foreign direction<select value={marketFilterDraft.foreignDirection} onChange={(event) => setMarketFilterDraft((current) => ({ ...current, foreignDirection: event.target.value }))}><option value="any">Any</option><option value="buy">Net buy</option><option value="sell">Net sell</option></select></label>
+          <label>Minimum foreign value<input inputMode="decimal" value={marketFilterDraft.minForeignValue} onChange={(event) => setMarketFilterDraft((current) => ({ ...current, minForeignValue: event.target.value }))} placeholder="500M" /></label>
+          <label className="bi-market-filters__check"><input type="checkbox" checked={marketFilterDraft.excludeFca} onChange={(event) => setMarketFilterDraft((current) => ({ ...current, excludeFca: event.target.checked }))} />Exclude FCA</label>
+          {marketFilterError && <p className="bi-market-filters__error" role="alert">{marketFilterError}</p>}
+          <div className="bi-market-filters__actions"><button type="button" className="ui-btn ui-btn--primary" onClick={applyMarketFilters}>Apply filters</button><button type="button" className="ui-btn ui-btn--ghost" onClick={clearMarketFilters}>Clear</button></div>
+        </section>
+      )}
+
       {showLensLoading && (
         <div className="bi-loading text-tertiary" aria-live="polite">
           Loading broker intelligence…
@@ -642,6 +698,7 @@ const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
                 <span className="text-tertiary">
                   {formatWindow(brokerData.window.from, brokerData.window.to)}
                 </span>
+                <span className="text-tertiary">Requested {formatNumber(brokerData.window.days ?? days)} · observed {formatNumber(brokerData.window.tradingSessions)} sessions</span>
                 <span className="text-tertiary">
                   Observed stocks {formatNumber(brokerData.summary.observedStocks)}
                   {' · '}Acc {formatNumber(brokerData.summary.accumulationStocks)}
@@ -733,6 +790,7 @@ const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
           )}
 
           <Disclosures items={meta?.disclosures} />
+          {brokerData && <p className="bi-merged__note" role="note">Broker codes aggregate activity from unrelated clients. Persistence is observed flow, not proof of a single bandar, owner, or coordinated position.</p>}
         </>
       )}
     </div>

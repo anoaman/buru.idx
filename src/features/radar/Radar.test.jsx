@@ -5,41 +5,27 @@ import { AnalysisProvider } from '../../components/AnalysisContext.jsx';
 import Radar from './Radar.jsx';
 
 vi.mock('../../lib/api/client.js', () => ({
-  getOpportunities: vi.fn(),
   getRadarScout: vi.fn(),
+  getRadarScoutConditions: vi.fn(),
 }));
 
-import { getOpportunities, getRadarScout } from '../../lib/api/client.js';
+import { getRadarScout, getRadarScoutConditions } from '../../lib/api/client.js';
 
-const RUN = {
-  id: 41,
-  scanned_at: '2026-08-10T02:15:00.000Z',
-  data_as_of: '2026-08-07',
-  universe: 'idx-all',
-  config_version: '1.4.0',
-  total_seen: 812,
-  total_eligible: 96,
-  total_shortlisted: 2,
-  market_cache_as_of: '2026-08-07',
+const CONDITION_CATALOG = {
+  success: true,
+  data: {
+    conditions: [
+      { id: 'max_price', label: 'Maximum price', category: 'Universe', type: 'number', comparison: 'at_most', unit: 'IDR', defaultValue: 1000, min: 1, max: 100000, step: 1 },
+      { id: 'exclude_fca', label: 'Exclude FCA', category: 'Universe', type: 'boolean', comparison: 'equals', defaultValue: true, options: [] },
+      { id: 'min_lead_net_buy', label: 'Lead broker net buy', category: 'Confirmation', type: 'number', comparison: 'at_least', unit: 'IDR', defaultValue: 1000000000, min: 0, max: 1000000000000, step: 100000000 },
+    ],
+    templates: {
+      quiet_accumulation: [{ id: 'max_price', value: 1000 }],
+      dominant_broker: [{ id: 'min_lead_net_buy', value: 1000000000 }],
+      support_compression: [{ id: 'max_price', value: 1500 }],
+    },
+  },
 };
-
-function candidate(overrides = {}) {
-  return {
-    ticker: 'bbri',
-    lane: 'first-liner',
-    eligible: true,
-    rank: 1,
-    score: 74.25,
-    dataQuality: 'high',
-    confidence: 'high',
-    levels: { support: 4200, resistance: 5000, trigger: 4550, invalidation: 4180, netRewardRisk: 2.4 },
-    features: { isFca: false },
-    reasons: ['compression resolved on rising volume'],
-    risks: ['thin traded value raises exit risk'],
-    freshness: { priceDate: '2026-08-07', priceAgeDays: 1 },
-    ...overrides,
-  };
-}
 
 function scoutCandidate(overrides = {}) {
   return {
@@ -68,16 +54,24 @@ function scoutCandidate(overrides = {}) {
   };
 }
 
-function scoutResponse({ candidates = [], nearMisses = [], coverage } = {}) {
+function scoutResponse({ candidates = [], nearMisses = [], coverage, dailyDiff, asOf } = {}) {
   return {
     success: true,
     data: {
       recipe: { id: 'quiet_accumulation', label: 'Quiet Accumulation Near Support' },
       options: { brokerSessions: 7 },
-      asOf: { priceDate: '2026-08-10', brokerFrom: '2026-07-31', brokerTo: '2026-08-10', brokerSessions: 7 },
+      asOf: {
+        priceDate: '2026-08-10',
+        brokerFrom: '2026-07-31',
+        brokerTo: '2026-08-10',
+        requestedBrokerSessions: 7,
+        brokerSessions: 7,
+        ...asOf,
+      },
       coverage: coverage || { evaluated: 900, matched: candidates.length, returned: candidates.length, nearMisses: nearMisses.length },
       candidates,
       nearMisses,
+      dailyDiff: dailyDiff || { new: [], still: [], dropped: [] },
       disclosures: ['Observed flow is not a holdings ledger.'],
     },
   };
@@ -91,161 +85,29 @@ function renderRadar() {
       </AnalysisProvider>
     </MemoryRouter>,
   );
-  // Market Shortlist tests opt into the second tab; production defaults to Custom Screener.
-  fireEvent.click(screen.getByRole('tab', { name: 'Market Shortlist' }));
   return result;
+}
+
+async function selectQuietTemplate() {
+  fireEvent.click(await screen.findByRole('radio', { name: /Quiet accumulation/i }));
 }
 
 describe('Radar', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
-
-  it('renders ranked candidates with counter-evidence and scan provenance', async () => {
-    getOpportunities.mockResolvedValue({
-      success: true,
-      data: { run: RUN, opportunities: [candidate()] },
-    });
-
-    renderRadar();
-
-    expect(await screen.findByText('BBRI')).toBeInTheDocument();
-    expect(screen.getByText('August 7, 2026')).toBeInTheDocument();
-    expect(screen.getByText('1 stocks')).toBeInTheDocument();
-    expect(screen.getByText('How stocks qualify')).toBeInTheDocument();
-    expect(screen.queryByText(/Scan #41/)).not.toBeInTheDocument();
-    expect(screen.getByText('74.3')).toBeInTheDocument();
-    // Risks are the falsifying half of the evidence and must be visible on the row.
-    expect(screen.getByText('Against: thin traded value raises exit risk')).toBeInTheDocument();
-    expect(screen.getByText('2.40x')).toBeInTheDocument();
-  });
-
-  it('labels the backend grade as data quality and never as confidence', async () => {
-    getOpportunities.mockResolvedValue({
-      success: true,
-      data: { run: RUN, opportunities: [candidate({ dataQuality: 'medium', confidence: 'medium' })] },
-    });
-
-    renderRadar();
-
-    const grade = await screen.findByText('medium data quality');
-    expect(grade).toBeInTheDocument();
-    expect(screen.queryByText(/medium confidence/i)).not.toBeInTheDocument();
-    // Degraded sources are marked with a class that out-ranks the default
-    // secondary-text color; a text-* utility alone would lose the cascade.
-    expect(grade).toHaveClass('is-degraded');
-  });
-
-  it('survives a candidate with no score, rank, levels or reasons', async () => {
-    getOpportunities.mockResolvedValue({
-      success: true,
-      data: {
-        run: RUN,
-        opportunities: [candidate({
-          ticker: 'ADRO',
-          score: null,
-          rank: null,
-          levels: null,
-          reasons: null,
-          risks: null,
-          dataQuality: null,
-          confidence: null,
-        })],
-      },
-    });
-
-    renderRadar();
-
-    expect(await screen.findByText('ADRO')).toBeInTheDocument();
-    expect(screen.queryByText('No recorded counter-evidence')).not.toBeInTheDocument();
-    expect(screen.getByText('unknown data quality')).toBeInTheDocument();
-  });
-
-  it('marks FCA and explicitly gated candidates', async () => {
-    getOpportunities.mockResolvedValue({
-      success: true,
-      data: {
-        run: RUN,
-        opportunities: [candidate({ features: { isFca: true }, eligible: false })],
-      },
-    });
-
-    renderRadar();
-
-    expect(await screen.findByText(/first-liner · FCA · gated/)).toBeInTheDocument();
-  });
-
-  it('separates an empty shortlist from a missing scan', async () => {
-    getOpportunities.mockResolvedValue({
-      success: true,
-      data: { run: RUN, opportunities: [] },
-    });
-
-    const { unmount } = renderRadar();
-    expect(await screen.findByText('Scan completed with no candidates')).toBeInTheDocument();
-    unmount();
-
-    getOpportunities.mockResolvedValue({ success: true, data: { run: null, opportunities: [] } });
-    renderRadar();
-    expect(await screen.findByText('No scan has been recorded')).toBeInTheDocument();
-  });
-
-  it('filters by lane without dropping the ranking, and can be reset', async () => {
-    getOpportunities.mockResolvedValue({
-      success: true,
-      data: {
-        run: RUN,
-        opportunities: [
-          candidate({ ticker: 'BBRI', lane: 'first-liner', rank: 1 }),
-          candidate({ ticker: 'PTBA', lane: 'second-liner', rank: 2 }),
-        ],
-      },
-    });
-
-    renderRadar();
-
-    expect(await screen.findByText('BBRI')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'second-liner' }));
-    expect(screen.queryByText('BBRI')).not.toBeInTheDocument();
-    expect(screen.getByText('PTBA')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: 'all (2)' }));
-    expect(screen.getByText('BBRI')).toBeInTheDocument();
-  });
-
-  it('reports a failed scan read and retries on demand', async () => {
-    getOpportunities.mockResolvedValueOnce({ success: false, error: 'scan store unavailable' });
-    getOpportunities.mockResolvedValueOnce({
-      success: true,
-      data: { run: RUN, opportunities: [candidate()] },
-    });
-
-    renderRadar();
-
-    expect(await screen.findByText('scan store unavailable')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
-    await waitFor(() => expect(screen.getByText('BBRI')).toBeInTheDocument());
-  });
-
-  it('does not hang on a rejected request', async () => {
-    getOpportunities.mockRejectedValue(new Error('network down'));
-    renderRadar();
-    expect(await screen.findByText('network down')).toBeInTheDocument();
-    expect(screen.queryByText(/Loading the latest qualified scan/)).not.toBeInTheDocument();
+    localStorage.clear();
+    getRadarScoutConditions.mockResolvedValue(CONDITION_CATALOG);
   });
 
   it('runs deterministic Scout recipes and renders the returned evidence behind a disclosure', async () => {
-    getOpportunities.mockResolvedValue({ success: true, data: { run: RUN, opportunities: [] } });
     getRadarScout.mockResolvedValue(scoutResponse({ candidates: [scoutCandidate()] }));
 
     renderRadar();
-    fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
-    fireEvent.change(screen.getByLabelText('Screening recipe'), { target: { value: 'quiet_accumulation' } });
-    expect(screen.getByText(/moderate, persistent buying/i)).toBeInTheDocument();
-    expect(screen.getByLabelText('Rp')).toHaveValue('1,000');
-    expect(screen.getByLabelText('Rp average')).toHaveValue('500,000,000');
-    fireEvent.click(screen.getByLabelText(/Broker concentration/));
-    expect(screen.getByLabelText('Date range')).toBeDisabled();
+    await selectQuietTemplate();
+    expect(screen.getByLabelText('Maximum price value')).toHaveValue('1,000');
+    expect(screen.queryByText(/Range resolution/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Foreign flow divergence/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Capitulation reversal/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
     expect(await screen.findByText('AHAP')).toBeInTheDocument();
@@ -257,16 +119,38 @@ describe('Radar', () => {
     expect(screen.getByText('CC accumulated Rp1200M, 4.0× YP, across 6/7 sessions.')).toBeInTheDocument();
     expect(screen.getByText('CC distributed in 1 observed session.')).toBeInTheDocument();
 
-    expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({ recipe: 'quiet_accumulation', brokerPreset: '7d', useBroker: false }));
+    expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({ recipe: 'quiet_accumulation', brokerPreset: '7d', conditions: [{ id: 'max_price', value: 1000 }] }));
+  });
+
+  it('keeps advanced controls secondary and renders session changes as ticker cards', async () => {
+    getRadarScout.mockResolvedValue(scoutResponse({
+      candidates: [scoutCandidate()],
+      dailyDiff: {
+        new: [scoutCandidate({ ticker: 'AHAP' })],
+        still: [scoutCandidate({ ticker: 'BBCA', qualificationStreak: 3 })],
+        dropped: [scoutCandidate({ ticker: 'ELSA', failedCondition: 'liquidity floor' })],
+      },
+    }));
+
+    renderRadar();
+    await selectQuietTemplate();
+    expect(document.querySelector('.scout-advanced')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('checkbox', { name: /Exclude FCA/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
+
+    const changes = await screen.findByRole('region', { name: 'Daily qualification changes' });
+    expect(changes).toHaveTextContent('New1AHAP');
+    expect(changes).toHaveTextContent('Still qualified1BBCA3d');
+    expect(changes).toHaveTextContent('Dropped1ELSA');
+    expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({ conditions: expect.arrayContaining([{ id: 'exclude_fca', value: true }]) }));
   });
 
   it('submits a custom broker date range through the client', async () => {
-    getOpportunities.mockResolvedValue({ success: true, data: { run: RUN, opportunities: [] } });
     getRadarScout.mockResolvedValue(scoutResponse({ candidates: [] }));
 
     renderRadar();
-    fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
-    fireEvent.change(screen.getByLabelText('Date range'), { target: { value: 'custom' } });
+    await selectQuietTemplate();
+    fireEvent.change(screen.getByLabelText('Broker window'), { target: { value: 'custom' } });
     fireEvent.change(screen.getByLabelText('From'), { target: { value: '2026-07-01' } });
     fireEvent.change(screen.getByLabelText('To'), { target: { value: '2026-07-31' } });
     fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
@@ -281,12 +165,11 @@ describe('Radar', () => {
   });
 
   it('syncs brokerSessions from the named Scout preset', async () => {
-    getOpportunities.mockResolvedValue({ success: true, data: { run: RUN, opportunities: [] } });
     getRadarScout.mockResolvedValue(scoutResponse({ candidates: [] }));
 
     renderRadar();
-    fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
-    fireEvent.change(screen.getByLabelText('Date range'), { target: { value: '14d' } });
+    await selectQuietTemplate();
+    fireEvent.change(screen.getByLabelText('Broker window'), { target: { value: '14d' } });
     fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
     await waitFor(() => expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({
@@ -296,40 +179,37 @@ describe('Radar', () => {
   });
 
   it('submits the lead-broker minimum once the condition is enabled', async () => {
-    getOpportunities.mockResolvedValue({ success: true, data: { run: RUN, opportunities: [] } });
     getRadarScout.mockResolvedValue(scoutResponse({ candidates: [] }));
 
     renderRadar();
-    fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
-    fireEvent.click(screen.getByLabelText(/Lead broker minimum/));
-    fireEvent.change(screen.getByLabelText('Rp net buy'), { target: { value: '2500000000' } });
+    await selectQuietTemplate();
+    fireEvent.click(screen.getByRole('checkbox', { name: /Lead broker net buy/ }));
+    fireEvent.change(screen.getByLabelText('Lead broker net buy value'), { target: { value: '2.5B' } });
+    fireEvent.blur(screen.getByLabelText('Lead broker net buy value'));
     fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
     await waitFor(() => expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({
-      useLeadBrokerValue: true,
-      minLeadBrokerValue: 2_500_000_000,
+      conditions: expect.arrayContaining([{ id: 'min_lead_net_buy', value: 2_500_000_000 }]),
     })));
   });
 
   it('renders the evidence band as a signal-strength badge on every qualified row', async () => {
-    getOpportunities.mockResolvedValue({ success: true, data: { run: RUN, opportunities: [] } });
     getRadarScout.mockResolvedValue(scoutResponse({ candidates: [scoutCandidate({ evidenceBand: 'medium' })] }));
 
     renderRadar();
-    fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
+    await selectQuietTemplate();
     fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
     expect(await screen.findByText('Medium signal')).toBeInTheDocument();
   });
 
   it('renders the score breakdown behind the row disclosure without dropping it', async () => {
-    getOpportunities.mockResolvedValue({ success: true, data: { run: RUN, opportunities: [] } });
     getRadarScout.mockResolvedValue(scoutResponse({
       candidates: [scoutCandidate({ scoreBreakdown: { broker: 41, supportCompression: 19 } })],
     }));
 
     renderRadar();
-    fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
+    await selectQuietTemplate();
     fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
     expect(await screen.findByText('AHAP')).toBeInTheDocument();
@@ -343,7 +223,6 @@ describe('Radar', () => {
   });
 
   it('keeps near-miss stocks visually separate and shows the failed condition', async () => {
-    getOpportunities.mockResolvedValue({ success: true, data: { run: RUN, opportunities: [] } });
     const nearMiss = scoutCandidate({
       ticker: 'ELSA',
       evidenceBand: 'low',
@@ -355,12 +234,13 @@ describe('Radar', () => {
     getRadarScout.mockResolvedValue(scoutResponse({ candidates: [scoutCandidate()], nearMisses: [nearMiss] }));
 
     renderRadar();
-    fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
+    await selectQuietTemplate();
     fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
     expect(await screen.findByText('Almost Matched')).toBeInTheDocument();
     expect(screen.getByText('ELSA')).toBeInTheDocument();
     expect(screen.getByText('Missed: liquidity floor ≥ Rp500M/day')).toBeInTheDocument();
+
     // A near-miss keeps its own table (fewer columns, no lead-broker/support
     // metrics) so it never reads as a qualified row.
     const qualifiedTable = screen.getByRole('table', { name: 'Scout candidates' });
@@ -374,7 +254,6 @@ describe('Radar', () => {
   });
 
   it('renders qualified results at the 100-result limit', async () => {
-    getOpportunities.mockResolvedValue({ success: true, data: { run: RUN, opportunities: [] } });
     const manyCandidates = Array.from({ length: 100 }, (_, index) => scoutCandidate({
       ticker: `T${String(index).padStart(3, '0')}`,
       rank: index + 1,
@@ -385,7 +264,7 @@ describe('Radar', () => {
     }));
 
     renderRadar();
-    fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
+    await selectQuietTemplate();
     fireEvent.change(screen.getByLabelText('Return'), { target: { value: '100' } });
     fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
@@ -395,22 +274,12 @@ describe('Radar', () => {
     expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({ limit: 100 }));
   });
 
-  it('preserves the new-tab Analysis / Broker Flow handoffs from both tables', async () => {
+  it('preserves the new-tab Analysis / Broker Flow handoffs, carrying the broker window', async () => {
     const openSpy = vi.spyOn(window, 'open').mockImplementation(() => {});
-    getOpportunities.mockResolvedValue({ success: true, data: { run: RUN, opportunities: [candidate()] } });
     getRadarScout.mockResolvedValue(scoutResponse({ candidates: [scoutCandidate()] }));
 
     renderRadar();
-
-    fireEvent.click(await screen.findByRole('button', { name: 'Open BBRI analysis' }));
-    expect(openSpy.mock.calls.at(-1)[0]).toBe('/workbench?ticker=BBRI');
-    expect(openSpy.mock.calls.at(-1)[1]).toBe('_blank');
-
-    fireEvent.click(screen.getByRole('button', { name: 'Open BBRI broker flow' }));
-    expect(openSpy.mock.calls.at(-1)[0]).toContain('/broker-intelligence?');
-    expect(openSpy.mock.calls.at(-1)[0]).toContain('ticker=BBRI');
-
-    fireEvent.click(screen.getByRole('tab', { name: 'Custom Screener' }));
+    await selectQuietTemplate();
     fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
     fireEvent.click(await screen.findByRole('button', { name: 'Open AHAP analysis' }));
@@ -422,5 +291,78 @@ describe('Radar', () => {
     expect(openSpy.mock.calls.at(-1)[0]).toContain('preset=7d');
 
     openSpy.mockRestore();
+  });
+
+  it('reports how far a near miss fell short, not just which condition it failed', async () => {
+    const nearMiss = scoutCandidate({
+      ticker: 'ELSA',
+      evidenceBand: 'low',
+      failedCondition: 'min_average_value',
+      failedDetail: {
+        id: 'min_average_value',
+        label: 'Liquidity floor',
+        unit: 'IDR',
+        comparison: 'min',
+        available: true,
+        expected: 500_000_000,
+        observed: 40_000_000,
+        gap: 460_000_000,
+        gapPct: 92,
+        reason: 'threshold',
+      },
+    });
+    getRadarScout.mockResolvedValue(scoutResponse({ candidates: [], nearMisses: [nearMiss] }));
+
+    renderRadar();
+    await selectQuietTemplate();
+    fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
+
+    expect(await screen.findByText('Liquidity floor')).toBeInTheDocument();
+    expect(screen.getByText(/Rp40M vs Rp500M · off by Rp460M \(92%\)/)).toBeInTheDocument();
+  });
+
+  it('marks a narrow miss apart from a wide one so it reads as a tuning decision', async () => {
+    const detail = (gapPct) => ({
+      id: 'min_lead_ratio',
+      label: 'Minimum lead-to-second ratio',
+      unit: 'x',
+      comparison: 'min',
+      available: true,
+      expected: 4,
+      observed: 3.6,
+      gap: 0.4,
+      gapPct,
+      reason: 'threshold',
+    });
+    getRadarScout.mockResolvedValue(scoutResponse({
+      candidates: [],
+      nearMisses: [
+        scoutCandidate({ ticker: 'ELSA', rank: 1, failedDetail: detail(10) }),
+        scoutCandidate({ ticker: 'BBCA', rank: 2, failedDetail: detail(60) }),
+      ],
+    }));
+
+    renderRadar();
+    await selectQuietTemplate();
+    fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
+
+    const rows = await screen.findAllByText('Minimum lead-to-second ratio');
+    expect(rows[0].closest('.scout-near-miss__missed')).toHaveClass('scout-near-miss__missed--close');
+    expect(rows[1].closest('.scout-near-miss__missed')).not.toHaveClass('scout-near-miss__missed--close');
+  });
+
+  it('says when the broker archive returned fewer sessions than were asked for', async () => {
+    getRadarScout.mockResolvedValue(scoutResponse({
+      candidates: [scoutCandidate()],
+      asOf: { requestedBrokerSessions: 7, brokerSessions: 5 },
+    }));
+
+    renderRadar();
+    await selectQuietTemplate();
+    fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
+
+    // Scoring on five sessions while the screen says seven is the kind of quiet
+    // degradation that makes a result look stronger than its evidence.
+    expect(await screen.findByText(/5 of 7 sessions available/)).toBeInTheDocument();
   });
 });

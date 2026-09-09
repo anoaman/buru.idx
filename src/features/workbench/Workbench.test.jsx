@@ -30,9 +30,10 @@ vi.mock('../../lib/api/client.js', () => ({
   analyzeTicker: vi.fn(),
   simulateRisk: vi.fn(),
   getStockBrokerIntelligence: vi.fn(),
+  getFundamentalStatements: vi.fn(),
 }));
 
-import { analyzeTicker, getStockBrokerIntelligence, simulateRisk } from '../../lib/api/client.js';
+import { analyzeTicker, getFundamentalStatements, getStockBrokerIntelligence, simulateRisk } from '../../lib/api/client.js';
 
 describe('Workbench', () => {
   const mockData = {
@@ -120,7 +121,7 @@ describe('Workbench', () => {
         supports: [{ price: 4300, touches: 3, volWeight: 2.1 }],
         resistances: [{ price: 4700, touches: 2, volWeight: 1.5 }],
       },
-      source: { name: 'market-data-provider', lastDate: '2026-07-17' },
+      source: { name: 'stockbit-chartbit', lastDate: '2026-07-17' },
     },
     broker: {
       available: true,
@@ -145,7 +146,7 @@ describe('Workbench', () => {
       bull: [{ factor: 'Trend', reason: 'Above all MAs' }],
       bear: [{ factor: 'Valuation', reason: 'P/E above sector median' }],
     },
-    dataQuality: { sources: ['primary-market-data', 'secondary-market-data'], warnings: [] },
+    dataQuality: { sources: ['stockbit', 'yahoo'], warnings: [] },
     investigation: {
       question: { code: 'CONFIRMATION_TEST', title: 'What confirms the structure?', detail: 'Trending with usable geometry.' },
       timeline: [{ date: '2026-07-17', type: 'state', title: 'Current phase', detail: 'Evidence aligned.' }],
@@ -155,6 +156,7 @@ describe('Workbench', () => {
 
   beforeEach(() => {
     sessionStorage.clear();
+    getFundamentalStatements.mockResolvedValue({ success: true, data: { items: [], total: 0 } });
     getStockBrokerIntelligence.mockResolvedValue({
       success: true,
       data: {
@@ -218,13 +220,12 @@ describe('Workbench', () => {
     fireEvent.click(screen.getByRole('tab', { name: /^Broker Flow$/i }));
     expect(await screen.findByRole('heading', { name: /^Broker Flow$/i })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('tab', { name: /Methodology/i }));
     expect(screen.getAllByText('Regime').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Pattern').length).toBeGreaterThan(0);
     expect(screen.getAllByText('B+').length).toBeGreaterThan(0);
     expect(screen.queryByText('Data')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('tab', { name: /What Changed/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /Setup/i }));
     expect(screen.getByText(/What supports or challenges the setup/i)).toBeInTheDocument();
   });
 
@@ -238,12 +239,11 @@ describe('Workbench', () => {
 
     expect(await screen.findByText('Price & volume')).toBeInTheDocument();
     const tablist = screen.getByRole('tablist', { name: /Analysis detail sections/i });
-    expect(within(tablist).getByRole('tab', { name: /^Levels$/i })).toBeInTheDocument();
+    expect(within(tablist).getByRole('tab', { name: /^Setup$/i })).toBeInTheDocument();
     expect(within(tablist).getByRole('tab', { name: /^Indicators$/i })).toBeInTheDocument();
     expect(within(tablist).getByRole('tab', { name: /^Broker Flow$/i })).toBeInTheDocument();
-    expect(within(tablist).getByRole('tab', { name: /^What Changed$/i })).toBeInTheDocument();
     expect(within(tablist).getByRole('tab', { name: /^Risk Simulator$/i })).toBeInTheDocument();
-    expect(within(tablist).getByRole('tab', { name: /^Methodology$/i })).toBeInTheDocument();
+    expect(within(tablist).queryByRole('tab', { name: /^Methodology$/i })).not.toBeInTheDocument();
   });
 
   it('shows cost drag on the Levels tab', async () => {
@@ -255,7 +255,7 @@ describe('Workbench', () => {
     );
 
     expect(await screen.findByText(/Cost drag/i)).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /^Levels$/i })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: /^Setup$/i })).toHaveAttribute('aria-selected', 'true');
   });
 
   it('uses one TradingView-powered NALAR market chart', async () => {

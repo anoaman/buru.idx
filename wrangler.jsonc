@@ -19,5 +19,19 @@
   ],
   "vars": {
     "API_ORIGIN": "https://analysis-origin.tombaklepas.app"
+  },
+  "env": {
+    "staging": {
+      "name": "tombaklepas-analysis-staging",
+      "routes": [
+        {
+          "pattern": "staging.analysis.tombaklepas.app",
+          "custom_domain": true
+        }
+      ],
+      "vars": {
+        "API_ORIGIN": "https://analysis-staging-origin.tombaklepas.app"
+      }
+    }
   }
 }

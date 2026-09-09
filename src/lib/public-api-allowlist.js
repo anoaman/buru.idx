@@ -8,6 +8,13 @@
 // not the product. An allowlist is the only version of this that survives being
 // put on the internet, which is the entire remaining question for Phase E.
 //
+// /api/watchlist and /api/opportunities were removed on 2026-08-25. The first
+// was here only for the parked Cases screen and served the real watchlist,
+// thesis notes included, to anything that could reach this port. The second
+// backed the retired Market Shortlist tab. If Cases comes back it needs an
+// authenticated route, not an entry in this map: nothing that renders private
+// positions belongs on an anonymous surface.
+//
 // Keys are exact pathnames. `params` is the complete set of query parameters
 // forwarded; anything else is dropped rather than passed along. `force` overrides
 // caller-supplied values.
@@ -16,9 +23,12 @@ const PUBLIC_ROUTES = new Map([
   // this a caller could simply ask for mode=live and get the live read.
   ['/api/analyze', { params: ['ticker'], force: { mode: 'delayed' } }],
   ['/api/risk-simulation', { params: ['entry', 'stop', 'target', 'capital', 'maxRiskPct'] }],
-  ['/api/opportunities', { params: [] }],
+  ['/api/data-health', { params: [] }],
+  ['/api/radar/scout/conditions', { params: [] }],
   ['/api/radar/scout', { params: [
     'recipe',
+    'conditions',
+    'asOf',
     'brokerSessions',
     'brokerPreset',
     'brokerFrom',
@@ -35,11 +45,18 @@ const PUBLIC_ROUTES = new Map([
     'useMaxPrice',
     'useLiquidity',
     'useLeadBrokerValue',
+    'minRsVsIhsgPct',
+    'useRsVsIhsg',
+    'excludeFca',
   ] }],
-  ['/api/watchlist', { params: [] }],
   ['/api/broker-intelligence/health', { params: [] }],
   ['/api/broker-intelligence/stock', { params: ['ticker', 'days', 'date', 'preset', 'from', 'to'] }],
-  ['/api/broker-intelligence/broker', { params: ['code', 'days', 'limit', 'date', 'preset', 'from', 'to'] }],
+  ['/api/broker-intelligence/broker', { params: ['code', 'days', 'limit', 'date', 'preset', 'from', 'to', 'maxPrice', 'minAverageValue', 'minBrokerNetValue', 'foreignDirection', 'minForeignValue', 'excludeFca'] }],
+  ['/api/collector/health', { params: [] }],
+]);
+
+export const LOCAL_DATA_PATHS = new Set([
+  '/api/collector/health',
 ]);
 
 // Per-IP token bucket. Cheap, in-process, and enough to stop one client hammering
@@ -99,13 +116,10 @@ export function checkRateLimit(key, nowMs, buckets = rateBuckets) {
  * backend that was not built here.
  */
 export function resolvePublicApiRequest(method, rawUrl) {
+  let url;
   if (String(rawUrl || '').length > MAX_REQUEST_TARGET_LENGTH) {
     return { ok: false, status: 414, error: 'Request target is too long.' };
   }
-  if (method !== 'GET' && method !== 'HEAD') {
-    return { ok: false, status: 405, error: 'This endpoint is read-only.' };
-  }
-  let url;
   const rawPath = String(rawUrl || '').split('?')[0];
   if (/(^|\/)\.\.?($|\/)/.test(rawPath)) {
     return { ok: false, status: 400, error: 'Malformed request.' };
@@ -118,6 +132,10 @@ export function resolvePublicApiRequest(method, rawUrl) {
   const route = PUBLIC_ROUTES.get(url.pathname);
   if (!route) {
     return { ok: false, status: 404, error: 'Not found.' };
+  }
+  const allowedMethods = route.methods || ['GET', 'HEAD'];
+  if (!allowedMethods.includes(method)) {
+    return { ok: false, status: 405, error: 'This method is not allowed.' };
   }
   const forwarded = new URLSearchParams();
   for (const name of route.params) {

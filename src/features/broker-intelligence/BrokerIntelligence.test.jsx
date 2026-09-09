@@ -309,10 +309,23 @@ describe('BrokerIntelligence', () => {
   it('restores ticker, code, and days from URL', async () => {
     renderAt('/broker-intelligence?lens=broker&code=yp&days=14');
     await waitFor(() => {
-      expect(getBrokerStockIntelligence).toHaveBeenCalledWith({ code: 'YP', days: 14, limit: 25 });
+      expect(getBrokerStockIntelligence).toHaveBeenCalledWith({ code: 'YP', days: 14, limit: 50, filters: expect.any(Object) });
     });
     expect(screen.getByRole('button', { name: /^14D$/i })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByDisplayValue('YP')).toBeInTheDocument();
+  });
+
+  it('waits for Apply before requesting across-market filters and accepts compact values', async () => {
+    renderAt('/broker-intelligence?lens=broker&code=YP&days=7');
+    await waitFor(() => expect(getBrokerStockIntelligence).toHaveBeenCalled());
+    getBrokerStockIntelligence.mockClear();
+    fireEvent.change(screen.getByLabelText('Maximum price'), { target: { value: '200' } });
+    fireEvent.change(screen.getByLabelText('Minimum average traded value'), { target: { value: '500M' } });
+    expect(getBrokerStockIntelligence).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }));
+    await waitFor(() => expect(getBrokerStockIntelligence).toHaveBeenCalledWith(expect.objectContaining({
+      filters: expect.objectContaining({ maxPrice: 200, minAverageValue: 500_000_000 }),
+    })));
   });
 
   it('validates and normalizes search input', async () => {

@@ -38,7 +38,7 @@ describe('public Worker API boundary', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     const oversized = await worker.fetch(new Request(
-      `https://analysis.example.test/api/radar/scout?recipe=${'x'.repeat(4_097)}`,
+      `https://analysis.example.test/api/radar/scout?conditions=${'x'.repeat(4_097)}`,
     ), env);
     const unavailable = await worker.fetch(new Request(
       'https://analysis.example.test/api/analyze?ticker=BBCA',
@@ -71,13 +71,58 @@ describe('public Worker API boundary', () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
 
-    const unknown = await worker.fetch(new Request('https://analysis.example.test/api/data-health'), env);
+    const unknown = await worker.fetch(new Request('https://analysis.example.test/api/opportunities'), env);
     const write = await worker.fetch(new Request('https://analysis.example.test/api/analyze?ticker=BBCA', {
       method: 'POST',
     }), env);
 
     expect(unknown.status).toBe(404);
     expect(write.status).toBe(405);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('forwards the Scout catalog and explicit condition payload', async () => {
+    const upstream = [];
+    vi.stubGlobal('fetch', vi.fn(async (request) => {
+      upstream.push(request);
+      return Response.json({ success: true, data: {} });
+    }));
+    const conditions = JSON.stringify([{ id: 'max_price', value: 1000 }]);
+    await worker.fetch(new Request('https://analysis.example.test/api/radar/scout/conditions'), env);
+    await worker.fetch(new Request(`https://analysis.example.test/api/radar/scout?conditions=${encodeURIComponent(conditions)}`), env);
+    expect(new URL(upstream[0].url).pathname).toBe('/api/radar/scout/conditions');
+    expect(new URL(upstream[1].url).searchParams.get('conditions')).toBe(conditions);
+  });
+
+  it('blocks every parked product route before reaching the origin', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const paths = [
+      '/api/disclosures',
+      '/api/disclosures/detail',
+      '/api/disclosures/timeline',
+      '/api/disclosures/anomalies',
+      '/api/disclosures/documents',
+      '/api/fundamentals/statements',
+      '/api/fundamentals/snapshot',
+      '/api/fundamentals/periods',
+      '/api/fundamentals/facts',
+      '/api/fundamentals/filing',
+      '/api/fundamentals/derived',
+      '/api/fundamentals/sources',
+      '/api/news-detector',
+      '/api/news-detector/scan',
+    ];
+
+    for (const path of paths) {
+      const response = await worker.fetch(new Request(`https://analysis.example.test${path}`), env);
+      expect(response.status, `${path} must be blocked`).toBe(404);
+    }
+    const scan = await worker.fetch(new Request(
+      'https://analysis.example.test/api/news-detector/scan?date=2026-08-15',
+      { method: 'POST' },
+    ), env);
+    expect(scan.status).toBe(404);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
