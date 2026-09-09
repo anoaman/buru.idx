@@ -1,5 +1,5 @@
 import { createReadStream, existsSync, statSync } from 'fs';
-import { createHash } from 'crypto';
+import { createHash, timingSafeEqual } from 'crypto';
 import { createServer, request as httpRequest } from 'http';
 import { extname, join, normalize } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
@@ -50,15 +50,26 @@ function clientKey(req) {
   return req.socket.remoteAddress || 'unknown';
 }
 
-function privateIdentity() {
+function safeSecretMatch(supplied, expected) {
+  const left = Buffer.from(String(supplied || ''));
+  const right = Buffer.from(String(expected || ''));
+  return left.length === right.length && left.length > 0 && timingSafeEqual(left, right);
+}
+
+export function resolvePrivateIdentity(req) {
   const email = String(process.env.NALAR_PRIVATE_OWNER_EMAIL || '').trim().toLowerCase();
   const secret = process.env.NALAR_PROXY_SECRET || '';
+  const forwardedOwner = String(req.headers['x-nalar-owner-key'] || '').trim();
+  const forwardedSecret = req.headers['x-nalar-proxy-secret'];
+  if (secret && /^[a-f0-9]{64}$/.test(forwardedOwner) && safeSecretMatch(forwardedSecret, secret)) {
+    return { ownerKey: forwardedOwner, secret };
+  }
   if (!email || !secret) return null;
   return { ownerKey: createHash('sha256').update(email).digest('hex'), secret };
 }
 
 function proxyPrivateApi(req, res) {
-  const identity = privateIdentity();
+  const identity = resolvePrivateIdentity(req);
   if (!identity) return sendJson(res, 404, { success: false, error: 'Not found.' });
   if (!PRIVATE_METHODS.has(req.method || '')) return sendJson(res, 405, { success: false, error: 'This method is not allowed.' });
   const target = new URL(req.url || '/', 'http://internal');

@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { resolveStaticPath, server } from './server.js';
+import { resolvePrivateIdentity, resolveStaticPath, server } from './server.js';
 
 // The static handler is the only place in the process that decodes attacker-
 // supplied text. decodeURIComponent throws on malformed percent-encoding, and an
@@ -30,6 +30,21 @@ describe('static path resolution', () => {
 });
 
 describe('private Monitored boundary', () => {
+  it('accepts only a valid owner key from the trusted Worker proxy', () => {
+    process.env.NALAR_PROXY_SECRET = 'shared-secret';
+    delete process.env.NALAR_PRIVATE_OWNER_EMAIL;
+    const valid = resolvePrivateIdentity({ headers: {
+      'x-nalar-owner-key': 'a'.repeat(64),
+      'x-nalar-proxy-secret': 'shared-secret',
+    } });
+    expect(valid).toEqual({ ownerKey: 'a'.repeat(64), secret: 'shared-secret' });
+    expect(resolvePrivateIdentity({ headers: {
+      'x-nalar-owner-key': 'a'.repeat(64),
+      'x-nalar-proxy-secret': 'wrong',
+    } })).toBe(null);
+    delete process.env.NALAR_PROXY_SECRET;
+  });
+
   it('fails closed when local private identity is not configured', async () => {
     delete process.env.NALAR_PRIVATE_OWNER_EMAIL;
     delete process.env.NALAR_PROXY_SECRET;
