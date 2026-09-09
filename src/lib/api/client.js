@@ -51,7 +51,7 @@ async function request(path, options = {}) {
   const promise = (async () => {
     try {
       const response = await fetch(url, {
-        headers: { Accept: 'application/json' },
+        headers: { Accept: 'application/json', ...(options.body ? { 'Content-Type': 'application/json' } : {}) },
         ...options,
       });
       const body = await response.json().catch(() => null);
@@ -132,8 +132,16 @@ export function getRadarScoutConditions() {
   return request('/api/radar/scout/conditions');
 }
 
-export function getCases() {
-  return request('/api/watchlist');
+export function getMonitored() {
+  return request('/api/monitored');
+}
+
+export function freezeMonitored(item) {
+  return request('/api/monitored', { method: 'POST', body: JSON.stringify(item) });
+}
+
+export function removeMonitored(id) {
+  return request(`/api/monitored?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
 }
 
 export function getBrokerArchiveHealth() {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { analyzeTicker } from '../../lib/api/client.js';
+import { analyzeTicker, freezeMonitored } from '../../lib/api/client.js';
 import { guardAnalyze } from '../../lib/api/contracts.js';
 import {
   formatIDR, formatNumber, formatPrice, formatPct, formatVolume,
@@ -18,7 +18,7 @@ import RiskSimulator from './RiskSimulator.jsx';
 import DetailDrawer from './DetailDrawer.jsx';
 import LevelsPanel from './LevelsPanel.jsx';
 
-function TickerHeader({ ticker, priceHistory }) {
+function TickerHeader({ ticker, priceHistory, onFreeze, freezeState }) {
   if (!ticker) return null;
   const changeColor = ticker.changePct > 0 ? 'text-positive' : ticker.changePct < 0 ? 'text-negative' : 'text-secondary';
   return (
@@ -39,6 +39,9 @@ function TickerHeader({ ticker, priceHistory }) {
             {ticker.tier}
           </span>
         )}
+        <button type="button" className="ui-btn ui-btn--ghost" onClick={onFreeze} disabled={freezeState === 'saving' || freezeState === 'saved'}>
+          {freezeState === 'saving' ? 'Freezing…' : freezeState === 'saved' ? 'Frozen to Monitored' : 'Freeze to Monitored'}
+        </button>
       </div>
       <div className="wb-overview-grid">
         <div><span>Open / High / Low</span><strong>{formatPrice(ticker.open)} / {formatPrice(ticker.high)} / {formatPrice(ticker.low)}</strong></div>
@@ -204,6 +207,7 @@ export default function Workbench() {
   const [error, setError] = useState(null);
   const [failedTicker, setFailedTicker] = useState('');
   const requestRef = useRef(0);
+  const [freezeState, setFreezeState] = useState('idle');
 
   const fetchAnalysis = useCallback((raw) => {
     const ticker = String(raw || '').trim().toUpperCase();
@@ -230,6 +234,7 @@ export default function Workbench() {
         return;
       }
       setDisplayed({ ticker, data: result.data });
+      setFreezeState('idle');
       setLoading(false);
       setAnalyzing('');
       setError(null);
@@ -260,6 +265,34 @@ export default function Workbench() {
   const hasDisplayed = Boolean(displayed.data && displayed.ticker);
   const warmLoading = loading && hasDisplayed && analyzing && analyzing !== displayed.ticker;
   const coldLoading = loading && !hasDisplayed;
+
+  const freeze = async () => {
+    const data = displayed.data;
+    if (!data || freezeState === 'saving') return;
+    const geometry = data.setupGeometry || data.riskGeometry || {};
+    const factors = data.scorecard?.factors || [];
+    setFreezeState('saving');
+    const result = await freezeMonitored({
+      ticker: displayed.ticker,
+      thesis: data.stance?.reason || null,
+      triggerPrice: geometry.trigger?.price ?? geometry.confirmation?.price ?? geometry.bestSetup?.entry ?? geometry.confirmation ?? null,
+      invalidationPrice: geometry.invalidation?.price ?? geometry.bestSetup?.stop ?? null,
+      setupType: geometry.scenario || data.grade?.structurePhase || null,
+      snapshot: {
+        lane: data.ticker?.tier || null,
+        score: null,
+        dataQuality: data.dataQuality?.status || 'unknown',
+        reasons: factors.filter((factor) => factor.signal > 0).map((factor) => factor.reason),
+        risks: factors.filter((factor) => factor.signal < 0).map((factor) => factor.reason),
+        levels: geometry,
+        freshness: { priceDate: data.chart?.source?.lastDate || null },
+        verdict: data.grade || null,
+        stance: data.stance || null,
+        contradictions: data.investigation?.contradictions || [],
+      },
+    });
+    setFreezeState(result?.success === false ? 'error' : 'saved');
+  };
 
   const renderDrawer = (active) => {
     const data = displayed.data;
@@ -299,7 +332,8 @@ export default function Workbench() {
             </div>
           )}
           <div className="wb-result" data-displayed-ticker={displayed.ticker}>
-            <TickerHeader ticker={displayed.data.ticker} priceHistory={displayed.data.priceHistory} />
+            <TickerHeader ticker={displayed.data.ticker} priceHistory={displayed.data.priceHistory} onFreeze={freeze} freezeState={freezeState} />
+            {freezeState === 'error' && <p className="text-warning" role="alert">Could not freeze this setup. It may already be monitored.</p>}
             <VerdictPanel
               grade={displayed.data.grade}
               stance={displayed.data.stance}

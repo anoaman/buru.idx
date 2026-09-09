@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { getCases } from '../../lib/api/client.js';
+import { getMonitored, removeMonitored } from '../../lib/api/client.js';
 import { guardCases } from '../../lib/api/contracts.js';
 import { formatPrice, formatRelativeDays } from '../../lib/format/market.js';
 import EmptyState from '../../components/EmptyState.jsx';
@@ -33,9 +33,10 @@ function SnapshotAge({ monitoring }) {
   );
 }
 
-function CaseCard({ item, onReopen, onActors }) {
+function CaseCard({ item, onReopen, onBrokerFlow, onRemove }) {
   const { monitoring, snapshot } = item;
   const delta = monitoring.current?.scoreDelta;
+  const frozenVerdict = snapshot.frozen?.verdict;
   return (
     <article className="case-card" role="listitem">
       <div className="case-card__top">
@@ -45,6 +46,7 @@ function CaseCard({ item, onReopen, onActors }) {
         </span>
       </div>
       <h3>{item.ticker}</h3>
+      {frozenVerdict?.grade && <p className="text-secondary">Frozen verdict: Grade {frozenVerdict.grade}{frozenVerdict.regime ? ` · ${frozenVerdict.regime}` : ''}</p>}
       <p className="case-card__thesis">
         {item.thesis || snapshot.reasons[0] || 'Thesis not recorded yet.'}
       </p>
@@ -90,8 +92,11 @@ function CaseCard({ item, onReopen, onActors }) {
         <button type="button" className="ui-btn ui-btn--ghost" aria-label={`Re-open ${item.ticker} evidence`} onClick={onReopen}>
           Open Analysis
         </button>
-        <button type="button" className="ui-btn ui-btn--ghost" aria-label={`Open ${item.ticker} actor map`} onClick={onActors}>
+        <button type="button" className="ui-btn ui-btn--ghost" aria-label={`Open ${item.ticker} broker flow`} onClick={onBrokerFlow}>
           Broker Flow
+        </button>
+        <button type="button" className="ui-btn ui-btn--ghost" aria-label={`Remove ${item.ticker} from Monitored`} onClick={onRemove}>
+          Remove
         </button>
       </div>
     </article>
@@ -105,7 +110,7 @@ export default function Cases() {
   const load = useCallback(() => {
     let cancelled = false;
     setState({ loading: true, error: null, data: null });
-    getCases()
+    getMonitored()
       .then((raw) => {
         if (cancelled) return;
         const result = guardCases(raw);
@@ -120,19 +125,28 @@ export default function Cases() {
 
   useEffect(load, [load]);
 
+  const remove = useCallback(async (id) => {
+    const result = await removeMonitored(id);
+    if (result?.success === false) {
+      setState((current) => ({ ...current, error: result.error || 'Unable to remove monitored setup' }));
+      return;
+    }
+    load();
+  }, [load]);
+
   const items = state.data?.items || [];
 
   return (
     <section className="cases-page" aria-labelledby="cases-title">
       <header className="module-heading">
-        <div><h2 id="cases-title">Watchlist</h2></div>
-        <p>Saved setups and what has changed since you added them.</p>
+        <div><h2 id="cases-title">Monitored</h2></div>
+        <p>Frozen setups and what has materially changed since you saved them.</p>
       </header>
 
-      {state.loading && <Skeleton label="Loading watchlist…" />}
+      {state.loading && <Skeleton label="Loading monitored setups…" />}
 
       {state.error && !state.loading && (
-        <ErrorState title="Watchlist unavailable" error={state.error} onRetry={load} />
+        <ErrorState title="Monitored unavailable" error={state.error} onRetry={load} />
       )}
 
       {!state.loading && !state.error && items.length > 0 && (
@@ -154,8 +168,8 @@ export default function Cases() {
 
       {!state.loading && !state.error && items.length === 0 && (
         <EmptyState
-          title="Your watchlist is empty"
-          message="No saved setups yet. Watchlist management will appear here when the workflow is enabled."
+          title="Nothing monitored yet"
+          message="Freeze a setup from Stock Analysis to track its evidence, invalidation, and material changes."
           action={<a className="ui-btn ui-btn--ghost" href="/radar">Browse setups in Screener</a>}
         />
       )}
@@ -167,7 +181,8 @@ export default function Cases() {
               key={item.id}
               item={item}
               onReopen={() => openInvestigation(item.ticker)}
-              onActors={() => openBrokerMap(item.ticker, 7)}
+              onBrokerFlow={() => openBrokerMap(item.ticker, 7)}
+              onRemove={() => remove(item.id)}
             />
           ))}
         </div>

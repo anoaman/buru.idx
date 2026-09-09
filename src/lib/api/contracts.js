@@ -636,6 +636,7 @@ function normalizeCaseItem(item) {
       risks: normalizeStringList(snapshot.risks, 8),
       levels: normalizeOpportunityLevels(snapshot.levels),
       freshness: normalizeOpportunityFreshness(snapshot.freshness),
+      frozen: snapshot.frozen && typeof snapshot.frozen === 'object' ? snapshot.frozen : {},
     },
     monitoring: normalizeCaseMonitoring(item.monitoring),
     addedAt: item.addedAt || null,

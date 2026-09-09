@@ -16,6 +16,10 @@ const PUBLIC_ROUTES = new Map([
   ['/api/collector/health', { params: [] }],
 ]);
 
+const PRIVATE_ROUTES = new Map([
+  ['/api/monitored', { methods: ['GET', 'POST', 'PATCH', 'DELETE'], params: ['id', 'status'] }],
+]);
+
 const PRIVATE_KEYS = new Set([
   'archive',
   'earliestAvailableDate',
@@ -110,6 +114,42 @@ function originRequest(request, env, url) {
   });
 }
 
+async function privateOriginRequest(request, env, url) {
+  const route = PRIVATE_ROUTES.get(url.pathname);
+  const email = request.headers.get('cf-access-authenticated-user-email')?.trim().toLowerCase();
+  if (!route || !email || !env.NALAR_PROXY_SECRET) return null;
+  if (!env.API_ORIGIN || !env.CF_ACCESS_CLIENT_ID || !env.CF_ACCESS_CLIENT_SECRET) {
+    throw new Error('Origin configuration is unavailable.');
+  }
+  const encoded = new TextEncoder().encode(email);
+  const digest = await crypto.subtle.digest('SHA-256', encoded);
+  const ownerKey = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+  const origin = new URL(env.API_ORIGIN);
+  origin.pathname = url.pathname;
+  const query = new URLSearchParams();
+  for (const name of route.params) {
+    const value = url.searchParams.get(name);
+    if (value != null && value.length > MAX_QUERY_VALUE_LENGTH) throw new RangeError('Request parameter is too long.');
+    if (value) query.set(name, value);
+  }
+  origin.search = query.toString();
+  const headers = new Headers({
+    accept: 'application/json',
+    'cf-access-client-id': env.CF_ACCESS_CLIENT_ID,
+    'cf-access-client-secret': env.CF_ACCESS_CLIENT_SECRET,
+    'x-nalar-owner-key': ownerKey,
+    'x-nalar-proxy-secret': env.NALAR_PROXY_SECRET,
+  });
+  const init = { method: request.method, headers, redirect: 'manual', signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS) };
+  if (!['GET', 'HEAD'].includes(request.method)) {
+    const body = await request.arrayBuffer();
+    if (body.byteLength > 65_536) throw new RangeError('Request body is too large.');
+    headers.set('content-type', 'application/json');
+    init.body = body;
+  }
+  return new Request(origin, init);
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -135,6 +175,26 @@ export default {
     }
 
     if (url.pathname.startsWith('/api/')) {
+      if (PRIVATE_ROUTES.has(url.pathname)) {
+        const privateRoute = PRIVATE_ROUTES.get(url.pathname);
+        if (!privateRoute.methods.includes(request.method)) {
+          return secure(json(405, 'This method is not allowed.'));
+        }
+        let upstreamRequest;
+        try {
+          upstreamRequest = await privateOriginRequest(request, env, url);
+        } catch (error) {
+          return secure(json(error instanceof RangeError ? 414 : 502, error instanceof RangeError ? error.message : 'Analysis service is temporarily unavailable.'));
+        }
+        if (!upstreamRequest) return secure(json(404, 'Not found.'));
+        try {
+          const response = await fetch(upstreamRequest);
+          const payload = await response.json();
+          return secure(Response.json(sanitize(payload), { status: response.status, headers: { 'cache-control': 'no-store' } }));
+        } catch {
+          return secure(json(502, 'Analysis service is temporarily unavailable.'));
+        }
+      }
       const route = PUBLIC_ROUTES.get(url.pathname);
       if (!route) return secure(json(404, 'Not found.'));
       if (!(route.methods || ['GET', 'HEAD']).includes(request.method)) {

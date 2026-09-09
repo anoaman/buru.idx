@@ -1,4 +1,5 @@
 import { createReadStream, existsSync, statSync } from 'fs';
+import { createHash } from 'crypto';
 import { createServer, request as httpRequest } from 'http';
 import { extname, join, normalize } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
@@ -16,6 +17,7 @@ const HOST = process.env.STOCK_ANALYSIS_HOST || '127.0.0.1';
 const PORT = Number(process.env.STOCK_ANALYSIS_PORT || 8792);
 const API_ORIGIN = new URL(process.env.STOCK_ANALYSIS_API_ORIGIN || 'http://127.0.0.1:8787');
 const disclosureStore = createPythonDisclosureStore({ allowFixture: false });
+const PRIVATE_METHODS = new Set(['GET', 'POST', 'PATCH', 'DELETE']);
 const BASE_SECURITY_HEADERS = {
   'cross-origin-opener-policy': 'same-origin',
   'permissions-policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
@@ -46,6 +48,64 @@ function sendJson(res, status, body, extraHeaders = {}) {
 
 function clientKey(req) {
   return req.socket.remoteAddress || 'unknown';
+}
+
+function privateIdentity() {
+  const email = String(process.env.NALAR_PRIVATE_OWNER_EMAIL || '').trim().toLowerCase();
+  const secret = process.env.NALAR_PROXY_SECRET || '';
+  if (!email || !secret) return null;
+  return { ownerKey: createHash('sha256').update(email).digest('hex'), secret };
+}
+
+function proxyPrivateApi(req, res) {
+  const identity = privateIdentity();
+  if (!identity) return sendJson(res, 404, { success: false, error: 'Not found.' });
+  if (!PRIVATE_METHODS.has(req.method || '')) return sendJson(res, 405, { success: false, error: 'This method is not allowed.' });
+  const target = new URL(req.url || '/', 'http://internal');
+  const query = new URLSearchParams();
+  for (const name of ['id', 'status']) {
+    const value = target.searchParams.get(name);
+    if (value) query.set(name, value);
+  }
+  const chunks = [];
+  let size = 0;
+  let tooLarge = false;
+  req.on('data', (chunk) => {
+    size += chunk.length;
+    if (size > 65_536) tooLarge = true;
+    else if (!tooLarge) chunks.push(chunk);
+  });
+  req.on('end', () => {
+    if (res.writableEnded) return;
+    if (tooLarge) return sendJson(res, 413, { success: false, error: 'Request body is too large.' });
+    const upstream = httpRequest({
+      protocol: API_ORIGIN.protocol,
+      hostname: API_ORIGIN.hostname,
+      port: API_ORIGIN.port,
+      method: req.method,
+      path: `/api/monitored${query.size ? `?${query}` : ''}`,
+      headers: {
+        accept: 'application/json',
+        'content-type': 'application/json',
+        'content-length': String(size),
+        'x-nalar-owner-key': identity.ownerKey,
+        'x-nalar-proxy-secret': identity.secret,
+      },
+    }, (upstreamRes) => {
+      res.writeHead(upstreamRes.statusCode || 502, {
+        'content-type': 'application/json',
+        'cache-control': 'no-store',
+        ...BASE_SECURITY_HEADERS,
+      });
+      upstreamRes.pipe(res);
+    });
+    upstream.setTimeout(UPSTREAM_TIMEOUT_MS, () => upstream.destroy(new Error('upstream timed out')));
+    upstream.on('error', () => {
+      if (!res.headersSent) sendJson(res, 502, { success: false, error: 'Analysis service is temporarily unavailable.' });
+    });
+    for (const chunk of chunks) upstream.write(chunk);
+    upstream.end();
+  });
 }
 
 function proxyApi(req, res) {
@@ -129,6 +189,7 @@ export function resolveStaticPath(urlPath) {
 }
 
 function handle(req, res) {
+  if (new URL(req.url || '/', 'http://internal').pathname === '/api/monitored') return proxyPrivateApi(req, res);
   if (req.url?.startsWith('/api/')) return proxyApi(req, res);
   const path = resolveStaticPath(req.url || '/');
   if (!path || !existsSync(path)) {

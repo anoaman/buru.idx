@@ -5,6 +5,7 @@ const env = {
   API_ORIGIN: 'https://analysis-origin.example.test',
   CF_ACCESS_CLIENT_ID: 'client-id',
   CF_ACCESS_CLIENT_SECRET: 'client-secret',
+  NALAR_PROXY_SECRET: 'proxy-secret',
 };
 
 afterEach(() => vi.unstubAllGlobals());
@@ -124,5 +125,29 @@ describe('public Worker API boundary', () => {
     ), env);
     expect(scan.status).toBe(404);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps Monitored private and forwards only a hashed Access identity', async () => {
+    let upstream;
+    vi.stubGlobal('fetch', vi.fn(async (request) => {
+      upstream = request;
+      return Response.json({ success: true, data: { items: [] } });
+    }));
+
+    const denied = await worker.fetch(new Request('https://analysis.example.test/api/monitored'), env);
+    expect(denied.status).toBe(404);
+    expect(fetch).not.toHaveBeenCalled();
+
+    const response = await worker.fetch(new Request('https://analysis.example.test/api/monitored', {
+      headers: {
+        'Cf-Access-Authenticated-User-Email': 'KIBZ@Example.com',
+        authorization: 'Bearer browser-token',
+      },
+    }), env);
+    expect(response.status).toBe(200);
+    expect(upstream.headers.get('x-nalar-owner-key')).toMatch(/^[a-f0-9]{64}$/);
+    expect(upstream.headers.get('x-nalar-proxy-secret')).toBe('proxy-secret');
+    expect(upstream.headers.get('cf-access-authenticated-user-email')).toBeNull();
+    expect(upstream.headers.get('authorization')).toBeNull();
   });
 });

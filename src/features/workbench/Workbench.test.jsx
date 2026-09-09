@@ -31,9 +31,10 @@ vi.mock('../../lib/api/client.js', () => ({
   simulateRisk: vi.fn(),
   getStockBrokerIntelligence: vi.fn(),
   getFundamentalStatements: vi.fn(),
+  freezeMonitored: vi.fn(),
 }));
 
-import { analyzeTicker, getFundamentalStatements, getStockBrokerIntelligence, simulateRisk } from '../../lib/api/client.js';
+import { analyzeTicker, freezeMonitored, getFundamentalStatements, getStockBrokerIntelligence, simulateRisk } from '../../lib/api/client.js';
 
 describe('Workbench', () => {
   const mockData = {
@@ -156,6 +157,7 @@ describe('Workbench', () => {
 
   beforeEach(() => {
     sessionStorage.clear();
+    freezeMonitored.mockResolvedValue({ success: true, data: {} });
     getFundamentalStatements.mockResolvedValue({ success: true, data: { items: [], total: 0 } });
     getStockBrokerIntelligence.mockResolvedValue({
       success: true,
@@ -227,6 +229,19 @@ describe('Workbench', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: /Setup/i }));
     expect(screen.getByText(/What supports or challenges the setup/i)).toBeInTheDocument();
+  });
+
+  it('freezes the displayed backend evidence into Monitored', async () => {
+    analyzeTicker.mockResolvedValue({ success: true, data: mockData });
+    render(<MemoryRouter initialEntries={['/?ticker=BBRI']}><Workbench /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole('button', { name: 'Freeze to Monitored' }));
+    await waitFor(() => expect(freezeMonitored).toHaveBeenCalledWith(expect.objectContaining({
+      ticker: 'BBRI',
+      triggerPrice: 4550,
+      invalidationPrice: 4300,
+      snapshot: expect.objectContaining({ verdict: mockData.grade }),
+    })));
+    expect(screen.getByRole('button', { name: 'Frozen to Monitored' })).toBeDisabled();
   });
 
   it('exposes analysis detail tabs', async () => {

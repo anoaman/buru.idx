@@ -7,6 +7,7 @@ const BrokerIntelligence = lazy(() => import('./features/broker-intelligence/Bro
 const Glossary = lazy(() => import('./features/glossary/Glossary.jsx'));
 const Workbench = lazy(() => import('./features/workbench/Workbench.jsx'));
 const Radar = lazy(() => import('./features/radar/Radar.jsx'));
+const Monitored = lazy(() => import('./features/cases/Cases.jsx'));
 
 export default function App() {
   return (
@@ -19,6 +20,8 @@ export default function App() {
               <Route path="/radar" element={<Radar />} />
               <Route path="/workbench" element={<Workbench />} />
               <Route path="/broker-intelligence" element={<BrokerIntelligence />} />
+              <Route path="/monitored" element={<Monitored />} />
+              <Route path="/cases" element={<Navigate to="/monitored" replace />} />
               <Route path="/fundamentals" element={<Navigate to="/workbench" replace />} />
               <Route path="/news-detector" element={<Navigate to="/workbench" replace />} />
               <Route path="/keterbukaan" element={<Navigate to="/workbench" replace />} />

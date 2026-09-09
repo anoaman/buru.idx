@@ -5,10 +5,11 @@ import { AnalysisProvider } from '../../components/AnalysisContext.jsx';
 import Cases from './Cases.jsx';
 
 vi.mock('../../lib/api/client.js', () => ({
-  getCases: vi.fn(),
+  getMonitored: vi.fn(),
+  removeMonitored: vi.fn(),
 }));
 
-import { getCases } from '../../lib/api/client.js';
+import { getMonitored, removeMonitored } from '../../lib/api/client.js';
 
 function caseItem(overrides = {}) {
   return {
@@ -56,7 +57,7 @@ describe('Cases', () => {
   });
 
   it('shows the frozen thesis, trigger and invalidation of a saved case', async () => {
-    getCases.mockResolvedValue({ success: true, data: { items: [caseItem()] } });
+    getMonitored.mockResolvedValue({ success: true, data: { items: [caseItem()] } });
 
     renderCases();
 
@@ -69,7 +70,7 @@ describe('Cases', () => {
   });
 
   it('discloses a material change against the frozen snapshot', async () => {
-    getCases.mockResolvedValue({
+    getMonitored.mockResolvedValue({
       success: true,
       data: {
         items: [caseItem({
@@ -104,7 +105,7 @@ describe('Cases', () => {
   });
 
   it('distinguishes a case absent from the latest scan from an unchanged one', async () => {
-    getCases.mockResolvedValue({
+    getMonitored.mockResolvedValue({
       success: true,
       data: {
         items: [caseItem({
@@ -126,7 +127,7 @@ describe('Cases', () => {
   });
 
   it('falls back to the frozen reason when no thesis was recorded', async () => {
-    getCases.mockResolvedValue({
+    getMonitored.mockResolvedValue({
       success: true,
       data: { items: [caseItem({ thesis: null })] },
     });
@@ -137,15 +138,15 @@ describe('Cases', () => {
   });
 
   it('renders an empty state when nothing is being tracked', async () => {
-    getCases.mockResolvedValue({ success: true, data: { items: [] } });
+    getMonitored.mockResolvedValue({ success: true, data: { items: [] } });
     renderCases();
-    expect(await screen.findByText('Your watchlist is empty')).toBeInTheDocument();
-    expect(screen.getByText(/Watchlist management will appear here when the workflow is enabled/i)).toBeInTheDocument();
+    expect(await screen.findByText('Nothing monitored yet')).toBeInTheDocument();
+    expect(screen.getByText(/Freeze a setup from Stock Analysis/i)).toBeInTheDocument();
   });
 
   it('reports a failed read and retries on demand', async () => {
-    getCases.mockResolvedValueOnce({ success: false, error: 'case store unavailable' });
-    getCases.mockResolvedValueOnce({ success: true, data: { items: [caseItem()] } });
+    getMonitored.mockResolvedValueOnce({ success: false, error: 'case store unavailable' });
+    getMonitored.mockResolvedValueOnce({ success: true, data: { items: [caseItem()] } });
 
     renderCases();
 
@@ -155,9 +156,20 @@ describe('Cases', () => {
   });
 
   it('does not hang on a rejected request', async () => {
-    getCases.mockRejectedValue(new Error('network down'));
+    getMonitored.mockRejectedValue(new Error('network down'));
     renderCases();
     expect(await screen.findByText('network down')).toBeInTheDocument();
     expect(screen.queryByText('Loading cases…')).not.toBeInTheDocument();
+  });
+
+  it('removes an owned monitored setup and refreshes the list', async () => {
+    getMonitored
+      .mockResolvedValueOnce({ success: true, data: { items: [caseItem()] } })
+      .mockResolvedValueOnce({ success: true, data: { items: [] } });
+    removeMonitored.mockResolvedValue({ success: true });
+    renderCases();
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove BBRI from Monitored' }));
+    await waitFor(() => expect(removeMonitored).toHaveBeenCalledWith(7));
+    expect(await screen.findByText('Nothing monitored yet')).toBeInTheDocument();
   });
 });

@@ -116,6 +116,7 @@ describe('public API allowlist', () => {
       // The watchlist carries private positions and thesis notes, and the
       // shortlist scan is the edge. Neither has any business on this surface.
       '/api/watchlist',
+      '/api/monitored',
       '/api/opportunities',
       '/api/disclosures',
       '/api/disclosures/detail',

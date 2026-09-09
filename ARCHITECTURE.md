@@ -71,7 +71,7 @@ case tracking from the retiring cockpit without duplicating backend engines.
   page-level duplicate search.
 - `src/components/AnalysisContext.jsx` owns cross-route ticker, window and as-of
   context. Feature pages remain responsible for their own network state.
-- `src/features/radar/` and `src/features/cases/` read the scan and case
+- `src/features/radar/` and `src/features/cases/` read the scan and owner-scoped Monitored
   contracts through `contracts.js` like every other feature. They rank nothing,
   score nothing, and decide no material change; those all arrive already
   computed. Radar's lane filter only hides rows the backend already ranked.
@@ -92,7 +92,7 @@ case tracking from the retiring cockpit without duplicating backend engines.
   UI is parked and existing local browser data is left untouched. Qualification history and
   New/Still/Dropped daily diffs come only from the backend response. Query state
   is permalinkable and may pin the displayed as-of date.
-- Trader-facing labels use Screener / Stock Analysis / Broker Flow / Glossary.
+- Trader-facing labels use Screener / Stock Analysis / Broker Flow / Monitored / Glossary.
   Parked route names remain stable as redirects. The subnav order is fixed:
   Screener → Stock Analysis → Broker Flow → Glossary. The
   global ticker selection is shared by Stock Analysis and Broker Flow; Screener
@@ -124,6 +124,7 @@ calculation. Those remain backend responsibilities.
 - `/workbench`
 - `/broker-intelligence`
 - `/radar`
+- `/monitored` (Cloudflare Access authenticated)
 - `/keterbukaan` (temporary redirect to `/news-detector` after parity)
 - `/cases`
 - `/fundamentals`
@@ -143,6 +144,12 @@ The existing read-only allowlist, delayed-mode enforcement, error sanitization,
 and rate limiting remain as defense in depth. Radar and Cases may add private
 read/write routes only after their exact contracts are reviewed; they must not
 turn the proxy into a wildcard forwarder.
+
+Monitored is never added to `PUBLIC_ROUTES`. The Worker accepts `/api/monitored`
+only after Cloudflare Access supplies a verified email, hashes the normalized
+identity, and forwards the opaque owner key with `NALAR_PROXY_SECRET`. Raw email
+and browser credentials never reach the analysis API. Local private use derives
+the same key from `NALAR_PRIVATE_OWNER_EMAIL`; missing configuration fails closed.
 
 Parked Keterbukaan, Fundamentals, and News Detector routes are not exposed by
 the anonymous proxy. Disclosure ingestion and analysis remain private backend
