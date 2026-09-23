@@ -465,8 +465,10 @@ function normalizeScoutCandidate(row) {
       : {},
     conditionEvidence: Array.isArray(row.conditionEvidence) ? row.conditionEvidence.filter((item) => item?.id).map((item) => ({
       id: String(item.id), label: item.label ? String(item.label) : String(item.id),
-      actual: typeof item.actual === 'boolean' || typeof item.actual === 'string' ? item.actual : preserveFiniteOrNull(item.actual),
-      target: typeof item.target === 'boolean' || typeof item.target === 'string' ? item.target : preserveFiniteOrNull(item.target),
+      actual: typeof (item.observed ?? item.actual) === 'boolean' || typeof (item.observed ?? item.actual) === 'string'
+        ? (item.observed ?? item.actual) : preserveFiniteOrNull(item.observed ?? item.actual),
+      target: typeof (item.expected ?? item.target) === 'boolean' || typeof (item.expected ?? item.target) === 'string'
+        ? (item.expected ?? item.target) : preserveFiniteOrNull(item.expected ?? item.target),
       passed: item.passed === true,
     })) : [],
     scoreBreakdown: row.scoreBreakdown && typeof row.scoreBreakdown === 'object'
@@ -541,6 +543,7 @@ export function guardRadarScout(raw) {
         brokerTo: asOf.brokerTo || null,
         brokerSessions: Number.isFinite(asOf.brokerSessions) ? asOf.brokerSessions : 0,
         requestedBrokerSessions: Number.isFinite(asOf.requestedBrokerSessions) ? asOf.requestedBrokerSessions : null,
+        brokerCalendarPreset: asOf.brokerCalendarPreset || null,
       },
       coverage: {
         evaluated: Number.isFinite(coverage.evaluated) ? coverage.evaluated : 0,
@@ -548,6 +551,7 @@ export function guardRadarScout(raw) {
         returned: Number.isFinite(coverage.returned) ? coverage.returned : 0,
         nearMisses: Number.isFinite(coverage.nearMisses) ? coverage.nearMisses : 0,
         insufficientHistorySkipped: Number.isFinite(coverage.insufficientHistorySkipped) ? coverage.insufficientHistorySkipped : 0,
+        unavailableEvidenceSkipped: Number.isFinite(coverage.unavailableEvidenceSkipped) ? coverage.unavailableEvidenceSkipped : 0,
       },
       candidates: Array.isArray(data.candidates)
         ? data.candidates.map(normalizeScoutCandidate).filter(Boolean)

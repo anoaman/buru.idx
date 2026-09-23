@@ -122,7 +122,7 @@ describe('Radar', () => {
     expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({ recipe: 'quiet_accumulation', brokerPreset: '7d', conditions: [{ id: 'max_price', value: 1000 }] }));
   });
 
-  it('keeps advanced controls secondary and renders session changes as ticker cards', async () => {
+  it('keeps advanced controls secondary and omits unverified session-change claims', async () => {
     getRadarScout.mockResolvedValue(scoutResponse({
       candidates: [scoutCandidate()],
       dailyDiff: {
@@ -139,11 +139,8 @@ describe('Radar', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: /Exclude FCA/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
-    fireEvent.click(await screen.findByText(/Changes since the previous session/));
-    const changes = await screen.findByRole('region', { name: 'Daily qualification changes' });
-    expect(changes).toHaveTextContent('New1AHAP');
-    expect(changes).toHaveTextContent('Still qualified1BBCA3d');
-    expect(changes).toHaveTextContent('Dropped1ELSA');
+    expect(await screen.findByText('AHAP')).toBeInTheDocument();
+    expect(screen.queryByText(/Changes since the previous session/)).not.toBeInTheDocument();
     expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({ conditions: expect.arrayContaining([{ id: 'exclude_fca', value: true }]) }));
   });
 
@@ -246,11 +243,11 @@ describe('Radar', () => {
     expect(screen.getByText('ELSA')).toBeInTheDocument();
     expect(screen.getByText('Missed: liquidity floor ≥ Rp500M/day')).toBeInTheDocument();
 
-    // A near-miss keeps its own table (fewer columns, no lead-broker/support
-    // metrics) so it never reads as a qualified row.
+    // A near-miss keeps its own diagnostic table so it never reads as a
+    // qualified strategy result.
     const qualifiedTable = screen.getByRole('table', { name: 'Scout candidates' });
     const nearMissTable = screen.getByRole('table', { name: 'Almost matched stocks' });
-    expect(qualifiedTable.querySelectorAll('thead th').length).toBeGreaterThan(nearMissTable.querySelectorAll('thead th').length);
+    expect(nearMissTable.querySelectorAll('thead th').length).toBeGreaterThan(qualifiedTable.querySelectorAll('thead th').length);
 
     fireEvent.click(screen.getByRole('button', { name: 'Show ELSA evidence' }));
     expect(screen.getByText('thin average value')).toBeInTheDocument();
@@ -356,7 +353,7 @@ describe('Radar', () => {
     expect(rows[1].closest('.scout-near-miss__missed')).not.toHaveClass('scout-near-miss__missed--close');
   });
 
-  it('says when the broker archive returned fewer sessions than were asked for', async () => {
+  it('reports observed trading sessions without treating weekends as missing data', async () => {
     getRadarScout.mockResolvedValue(scoutResponse({
       candidates: [scoutCandidate()],
       asOf: { requestedBrokerSessions: 7, brokerSessions: 5 },
@@ -366,8 +363,7 @@ describe('Radar', () => {
     await selectQuietTemplate();
     fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
-    // Scoring on five sessions while the screen says seven is the kind of quiet
-    // degradation that makes a result look stronger than its evidence.
-    expect(await screen.findByText(/5 of 7 sessions available/)).toBeInTheDocument();
+    expect(await screen.findByText(/5 trading days/)).toBeInTheDocument();
+    expect(screen.queryByText(/sessions available/)).not.toBeInTheDocument();
   });
 });

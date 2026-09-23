@@ -268,6 +268,7 @@ describe('Radar Scout contracts', () => {
           score: 82.5,
           evidenceBand: 'high',
           scoreBreakdown: { broker: 40, support: 30, compression: 12.5, junk: 'x' },
+          conditionEvidence: [{ id: 'min_lead_ratio', observed: 2.4, expected: 2, passed: true }],
           failedCondition: null,
           price: scoutPrice,
           reasons: ['lead buyer near support'],
@@ -283,6 +284,7 @@ describe('Radar Scout contracts', () => {
       evidenceBand: 'high',
       failedCondition: null,
       scoreBreakdown: { broker: 40, support: 30, compression: 12.5, junk: null },
+      conditionEvidence: [{ id: 'min_lead_ratio', label: 'min_lead_ratio', actual: 2.4, target: 2, passed: true }],
     });
   });
 

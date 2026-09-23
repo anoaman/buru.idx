@@ -102,24 +102,16 @@
 .screener-v2 .ui-table .ui-row:hover { background: var(--bg-hover); }
 .screener-v2 .radar-cell-ticker { min-width: 112px; max-width: 180px; gap: 4px; }
 .screener-v2 .radar-cell-ticker strong { font-size: 15px; letter-spacing: .02em; }
-.screener-v2 .radar-cell-ticker span { font-size: 10px; line-height: 1.4; color: var(--text-tertiary); white-space: normal; }
+.screener-v2 .radar-cell-ticker > span:not(.badge) { font-size: 10px; line-height: 1.4; color: var(--text-tertiary); white-space: normal; }
+.screener-v2 .radar-cell-ticker .badge { align-self: flex-start; margin-top: 2px; font-size: 9px; }
 .screener-v2 .radar-cell-metric { gap: 4px; }
 .screener-v2 .radar-cell-metric span { font-size: 10px; white-space: nowrap; }
-.scout-score { display: grid; justify-items: end; gap: 5px; }
-.scout-score > strong { font-size: 15px; }
-.scout-score .badge { font-size: 9px; white-space: nowrap; padding: 3px 5px; }
 .screener-v2 .scout-results .radar-row__actions { display: grid; grid-template-columns: repeat(2, auto); align-items: stretch; gap: 4px; }
 .screener-v2 .scout-results .radar-row__actions button:first-child { grid-column: 1 / -1; }
 .screener-v2 .radar-row__actions button { min-height: 28px; font-size: 10px; padding: 5px 8px; }
 .screener-v2 .radar-row__actions button + button { border-color: transparent; color: var(--text-tertiary); }
 .scout-expanded-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; font-size: 12px; color: var(--text-secondary); padding-bottom: 14px; }
 .screener-v2 .radar-detail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.scout-session-changes { margin: 20px 22px; border: 1px solid var(--border-default); border-radius: 6px; }
-.scout-session-changes > summary { padding: 12px; cursor: pointer; font-size: 12px; color: var(--text-secondary); }
-.scout-session-changes > summary span { margin-left: 12px; font-size: 10px; color: var(--text-tertiary); }
-.screener-v2 .scout-diff { padding: 0 12px 12px; margin: 0; }
-.screener-v2 .scout-diff > header { display: none; }
-.screener-v2 .scout-diff__card { min-height: 60px; border-radius: 4px; }
 .screener-v2 .scout-near-miss { margin: 22px 0 0; padding: 20px 0 0; border-top: 1px solid var(--border-default); }
 .screener-v2 .scout-near-miss__title, .screener-v2 .scout-near-miss__intro { padding-inline: 22px; }
 .screener-v2 .scout-near-miss__intro { font-size: 12px; max-width: 650px; }
@@ -164,27 +156,21 @@
   .scout-welcome-steps > div > span { position: absolute; left: 0; top: 3px; }
   .scout-results-tools { padding: 12px; }
   .scout-results-tools label:first-child, .scout-results-tools input { width: 100%; }
-  .scout-session-changes { margin: 16px 12px; }
-  .scout-session-changes > summary span { display: block; margin: 6px 0 0 14px; }
   .screener-v2 .scout-results .ui-table { display: block; min-width: 0; width: 100%; }
   .screener-v2 .ui-table thead { display: none; }
   .screener-v2 .ui-table tbody { display: block; }
   .screener-v2 .ui-table .ui-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 12px; padding: 20px 18px; border-bottom: 1px solid var(--border-default); }
   .screener-v2 .scout-results .ui-table td { display: block; padding: 0; border: 0; min-width: 0; width: auto; text-align: left; }
-  .screener-v2 .ui-table .ui-row > td:first-child { display: none; }
   .screener-v2 .radar-cell-ticker { min-width: 0; }
   .screener-v2 .radar-cell-ticker strong { font-size: 18px; }
-  .screener-v2 .radar-cell-ticker span { font-size: 11px; }
+  .screener-v2 .radar-cell-ticker > span:not(.badge) { font-size: 11px; }
   .screener-v2 .radar-cell-metric { align-items: flex-start; text-align: left; }
   .screener-v2 .radar-cell-metric strong { font-size: 15px; }
   .screener-v2 .radar-cell-metric span { font-size: 11px; white-space: normal; }
-  .screener-v2 .ui-table--scout .ui-row > td:nth-child(4)::before,
-  .screener-v2 .ui-table--scout .ui-row > td:nth-child(5)::before,
-  .screener-v2 .ui-table--scout .ui-row > td:nth-child(6)::before { display: block; color: var(--text-tertiary); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
-  .screener-v2 .ui-table--scout .ui-row > td:nth-child(4)::before { content: 'Price / liquidity'; }
-  .screener-v2 .ui-table--scout .ui-row > td:nth-child(5)::before { content: 'Lead broker'; }
-  .screener-v2 .ui-table--scout .ui-row > td:nth-child(6)::before { content: 'Support / range'; }
-  .screener-v2 .ui-table--scout .ui-row > td:nth-child(6),
+  .screener-v2 .ui-table--scout .ui-row > td:nth-child(2)::before,
+  .screener-v2 .ui-table--scout .ui-row > td:nth-child(3)::before { display: block; color: var(--text-tertiary); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+  .screener-v2 .ui-table--scout .ui-row > td:nth-child(2)::before { content: 'Price / liquidity'; }
+  .screener-v2 .ui-table--scout .ui-row > td:nth-child(3)::before { content: 'Strategy evidence'; }
   .screener-v2 .ui-table .ui-row > td:last-child { grid-column: 1 / -1; }
   .screener-v2 .scout-results .radar-row__actions { display: grid; grid-template-columns: 1.2fr 1fr 1fr; }
   .screener-v2 .scout-results .radar-row__actions button:first-child { grid-column: auto; }

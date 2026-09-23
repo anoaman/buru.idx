@@ -22,6 +22,7 @@ const DEFAULT_SCOUT_FILTERS = Object.freeze({
   useBroker: false, useSupport: false, useSideways: false, useMaxPrice: false, useLiquidity: false,
 });
 const BROKER_RANGES = [['latest', 'Latest'], ['previous', 'Previous'], ['7d', '7D'], ['14d', '14D'], ['1m', '1M'], ['custom', 'Custom (up to 60 days)']];
+const MAX_CONDITIONS = 20;
 const BROKER_PRESET_SESSIONS = Object.freeze({
   latest: 1,
   previous: 1,
@@ -29,8 +30,19 @@ const BROKER_PRESET_SESSIONS = Object.freeze({
   '14d': 14,
   '1m': 22,
 });
+const BROKER_CONDITIONS = new Set([
+  'min_positive_brokers', 'min_lead_net_buy', 'min_lead_intensity_pct',
+  'min_lead_share_pct', 'max_lead_share_pct', 'min_lead_ratio',
+  'max_lead_ratio', 'min_lead_buy_session_pct',
+]);
+const SUPPORT_CONDITIONS = new Set(['min_support_distance_pct', 'max_support_distance_pct', 'min_support_touches']);
+const RANGE_CONDITIONS = new Set(['max_range_width_pct', 'min_distinct_closes']);
 function scoutRequestPayload(filters) {
   const payload = { ...filters };
+  const conditionIds = new Set(filters.conditions.map((condition) => condition.id));
+  payload.useBroker = [...conditionIds].some((id) => BROKER_CONDITIONS.has(id));
+  payload.useSupport = [...conditionIds].some((id) => SUPPORT_CONDITIONS.has(id));
+  payload.useSideways = [...conditionIds].some((id) => RANGE_CONDITIONS.has(id));
   if (filters.brokerPreset === 'custom') {
     delete payload.brokerSessions;
   } else if (BROKER_PRESET_SESSIONS[filters.brokerPreset] != null) {
@@ -129,7 +141,6 @@ function EvidenceBandBadge({ band }) {
 // primary columns differ between the two tables.
 function ScoutDetail({ row }) {
   const breakdown = Object.entries(row.scoreBreakdown || {});
-  const evidence = Object.entries(row.evidence || {});
   return (
     <div className="radar-detail">
       <div>
@@ -146,7 +157,7 @@ function ScoutDetail({ row }) {
       </div>
       {row.broker && (
         <div>
-          <h4>Positive share</h4>
+          <h4>Lead broker share</h4>
           <p>
             {formatPct(row.broker.leadSharePct, 0, false)} of buying value
             {row.broker.lead ? ` · ${row.broker.lead.buySessions}/${row.broker.expectedSessions} buying days` : ''}
@@ -163,42 +174,39 @@ function ScoutDetail({ row }) {
           </div>
         </div>
       )}
-      {evidence.length > 0 && (
-        <div><h4>Recipe evidence</h4><div className="radar-detail__chips">{evidence.map(([key, value]) => <span key={key}>{breakdownLabel(key)} <strong>{value == null ? 'Unavailable' : typeof value === 'boolean' ? (value ? 'Yes' : 'No') : String(value)}</strong></span>)}</div></div>
-      )}
     </div>
   );
 }
 
-const QUALIFIED_COLUMNS = 7;
+const QUALIFIED_COLUMNS = 4;
 
-function QualifiedRow({ row, displayRank, onInvestigate, onActors }) {
+function QualifiedRow({ row, recipeId, onInvestigate, onActors }) {
   const [expanded, setExpanded] = useState(false);
+  const persistence = row.broker?.expectedSessions
+    ? (row.broker.lead?.buySessions || 0) / row.broker.expectedSessions * 100
+    : null;
   return (
     <>
       <tr className="ui-row">
-        <td className="tabular text-tertiary">{formatRank(displayRank)}</td>
         <td>
           <div className="radar-cell-ticker">
             <strong>{row.ticker}</strong>
             <span>{row.name}{row.board ? ` · ${row.board}` : ''}{row.isFca ? ' · FCA' : ''}</span>
+            <EvidenceBandBadge band={row.evidenceBand} />
           </div>
         </td>
-        <td className="tabular"><div className="scout-score"><strong>{Number.isFinite(row.score) ? row.score.toFixed(1) : '—'}</strong><EvidenceBandBadge band={row.evidenceBand} /></div></td>
         <td className="tabular"><div className="radar-cell-metric"><strong>{formatPrice(row.price.lastPrice)}</strong><span>{formatIDR(row.price.averageValue, true)} / day</span></div></td>
         <td className="tabular">
-          <div className="radar-cell-metric">
-            <strong>{row.broker?.lead?.code || '—'}</strong>
-            <span>{formatIDR(row.broker?.lead?.netValue, true)}</span>
-            <span>{formatRatio(row.broker?.leadToSecondRatio)}{row.broker?.second?.code ? ` vs ${row.broker.second.code}` : ' · no second buyer'}</span>
-          </div>
-        </td>
-        <td className="tabular">
-          <div className="radar-cell-metric">
+          {recipeId === 'support_compression' ? <div className="radar-cell-metric">
             <strong>{formatPrice(row.price.support)}</strong>
             <span>{formatPct(row.price.distanceFromSupportPct)} · {row.price.supportTouches} touches</span>
             <span>{formatPct(row.price.consolidationRangePct, 1, false)} range{row.price.volatilityContracting ? ' · contracting' : ''}</span>
-          </div>
+          </div> : <div className="radar-cell-metric">
+            <strong>{row.broker?.lead?.code || '—'} · {formatIDR(row.broker?.lead?.netValue, true)}</strong>
+            <span>{formatPct(row.broker?.leadSharePct, 0, false)} share · {formatRatio(row.broker?.leadToSecondRatio)} vs second</span>
+            <span>{formatPct(persistence, 0, false)} persistence</span>
+            {recipeId === 'quiet_accumulation' && <span>{formatPct(row.price.distanceFromSupportPct)} from support · {formatPct(row.price.consolidationRangePct, 1, false)} range</span>}
+          </div>}
         </td>
         <td>
           <div className="radar-row__actions">
@@ -225,27 +233,24 @@ function QualifiedRow({ row, displayRank, onInvestigate, onActors }) {
   );
 }
 
-function ScoutQualifiedTable({ rows, onInvestigate, onActors }) {
+function ScoutQualifiedTable({ rows, recipeId, onInvestigate, onActors }) {
   return (
     <div className="ui-table-wrap">
       <table className="ui-table ui-table--scout" aria-label="Scout candidates">
         <thead>
           <tr>
-            <th className="tabular">#</th>
             <th>Ticker</th>
-            <th className="tabular">Score / signal</th>
             <th className="tabular">Price / liquidity</th>
-            <th className="tabular">Lead broker</th>
-            <th className="tabular">Support / range</th>
+            <th className="tabular">{recipeId === 'support_compression' ? 'Support / range' : 'Strategy evidence'}</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, index) => (
+          {rows.map((row) => (
             <QualifiedRow
               key={row.ticker}
               row={row}
-              displayRank={index + 1}
+              recipeId={recipeId}
               onInvestigate={() => onInvestigate(row.ticker)}
               onActors={() => onActors(row.ticker)}
             />
@@ -256,29 +261,16 @@ function ScoutQualifiedTable({ rows, onInvestigate, onActors }) {
   );
 }
 
-/**
- * What the screen actually ran against, stated rather than implied.
- *
- * Two things here are easy to miss and change how a result should be read. The
- * broker window silently shrinks when the archive is short of the requested
- * span, so asking for 7 sessions and scoring on 5 looks identical to asking for
- * 5. And a recipe with no broker leg anchors to a later price date than one with
- * it, so two strategies on this page can legitimately disagree about "today".
- */
-function ScoutProvenance({ data, requestedSessions }) {
-  const requested = data.asOf.requestedBrokerSessions ?? requestedSessions;
+function ScoutProvenance({ data }) {
   const observed = data.asOf.brokerSessions;
-  const degraded = Number.isFinite(requested) && Number.isFinite(observed) && observed < requested;
   return (
     <div className="radar-run">
       <strong>{data.recipe.label}</strong>
       <span>Prices through {formatDate(data.asOf.priceDate)}</span>
       {data.asOf.brokerFrom ? (
-        <span className={degraded ? 'radar-run__age--missing' : undefined}>
+        <span>
           Broker flow {formatDate(data.asOf.brokerFrom)}–{formatDate(data.asOf.brokerTo)}
-          {degraded
-            ? ` · ${observed} of ${requested} sessions available`
-            : ` · ${observed} trading days`}
+          {` · ${observed} trading days`}
         </span>
       ) : (
         <span>No broker window in this screen</span>
@@ -412,34 +404,6 @@ function ScoutNearMissSection({ rows, onInvestigate, onActors }) {
   );
 }
 
-function DailyDiff({ diff }) {
-  const groups = [
-    { key: 'new', label: 'New', rows: diff.new, tone: 'positive' },
-    { key: 'still', label: 'Still qualified', rows: diff.still, tone: 'neutral' },
-    { key: 'dropped', label: 'Dropped', rows: diff.dropped, tone: 'warning' },
-  ];
-  return (
-    <section className="scout-diff" aria-label="Daily qualification changes">
-      <header><div><span>Session change</span><h3>Since previous session</h3></div></header>
-      <div className="scout-diff__grid">
-        {groups.map((group) => (
-          <article className={`scout-diff__card scout-diff__card--${group.tone}`} key={group.key}>
-            <div className="scout-diff__heading"><strong>{group.label}</strong><span>{group.rows.length}</span></div>
-            <div className="scout-diff__tickers">
-              {group.rows.length === 0 && <span className="scout-diff__empty">None</span>}
-              {group.rows.map((row) => (
-                <span className="scout-diff__ticker" key={row.ticker} title={row.failedCondition || undefined}>
-                  {row.ticker}{group.key === 'still' && row.qualificationStreak ? <small>{row.qualificationStreak}d</small> : null}
-                </span>
-              ))}
-            </div>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 function Scout({ onInvestigate, onActors }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [filters, setFilters] = useState(() => {
@@ -501,7 +465,9 @@ function Scout({ onInvestigate, onActors }) {
   const toggleCondition = (definition, enabled) => setFilters((current) => ({
     ...current,
     conditions: enabled
-      ? [...current.conditions, { id: definition.id, value: definition.defaultValue ?? definition.options?.[0] ?? true }]
+      ? current.conditions.length >= MAX_CONDITIONS
+        ? current.conditions
+        : [...current.conditions, { id: definition.id, value: definition.defaultValue ?? definition.options?.[0] ?? true }]
       : current.conditions.filter((item) => item.id !== definition.id),
   }));
   const run = (event) => {
@@ -572,7 +538,7 @@ function Scout({ onInvestigate, onActors }) {
                 if (!items.length) return null;
                 return <section key={group.category} className="scout-filter-group"><h3>{group.category}</h3><div>{items.map((definition) => {
                   const enabled = filters.conditions.some((item) => item.id === definition.id);
-                  return <label className={`scout-library-option ${enabled ? 'is-enabled' : ''}`} key={definition.id} title={definition.description}><input type="checkbox" checked={enabled} onChange={(event) => toggleCondition(definition, event.target.checked)} /><span>{definition.label}</span></label>;
+                  return <label className={`scout-library-option ${enabled ? 'is-enabled' : ''}`} key={definition.id} title={definition.description}><input type="checkbox" checked={enabled} disabled={!enabled && filters.conditions.length >= MAX_CONDITIONS} onChange={(event) => toggleCondition(definition, event.target.checked)} /><span>{definition.label}</span></label>;
                 })}</div></section>;
               })}</div>
               {!catalog.conditions.some((item) => `${item.label} ${item.description}`.toLowerCase().includes(filterQuery.toLowerCase())) && <p className="scout-filter-hint">No conditions found. Try “price” or “broker”.</p>}
@@ -609,13 +575,12 @@ function Scout({ onInvestigate, onActors }) {
           </div>}
           {state.data && <>
             <div className="scout-result-status" role="status">{state.loading ? 'Updating results…' : dirty ? 'Conditions changed. Run the screener to update these results.' : `${state.data.coverage.returned} returned from ${state.data.coverage.evaluated} evaluated stocks.`}</div>
-            <ScoutProvenance data={state.data} requestedSessions={scoutRequestPayload(appliedFilters || filters).brokerSessions} />
+            <ScoutProvenance data={state.data} />
             <div className="scout-results-tools"><label><span className="sr-only">Search returned stocks</span><input type="search" placeholder="Search ticker or company…" value={resultQuery} onChange={(event) => setResultQuery(event.target.value)} /></label><label>Sort by<select value={sort} onChange={(event) => setSort(event.target.value)}><option value="score">Highest score</option><option value="liquidity">Most liquid</option><option value="ticker">Ticker A–Z</option></select></label></div>
             {state.data.candidates.length === 0
               ? <EmptyState title="No stocks passed this screen" message="Review your active conditions or explore the near misses below to see which threshold kept a stock out." />
               : visibleRows.length === 0 ? <EmptyState title="No matching tickers" message="Try another ticker or company name within the returned results." />
-                : <ScoutQualifiedTable rows={visibleRows} onInvestigate={onInvestigate} onActors={handoffActors} />}
-            <details className="scout-session-changes"><summary>Changes since the previous session <span>{state.data.dailyDiff.new.length} new · {state.data.dailyDiff.dropped.length} dropped</span></summary><DailyDiff diff={state.data.dailyDiff} /></details>
+                : <ScoutQualifiedTable rows={visibleRows} recipeId={state.data.recipe.id} onInvestigate={onInvestigate} onActors={handoffActors} />}
             <ScoutNearMissSection rows={state.data.nearMisses} onInvestigate={onInvestigate} onActors={handoffActors} />
             <div className="scout-disclosures">{state.data.disclosures.map((item) => <p key={item}>{item}</p>)}</div>
           </>}

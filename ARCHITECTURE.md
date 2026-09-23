@@ -89,9 +89,10 @@ case tracking from the retiring cockpit without duplicating backend engines.
   component score breakdown, evidence band, and separately labelled near misses.
   Recipe parameters, FCA exclusion and IHSG-relative-strength filters are sent
   unchanged to the backend; React never evaluates their formulas. The saved-screen
-  UI is parked and existing local browser data is left untouched. Qualification history and
-  New/Still/Dropped daily diffs come only from the backend response. Query state
-  is permalinkable and may pin the displayed as-of date.
+  UI is parked and existing local browser data is left untouched. New/Still/Dropped
+  labels stay hidden until the backend owns durable qualification history over the
+  complete matched set; top-N response comparisons must never impersonate history.
+  Query state is permalinkable and may pin the displayed as-of date.
 - Trader-facing labels use Screener / Stock Analysis / Broker Flow / Glossary.
   Parked route names remain stable as redirects. The subnav order is fixed:
   Screener → Stock Analysis → Broker Flow → Glossary. The
