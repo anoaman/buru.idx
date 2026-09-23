@@ -18,7 +18,7 @@ export default function LevelsPanel({ data }) {
         </div>
         <div>
           <span>Setup fails below</span>
-          <strong className="tabular text-negative">{formatPrice(best?.stop ?? geometry?.invalidation ?? geometry?.nearestSupport)}</strong>
+          <strong className="tabular text-negative">{formatPrice(best?.stop ?? geometry?.invalidation)}</strong>
           {geometry?.downsidePct != null && (
             <small className="text-negative">{formatPct(geometry.downsidePct)} from current price</small>
           )}
@@ -26,8 +26,8 @@ export default function LevelsPanel({ data }) {
         <div>
           <span>Target</span>
           <strong className="tabular text-positive">
-            {(best?.target ?? geometry?.target ?? geometry?.nearestResistance) != null
-              ? formatPrice(best?.target ?? geometry?.target ?? geometry?.nearestResistance)
+            {(best?.target ?? geometry?.target) != null
+              ? formatPrice(best?.target ?? geometry?.target)
               : 'No confirmed target'}
           </strong>
           {geometry?.upsidePct != null && (
