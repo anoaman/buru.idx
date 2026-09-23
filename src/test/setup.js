@@ -24,7 +24,12 @@ vi.mock('lightweight-charts', () => ({
     timeScale: () => ({
       fitContent: () => {},
       setVisibleLogicalRange: () => {},
+      subscribeVisibleLogicalRangeChange: () => {},
+      unsubscribeVisibleLogicalRangeChange: () => {},
     }),
+    subscribeCrosshairMove: () => {},
+    unsubscribeCrosshairMove: () => {},
+    setCrosshairPosition: () => {},
     applyOptions: () => {},
     remove: () => {},
   }),

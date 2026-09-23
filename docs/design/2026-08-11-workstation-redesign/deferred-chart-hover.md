@@ -1,6 +1,15 @@
 # Deferred — chart hover OHLC / MA legend highlight
 
-**Status:** Deferred from Graphite UX pass (2026-08-11)
+**Status:** OHLC inspection implemented in the stock analysis UX pass (2026-09-23).
+MA hover highlighting remains deferred.
+
+The chart now provides date, OHLC and volume inspection through
+`subscribeCrosshairMove`, with previous/next session buttons and keyboard
+navigation. The subscription is cleaned up on unmount. Inspection updates only
+the readout and crosshair; it does not recreate the chart or change its scale.
+Moving averages have individual visibility controls instead of hover highlighting.
+
+## Original scope
 
 Optional Phase 4 enhancement was: show OHLC under crosshair and soft-highlight
 the MA series under the pointer using existing Lightweight Charts APIs, without
