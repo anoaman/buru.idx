@@ -7,11 +7,12 @@ import EmptyState from '../../components/EmptyState.jsx';
 import ErrorState from '../../components/ErrorState.jsx';
 import Skeleton from '../../components/Skeleton.jsx';
 import { useAnalysisContext } from '../../components/AnalysisContext.jsx';
+import './Screener.css';
 
 const RECIPES = [
-  { id: 'quiet_accumulation', label: 'Quiet accumulation', description: 'Looks for moderate, persistent buying—not extreme broker dominance—near independently confirmed support.' },
-  { id: 'dominant_broker', label: 'Dominant broker', description: 'Prioritizes stocks where one broker accumulated materially more than the second-largest positive buyer.' },
-  { id: 'support_compression', label: 'Support compression', description: 'Looks for repeated one-month support while recent candles remain inside a controlled sideways range.' },
+  { id: 'quiet_accumulation', label: 'Quiet accumulation', description: 'Persistent buying near confirmed support.', icon: '↗' },
+  { id: 'dominant_broker', label: 'Dominant broker', description: 'Find a clear leader in broker buying.', icon: '◎' },
+  { id: 'support_compression', label: 'Support compression', description: 'Tight price ranges near repeated support.', icon: '≋' },
 ];
 const DEFAULT_SCOUT_FILTERS = Object.freeze({
   recipe: '', conditions: [], asOf: '', brokerSessions: 7, brokerPreset: '7d', brokerFrom: '', brokerTo: '', consolidationSessions: 10,
@@ -83,7 +84,7 @@ function ConditionInput({ definition, condition, onChange }) {
   const [draft, setDraft] = useState(() => formatValue(condition.value));
   useEffect(() => setDraft(formatValue(condition.value)), [condition.value]);
   if (definition.type === 'select') {
-    return <select aria-label={definition.label} value={condition.value} onChange={(event) => onChange(event.target.value)}>{definition.options.map((option) => <option key={option}>{option}</option>)}</select>;
+    return <select id={`condition-${definition.id}`} aria-label={definition.label} value={condition.value} onChange={(event) => onChange(event.target.value)}>{definition.options.map((option) => <option key={option}>{option}</option>)}</select>;
   }
   const commit = () => {
     const parsed = parseCompactNumber(draft);
@@ -98,7 +99,7 @@ function ConditionInput({ definition, condition, onChange }) {
   return (
     <span className="scout-filter__value">
       <input
-        aria-label={`${definition.label} value`}
+        id={`condition-${definition.id}`} aria-label={`${definition.label} value`}
         type="text"
         inputMode="decimal"
         value={draft}
@@ -169,51 +170,40 @@ function ScoutDetail({ row }) {
   );
 }
 
-const QUALIFIED_COLUMNS = 10;
+const QUALIFIED_COLUMNS = 7;
 
-function QualifiedRow({ row, onInvestigate, onActors }) {
+function QualifiedRow({ row, displayRank, onInvestigate, onActors }) {
   const [expanded, setExpanded] = useState(false);
   return (
     <>
       <tr className="ui-row">
-        <td className="tabular text-tertiary">{formatRank(row.rank)}</td>
+        <td className="tabular text-tertiary">{formatRank(displayRank)}</td>
         <td>
           <div className="radar-cell-ticker">
             <strong>{row.ticker}</strong>
             <span>{row.name}{row.board ? ` · ${row.board}` : ''}{row.isFca ? ' · FCA' : ''}</span>
           </div>
         </td>
-        <td className="tabular"><strong>{Number.isFinite(row.score) ? row.score.toFixed(1) : '—'}</strong></td>
-        <td><EvidenceBandBadge band={row.evidenceBand} /></td>
+        <td className="tabular"><div className="scout-score"><strong>{Number.isFinite(row.score) ? row.score.toFixed(1) : '—'}</strong><EvidenceBandBadge band={row.evidenceBand} /></div></td>
+        <td className="tabular"><div className="radar-cell-metric"><strong>{formatPrice(row.price.lastPrice)}</strong><span>{formatIDR(row.price.averageValue, true)} / day</span></div></td>
         <td className="tabular">
           <div className="radar-cell-metric">
             <strong>{row.broker?.lead?.code || '—'}</strong>
             <span>{formatIDR(row.broker?.lead?.netValue, true)}</span>
-          </div>
-        </td>
-        <td className="tabular">
-          <div className="radar-cell-metric">
-            <strong>{formatRatio(row.broker?.leadToSecondRatio)}</strong>
-            <span>{row.broker?.second?.code ? `vs ${row.broker.second.code}` : 'no second buyer'}</span>
+            <span>{formatRatio(row.broker?.leadToSecondRatio)}{row.broker?.second?.code ? ` vs ${row.broker.second.code}` : ' · no second buyer'}</span>
           </div>
         </td>
         <td className="tabular">
           <div className="radar-cell-metric">
             <strong>{formatPrice(row.price.support)}</strong>
             <span>{formatPct(row.price.distanceFromSupportPct)} · {row.price.supportTouches} touches</span>
+            <span>{formatPct(row.price.consolidationRangePct, 1, false)} range{row.price.volatilityContracting ? ' · contracting' : ''}</span>
           </div>
         </td>
-        <td className="tabular">
-          <div className="radar-cell-metric">
-            <strong>{formatPct(row.price.consolidationRangePct, 1, false)}</strong>
-            <span>{row.price.volatilityContracting ? 'contracting' : 'not contracting'}</span>
-          </div>
-        </td>
-        <td className="tabular"><div className="radar-cell-metric"><strong>{row.relativeStrengthVsIhsgPct == null ? 'Unavailable' : formatPct(row.relativeStrengthVsIhsgPct)}</strong><span>vs IHSG</span></div></td>
         <td>
           <div className="radar-row__actions">
-            <button type="button" className="ui-btn ui-btn--ghost" aria-label={`Open ${row.ticker} analysis`} onClick={onInvestigate}>Open Analysis</button>
-            <button type="button" className="ui-btn ui-btn--ghost" aria-label={`Open ${row.ticker} broker flow`} onClick={onActors}>Broker Flow</button>
+            <button type="button" className="ui-btn ui-btn--ghost" aria-label={`Open ${row.ticker} analysis`} onClick={onInvestigate}>Analyze ↗</button>
+            <button type="button" className="ui-btn ui-btn--ghost" aria-label={`Open ${row.ticker} broker flow`} onClick={onActors}>Flow ↗</button>
             <button
               type="button"
               className="ui-btn ui-btn--ghost"
@@ -228,7 +218,7 @@ function QualifiedRow({ row, onInvestigate, onActors }) {
       </tr>
       {expanded && (
         <tr className="ui-row-detail">
-          <td colSpan={QUALIFIED_COLUMNS}><ScoutDetail row={row} /></td>
+          <td colSpan={QUALIFIED_COLUMNS}><div className="scout-expanded-heading"><span>RS vs IHSG <strong>{row.relativeStrengthVsIhsgPct == null ? 'Unavailable' : formatPct(row.relativeStrengthVsIhsgPct)}</strong> · Volatility {row.price.volatilityContracting ? 'contracting' : 'not contracting'}</span></div><ScoutDetail row={row} /></td>
         </tr>
       )}
     </>
@@ -243,21 +233,19 @@ function ScoutQualifiedTable({ rows, onInvestigate, onActors }) {
           <tr>
             <th className="tabular">#</th>
             <th>Ticker</th>
-            <th className="tabular">Score</th>
-            <th>Signal</th>
+            <th className="tabular">Score / signal</th>
+            <th className="tabular">Price / liquidity</th>
             <th className="tabular">Lead broker</th>
-            <th className="tabular">Lead gap</th>
-            <th className="tabular">Support</th>
-            <th className="tabular">Compression</th>
-            <th className="tabular">RS vs IHSG</th>
+            <th className="tabular">Support / range</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
+          {rows.map((row, index) => (
             <QualifiedRow
               key={row.ticker}
               row={row}
+              displayRank={index + 1}
               onInvestigate={() => onInvestigate(row.ticker)}
               onActors={() => onActors(row.ticker)}
             />
@@ -469,6 +457,12 @@ function Scout({ onInvestigate, onActors }) {
   });
   const [catalog, setCatalog] = useState({ loading: true, error: null, conditions: [], templates: {} });
   const [state, setState] = useState({ loading: false, error: null, data: null });
+  const [showCatalog, setShowCatalog] = useState(filters.conditions.length === 0);
+  const [filterQuery, setFilterQuery] = useState('');
+  const [resultQuery, setResultQuery] = useState('');
+  const [sort, setSort] = useState('score');
+  const [appliedFilters, setAppliedFilters] = useState(null);
+  const [filtersOpen, setFiltersOpen] = useState(true);
   const requestRef = useRef(0);
   useEffect(() => () => { requestRef.current += 1; }, []);
   useEffect(() => {
@@ -488,7 +482,6 @@ function Scout({ onInvestigate, onActors }) {
         : Number(event.target.value);
     setFilters((current) => ({ ...current, [key]: value }));
   };
-  const recipe = RECIPES.find((item) => item.id === filters.recipe);
   const conditionGroups = useMemo(() => ['Universe', 'Price setup', 'Confirmation'].map((category) => ({
     category,
     items: catalog.conditions.filter((item) => item.category === category),
@@ -500,12 +493,15 @@ function Scout({ onInvestigate, onActors }) {
   };
   const selectRecipe = (recipeId) => {
     setFilters((current) => ({ ...current, recipe: recipeId, conditions: (catalog.templates[recipeId] || []).map((item) => ({ ...item })) }));
+    setShowCatalog(!recipeId);
+    setFilterQuery('');
+    setFiltersOpen(true);
   };
   const updateCondition = (id, value) => setFilters((current) => ({ ...current, conditions: current.conditions.map((item) => item.id === id ? { ...item, value } : item) }));
   const toggleCondition = (definition, enabled) => setFilters((current) => ({
     ...current,
     conditions: enabled
-      ? [...current.conditions, { id: definition.id, value: definition.defaultValue ?? definition.options[0] ?? true }]
+      ? [...current.conditions, { id: definition.id, value: definition.defaultValue ?? definition.options?.[0] ?? true }]
       : current.conditions.filter((item) => item.id !== definition.id),
   }));
   const run = (event) => {
@@ -517,6 +513,7 @@ function Scout({ onInvestigate, onActors }) {
       if (requestId !== requestRef.current) return;
       const result = guardRadarScout(raw);
       setState({ loading: false, error: result.ok ? null : result.error, data: result.data });
+      if (result.ok) { setAppliedFilters(filters); setResultQuery(''); setFiltersOpen(false); }
       if (result.ok && !filters.asOf && result.data.asOf.priceDate) {
         const pinned = { ...filters, asOf: result.data.asOf.priceDate };
         persistPermalink(pinned);
@@ -526,64 +523,108 @@ function Scout({ onInvestigate, onActors }) {
       setState({ loading: false, error: error.message || 'Screener request failed', data: null });
     });
   };
-  const handoffActors = (ticker) => onActors(ticker, scoutBrokerHandoffRange(filters));
+  const handoffActors = (ticker) => onActors(ticker, scoutBrokerHandoffRange(appliedFilters || filters));
+  const dirty = appliedFilters && JSON.stringify(filters) !== JSON.stringify(appliedFilters);
+  const visibleRows = useMemo(() => {
+    const query = resultQuery.trim().toLowerCase();
+    const rows = (state.data?.candidates || []).filter((row) => !query || `${row.ticker} ${row.name}`.toLowerCase().includes(query));
+    return [...rows].sort((a, b) => sort === 'ticker' ? a.ticker.localeCompare(b.ticker)
+      : sort === 'liquidity' ? (b.price.averageValue ?? -Infinity) - (a.price.averageValue ?? -Infinity)
+        : (b.score ?? -Infinity) - (a.score ?? -Infinity));
+  }, [state.data, resultQuery, sort]);
   return (
     <div className="scout-view">
+      <fieldset className="scout-strategies">
+        <legend>Start with a strategy</legend>
+        <div role="radiogroup" aria-label="Screening strategy">
+          {[...RECIPES, { id: '', label: 'Custom screen', description: 'Choose your own market conditions.', icon: '+' }].map((item) => (
+            <button key={item.id} type="button" role="radio" aria-checked={filters.recipe === item.id} disabled={catalog.loading || Boolean(catalog.error)} className={filters.recipe === item.id ? 'is-selected' : ''} onClick={() => selectRecipe(item.id)}>
+              <span className="scout-strategy-icon" aria-hidden="true">{item.icon}</span>
+              <span className="scout-strategy-copy"><strong>{item.label}</strong><span>{item.description}</span></span>
+              <span className="scout-strategy-check" aria-hidden="true">{filters.recipe === item.id ? '✓' : ''}</span>
+            </button>
+          ))}
+        </div>
+      </fieldset>
       <div className="scout-layout">
-        <form className="scout-controls scout-layout__conditions" onSubmit={run}>
-          <div className="scout-toolbar">
-            <div><span className="scout-eyebrow">Deterministic screener</span><h2>Build a trade shortlist</h2></div>
+        <form className="scout-controls scout-layout__conditions" data-collapsed={!filtersOpen} onSubmit={run}>
+          <header className="scout-filter-heading"><div><span className="scout-eyebrow">Build your screen</span><h2>Conditions <span>{filters.conditions.length}</span></h2></div><div className="scout-filter-heading-actions"><button type="button" className="scout-text-button" disabled={!filters.conditions.length} onClick={() => { selectRecipe(''); }}>Clear all</button><button type="button" className="scout-mobile-toggle" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((value) => !value)}>{filtersOpen ? 'Hide filters' : 'Edit filters'}</button></div></header>
+          <div className="scout-active-filters" aria-label="Active conditions">
+            {!filters.conditions.length && <p className="scout-filter-hint">Add a condition below, or start with a strategy above.</p>}
+            {filters.conditions.map((condition) => {
+              const definition = catalog.conditions.find((item) => item.id === condition.id);
+              if (!definition) return null;
+              return <div className="scout-active-filter" key={condition.id}>
+                <div>{definition.type === 'boolean' ? <span className="scout-active-filter__label">{definition.label}</span> : <label htmlFor={`condition-${definition.id}`}>{definition.label}</label>}<button type="button" className="scout-remove" aria-label={`Remove ${definition.label}`} onClick={() => toggleCondition(definition, false)}>×</button></div>
+                {definition.type !== 'boolean' ? <ConditionInput definition={definition} condition={condition} onChange={(value) => updateCondition(definition.id, value)} /> : <span className="scout-condition-enabled">✓ Enabled</span>}
+                {definition.description && <span className="scout-condition-description">{definition.description}</span>}
+              </div>;
+            })}
           </div>
-          <fieldset className="scout-strategies">
-            <legend>Start with a strategy</legend>
-            <div role="radiogroup" aria-label="Screening strategy">
-              {RECIPES.map((item) => <button key={item.id} type="button" role="radio" aria-checked={filters.recipe === item.id} className={filters.recipe === item.id ? 'is-selected' : ''} onClick={() => selectRecipe(item.id)}><strong>{item.label}</strong><span>{item.description}</span></button>)}
-              <button type="button" role="radio" aria-checked={!filters.recipe} className={!filters.recipe ? 'is-selected' : ''} onClick={() => selectRecipe('')}><strong>Custom</strong><span>Build from only the filters you enable below.</span></button>
-            </div>
-          </fieldset>
-          <section className="scout-builder" aria-label="Screener filters">
-            <header><div><h3>Filters</h3><span>Set the evidence window, then enable only the boundaries you need</span></div></header>
+          <section className="scout-catalog" aria-label="Screener filters">
+            <button type="button" className="scout-add-button" aria-expanded={showCatalog} aria-controls="scout-catalog" onClick={() => setShowCatalog((value) => !value)}>{showCatalog ? '− Close filter library' : '+ Add conditions'}</button>
+            {catalog.loading && <Skeleton label="Loading condition catalog…" />}
+            {catalog.error && <p className="scout-catalog-error" role="alert">Filters are unavailable. {catalog.error}</p>}
+            {showCatalog && !catalog.loading && !catalog.error && <div id="scout-catalog">
+              <input type="search" aria-label="Find a condition" placeholder="Find a condition…" value={filterQuery} onChange={(event) => setFilterQuery(event.target.value)} />
+              <div className="scout-filter-groups">{conditionGroups.map((group) => {
+                const items = group.items.filter((item) => `${item.label} ${item.description}`.toLowerCase().includes(filterQuery.toLowerCase()));
+                if (!items.length) return null;
+                return <section key={group.category} className="scout-filter-group"><h3>{group.category}</h3><div>{items.map((definition) => {
+                  const enabled = filters.conditions.some((item) => item.id === definition.id);
+                  return <label className={`scout-library-option ${enabled ? 'is-enabled' : ''}`} key={definition.id} title={definition.description}><input type="checkbox" checked={enabled} onChange={(event) => toggleCondition(definition, event.target.checked)} /><span>{definition.label}</span></label>;
+                })}</div></section>;
+              })}</div>
+              {!catalog.conditions.some((item) => `${item.label} ${item.description}`.toLowerCase().includes(filterQuery.toLowerCase())) && <p className="scout-filter-hint">No conditions found. Try “price” or “broker”.</p>}
+            </div>}
+          </section>
+          <details className="scout-screen-settings">
+            <summary><span>Time windows</span><span>{BROKER_RANGES.find(([value]) => value === filters.brokerPreset)?.[1]} broker flow</span></summary>
             <div className="scout-execution-settings" aria-label="Screen settings">
               <label>Broker window<select value={filters.brokerPreset} onChange={(event) => setFilters((current) => ({ ...current, brokerPreset: event.target.value }))}>{BROKER_RANGES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-              {filters.brokerPreset === 'custom' && <><label>From<input type="date" value={filters.brokerFrom} onChange={(event) => setFilters((current) => ({ ...current, brokerFrom: event.target.value }))} /></label><label>To<input type="date" value={filters.brokerTo} onChange={(event) => setFilters((current) => ({ ...current, brokerTo: event.target.value }))} /></label></>}
-              <label>As-of date<input type="date" value={filters.asOf} onChange={(event) => setFilters((current) => ({ ...current, asOf: event.target.value }))} /></label>
+              {filters.brokerPreset === 'custom' && <><label>From<input type="date" required value={filters.brokerFrom} onChange={(event) => setFilters((current) => ({ ...current, brokerFrom: event.target.value }))} /></label><label>To<input type="date" required min={filters.brokerFrom || undefined} value={filters.brokerTo} onChange={(event) => setFilters((current) => ({ ...current, brokerTo: event.target.value }))} /></label></>}
+              <label>As-of date<input type="date" value={filters.asOf} onChange={(event) => setFilters((current) => ({ ...current, asOf: event.target.value }))} /><small>Leave blank for latest available</small></label>
+              <label>Support window<input type="number" min="5" max="120" value={filters.supportSessions} onChange={update('supportSessions')} /><small>Trading sessions</small></label>
+              <label>Range window<input type="number" min="5" max="60" value={filters.consolidationSessions} onChange={update('consolidationSessions')} /><small>Trading sessions</small></label>
             </div>
-            <details className="scout-window-details"><summary>Pattern windows</summary><div><label>Support window<input type="number" min="5" max="120" value={filters.supportSessions} onChange={update('supportSessions')} /></label><label>Range window<input type="number" min="5" max="60" value={filters.consolidationSessions} onChange={update('consolidationSessions')} /></label></div></details>
-            {catalog.loading && <Skeleton label="Loading condition catalog…" />}
-            {catalog.error && <p className="is-degraded">{catalog.error}</p>}
-            {!catalog.loading && <div className="scout-filter-groups">{conditionGroups.map((group) => <section key={group.category} className="scout-filter-group"><header><h4>{group.category}</h4></header><div>{group.items.map((definition) => {
-              const condition = filters.conditions.find((item) => item.id === definition.id);
-              const enabled = Boolean(condition);
-              return <div className={`scout-filter ${enabled ? 'is-enabled' : ''}`} key={definition.id}><label className="scout-filter__toggle"><input type="checkbox" checked={enabled} onChange={(event) => toggleCondition(definition, event.target.checked)} /><span>{definition.label}</span>{definition.description && <span className="scout-help" role="img" aria-label={`About ${definition.label}`} title={definition.description}>?</span>}</label>{enabled && definition.type !== 'boolean' && <ConditionInput definition={definition} condition={condition} onChange={(value) => updateCondition(definition.id, value)} />}</div>;
-            })}</div></section>)}</div>}
-          </section>
+          </details>
           <div className="scout-controls__footer">
-            <div className="scout-run-context"><div><strong>{recipe?.label || 'Custom screen'}</strong><small>No AI · end-of-day data · every active condition must pass</small></div></div>
-            <div className="scout-controls__actions">
-              <label>Return<select value={filters.limit} onChange={update('limit')}><option value="10">10 stocks</option><option value="25">25 stocks</option><option value="50">50 stocks</option><option value="100">100 stocks</option></select></label>
-              <button type="submit" className="ui-btn ui-btn--primary" disabled={state.loading || catalog.loading || filters.conditions.length === 0}>{state.loading ? 'Screening…' : 'Run Screener'}</button>
-            </div>
+            <label>Result limit<select value={filters.limit} onChange={update('limit')}><option value="10">10 stocks</option><option value="25">25 stocks</option><option value="50">50 stocks</option><option value="100">100 stocks</option></select></label>
+            <button type="submit" className="ui-btn ui-btn--primary" disabled={state.loading || catalog.loading || Boolean(catalog.error) || filters.conditions.length === 0}>{state.loading ? 'Screening…' : 'Run Screener'} <span aria-hidden="true">→</span></button>
+            <p>{filters.conditions.length ? `All ${filters.conditions.length} active conditions must pass.` : 'Add a condition to start screening.'}</p>
           </div>
         </form>
 
-        <div className="scout-results">
-          {state.error && <ErrorState title="Custom Screener unavailable" error={state.error} onRetry={run} />}
-          {!state.data && state.loading && <Skeleton label="Screening…" />}
-          {!state.data && !state.loading && !state.error && <EmptyState title={recipe ? `${recipe.label} is ready` : 'Custom Screener is ready'} message="Choose a template or enable filters, then press Run Screener to find matching stocks." />}
+        <section className="scout-results" aria-label="Screening results" aria-busy={state.loading}>
+          <header className="scout-results-heading"><div><span className="scout-eyebrow">Your research queue</span><h2>Shortlist {state.data && <span>{state.data.coverage.matched}</span>}</h2></div><span className="scout-data-badge"><i /> End-of-day data</span></header>
+          {state.error && <ErrorState title="Screener unavailable" error={state.error} onRetry={run} />}
+          {!state.data && state.loading && <Skeleton label="Screening the market…" />}
+          {!state.data && !state.loading && !state.error && <div className="scout-welcome">
+            <div className="scout-empty-art" aria-hidden="true"><svg width="160" height="104" viewBox="0 0 160 104" fill="none"><rect x="18" y="8" width="124" height="88" rx="10" /><path d="M35 31h42M35 52h65M35 73h51" /><path className="scout-art-accent" d="m111 28 4 4 9-10m-13 27 4 4 9-10" /><circle cx="117" cy="74" r="5" /></svg></div>
+            <span className="scout-eyebrow">From the market to your shortlist</span>
+            <h3>Find stocks worth a closer look.</h3>
+            <p>Start with a strategy, fine-tune your conditions, and compare the stocks that match.</p>
+            <button type="button" className="ui-btn ui-btn--primary" disabled={catalog.loading || Boolean(catalog.error)} onClick={() => selectRecipe('quiet_accumulation')}>Try quiet accumulation <span aria-hidden="true">↗</span></button>
+            <div className="scout-welcome-steps"><div><span>01</span><strong>Define your universe</strong><p>Price and liquidity boundaries.</p></div><div><span>02</span><strong>Look for a setup</strong><p>Support, range and confirmation.</p></div><div><span>03</span><strong>Investigate the evidence</strong><p>Open charts and broker activity.</p></div></div>
+          </div>}
           {state.data && <>
-            <ScoutProvenance data={state.data} requestedSessions={filters.brokerSessions} />
-            <DailyDiff diff={state.data.dailyDiff} />
+            <div className="scout-result-status" role="status">{state.loading ? 'Updating results…' : dirty ? 'Conditions changed. Run the screener to update these results.' : `${state.data.coverage.returned} returned from ${state.data.coverage.evaluated} evaluated stocks.`}</div>
+            <ScoutProvenance data={state.data} requestedSessions={scoutRequestPayload(appliedFilters || filters).brokerSessions} />
+            <div className="scout-results-tools"><label><span className="sr-only">Search returned stocks</span><input type="search" placeholder="Search ticker or company…" value={resultQuery} onChange={(event) => setResultQuery(event.target.value)} /></label><label>Sort by<select value={sort} onChange={(event) => setSort(event.target.value)}><option value="score">Highest score</option><option value="liquidity">Most liquid</option><option value="ticker">Ticker A–Z</option></select></label></div>
             {state.data.candidates.length === 0
-              ? <EmptyState title="No stocks passed this screen" message="That is a valid screen result. Widen a boundary only if it still matches your intended trade universe." />
-              : <ScoutQualifiedTable rows={state.data.candidates} onInvestigate={onInvestigate} onActors={handoffActors} />}
+              ? <EmptyState title="No stocks passed this screen" message="Review your active conditions or explore the near misses below to see which threshold kept a stock out." />
+              : visibleRows.length === 0 ? <EmptyState title="No matching tickers" message="Try another ticker or company name within the returned results." />
+                : <ScoutQualifiedTable rows={visibleRows} onInvestigate={onInvestigate} onActors={handoffActors} />}
+            <details className="scout-session-changes"><summary>Changes since the previous session <span>{state.data.dailyDiff.new.length} new · {state.data.dailyDiff.dropped.length} dropped</span></summary><DailyDiff diff={state.data.dailyDiff} /></details>
             <ScoutNearMissSection rows={state.data.nearMisses} onInvestigate={onInvestigate} onActors={handoffActors} />
             <div className="scout-disclosures">{state.data.disclosures.map((item) => <p key={item}>{item}</p>)}</div>
           </>}
-        </div>
+        </section>
       </div>
     </div>
   );
 }
+
 
 /**
  * One screener, not two.
@@ -599,9 +640,9 @@ export default function Radar() {
   const { openInvestigationTab, openBrokerFlowTab } = useAnalysisContext();
 
   return (
-    <section className="radar-page" aria-labelledby="radar-title">
+    <section className="radar-page screener-v2" aria-labelledby="radar-title">
       <header className="module-heading">
-        <div><h2 id="radar-title">Screener</h2></div>
+        <div><span className="scout-eyebrow">Market discovery</span><h2 id="radar-title">A sharper view of the market.</h2><p>Turn price action and broker activity into a focused research list.</p></div><span className="scout-page-note">IDX equities <span> / </span> Screener</span>
       </header>
       <Scout onInvestigate={openInvestigationTab} onActors={openBrokerFlowTab} />
     </section>

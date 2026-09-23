@@ -135,9 +135,11 @@ describe('Radar', () => {
     renderRadar();
     await selectQuietTemplate();
     expect(document.querySelector('.scout-advanced')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Add conditions/ }));
     fireEvent.click(screen.getByRole('checkbox', { name: /Exclude FCA/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
+    fireEvent.click(await screen.findByText(/Changes since the previous session/));
     const changes = await screen.findByRole('region', { name: 'Daily qualification changes' });
     expect(changes).toHaveTextContent('New1AHAP');
     expect(changes).toHaveTextContent('Still qualified1BBCA3d');
@@ -150,6 +152,7 @@ describe('Radar', () => {
 
     renderRadar();
     await selectQuietTemplate();
+    fireEvent.click(screen.getByText(/Time windows/));
     fireEvent.change(screen.getByLabelText('Broker window'), { target: { value: 'custom' } });
     fireEvent.change(screen.getByLabelText('From'), { target: { value: '2026-07-01' } });
     fireEvent.change(screen.getByLabelText('To'), { target: { value: '2026-07-31' } });
@@ -169,6 +172,7 @@ describe('Radar', () => {
 
     renderRadar();
     await selectQuietTemplate();
+    fireEvent.click(screen.getByText(/Time windows/));
     fireEvent.change(screen.getByLabelText('Broker window'), { target: { value: '14d' } });
     fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
@@ -183,6 +187,7 @@ describe('Radar', () => {
 
     renderRadar();
     await selectQuietTemplate();
+    fireEvent.click(screen.getByRole('button', { name: /Add conditions/ }));
     fireEvent.click(screen.getByRole('checkbox', { name: /Lead broker net buy/ }));
     fireEvent.change(screen.getByLabelText('Lead broker net buy value'), { target: { value: '2.5B' } });
     fireEvent.blur(screen.getByLabelText('Lead broker net buy value'));
@@ -265,7 +270,7 @@ describe('Radar', () => {
 
     renderRadar();
     await selectQuietTemplate();
-    fireEvent.change(screen.getByLabelText('Return'), { target: { value: '100' } });
+    fireEvent.change(screen.getByLabelText('Result limit'), { target: { value: '100' } });
     fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
     expect(await screen.findByText('T099')).toBeInTheDocument();
