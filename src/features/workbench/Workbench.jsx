@@ -40,16 +40,21 @@ function TickerHeader({ ticker, priceHistory }) {
           </span>
         )}
       </div>
-      <div className="wb-overview-grid">
-        <div><span>Open / High / Low</span><strong>{formatPrice(ticker.open)} / {formatPrice(ticker.high)} / {formatPrice(ticker.low)}</strong></div>
-        <div><span>VWAP</span><strong>{formatPrice(ticker.vwap)}</strong></div>
+      <div className="wb-overview-grid wb-header__key-metrics" aria-label="Session overview">
         <div><span>Traded value</span><strong>{formatIDR(ticker.value)}</strong></div>
         <div><span>Volume</span><strong>{formatVolume(ticker.volume)} · {ticker.volumeVsBaseline?.ratio?.toFixed(2) || '—'}x base</strong></div>
-        <div><span>Frequency</span><strong>{formatNumber(ticker.frequency)}</strong></div>
         <div><span>Foreign net</span><strong className={ticker.fnet > 0 ? 'text-positive' : ticker.fnet < 0 ? 'text-negative' : ''}>{formatIDR(ticker.fnet)}</strong></div>
         <div><span>RSI14 / ATR14</span><strong>{priceHistory?.rsi14?.toFixed(1) || '—'} / {formatPct(priceHistory?.atr14Pct)}</strong></div>
-        <div><span>Returns 5 / 20 / 60</span><strong>{formatPct(priceHistory?.ret5d)} / {formatPct(priceHistory?.ret20d)} / {formatPct(priceHistory?.ret60d)}</strong></div>
       </div>
+      <details className="wb-session-details">
+        <summary>Session details <span>OHLC, VWAP & returns</span></summary>
+        <div className="wb-overview-grid">
+          <div><span>Open / High / Low</span><strong>{formatPrice(ticker.open)} / {formatPrice(ticker.high)} / {formatPrice(ticker.low)}</strong></div>
+          <div><span>VWAP</span><strong>{formatPrice(ticker.vwap)}</strong></div>
+          <div><span>Frequency</span><strong>{formatNumber(ticker.frequency)}</strong></div>
+          <div><span>Returns 5 / 20 / 60</span><strong>{formatPct(priceHistory?.ret5d)} / {formatPct(priceHistory?.ret20d)} / {formatPct(priceHistory?.ret60d)}</strong></div>
+        </div>
+      </details>
       {(ticker.notations?.length > 0 || ticker.uma) && <div className="wb-overview-flags text-warning">{[...(ticker.notations || []), ...(ticker.uma ? ['UMA'] : [])].join(' · ')}</div>}
     </div>
   );
@@ -114,7 +119,9 @@ function VerdictPanel({ grade, stance, scorecard, investigation, dataQuality }) 
       </div>
 
       {factors.length > 0 && (
-        <ul className="wb-verdict__factors">
+        <details className="wb-verdict__factor-details">
+          <summary>Factor breakdown <span>{factors.length} signals</span></summary>
+          <ul className="wb-verdict__factors">
           {factors.map((factor) => (
             <li
               key={factor.factor}
@@ -125,7 +132,8 @@ function VerdictPanel({ grade, stance, scorecard, investigation, dataQuality }) 
               <span>{factor.signal > 0 ? 'For' : factor.signal < 0 ? 'Against' : 'Neutral'}</span>
             </li>
           ))}
-        </ul>
+          </ul>
+        </details>
       )}
 
       <div className="wb-verdict__counter">
