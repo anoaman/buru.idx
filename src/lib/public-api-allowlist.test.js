@@ -28,10 +28,10 @@ describe('public API allowlist', () => {
     expect(resolvePublicApiRequest('GET', '/api/collector/health').ok).toBe(true);
   });
 
-  it('forwards Scout custom broker dates and lead-broker minimum to upstream', () => {
+  it('forwards Scout broker targeting, dates, and accumulation minimums upstream', () => {
     const result = resolvePublicApiRequest(
       'GET',
-      '/api/radar/scout?recipe=quiet_accumulation&brokerPreset=custom&brokerFrom=2026-01-01&brokerTo=2026-08-01&minLeadBrokerValue=500000000&useLeadBrokerValue=true&limit=25',
+      '/api/radar/scout?recipe=quiet_accumulation&brokerPreset=custom&brokerFrom=2026-01-01&brokerTo=2026-08-01&brokerCode=CC&minBrokerAccumulation=2500000000&minLeadBrokerValue=500000000&useLeadBrokerValue=true&limit=25',
     );
     expect(result.ok).toBe(true);
     const sent = new URL(result.path, 'http://internal').searchParams;
@@ -39,6 +39,8 @@ describe('public API allowlist', () => {
     expect(sent.get('brokerFrom')).toBe('2026-01-01');
     expect(sent.get('brokerTo')).toBe('2026-08-01');
     expect(sent.get('minLeadBrokerValue')).toBe('500000000');
+    expect(sent.get('brokerCode')).toBe('CC');
+    expect(sent.get('minBrokerAccumulation')).toBe('2500000000');
     expect(sent.get('useLeadBrokerValue')).toBe('true');
     expect(sent.get('limit')).toBe('25');
   });

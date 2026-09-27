@@ -38,6 +38,8 @@ const PUBLIC_ROUTES = new Map([
     'maxPrice',
     'minAverageValue',
     'minLeadBrokerValue',
+    'minBrokerAccumulation',
+    'brokerCode',
     'limit',
     'useBroker',
     'useSupport',

@@ -8,7 +8,7 @@ const PUBLIC_ROUTES = new Map([
   ['/api/radar/scout', { params: [
     'recipe', 'conditions', 'asOf', 'brokerSessions', 'brokerPreset', 'brokerFrom', 'brokerTo',
     'consolidationSessions', 'supportSessions', 'maxPrice', 'minAverageValue',
-    'minLeadBrokerValue', 'limit', 'useBroker', 'useSupport', 'useSideways',
+    'minLeadBrokerValue', 'minBrokerAccumulation', 'brokerCode', 'limit', 'useBroker', 'useSupport', 'useSideways',
     'useMaxPrice', 'useLiquidity', 'useLeadBrokerValue',
     'minRsVsIhsgPct', 'useRsVsIhsg', 'excludeFca',
   ] }],
