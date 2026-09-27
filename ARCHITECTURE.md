@@ -75,11 +75,14 @@ case tracking from the retiring cockpit without duplicating backend engines.
   contracts through `contracts.js` like every other feature. They rank nothing,
   score nothing, and decide no material change; those all arrive already
   computed. Radar's lane filter only hides rows the backend already ranked.
-  Custom Screener uses grouped checkbox filters + results layout. It fetches the
+  Custom Screener uses grouped filters + results layout. It fetches the
   backend-owned registry from `/api/radar/scout/conditions`, submits at most 20
   explicit condition/value pairs, and forwards broker evidence windows through
-  the public allowlist. Numeric inputs accept readable K/M/B/T abbreviations;
-  the compact filter UI never owns or reimplements condition formulas.
+  the public allowlist. Price Setup is a mutually exclusive choice between Near
+  Support, Tight Base and Breakout; Confirmation can combine Broker
+  Accumulation, Volume Breakout (MA5/MA10/MA20) and Relative Strength vs IHSG.
+  Numeric inputs accept readable K/M/B/T abbreviations; the compact filter UI
+  never owns or reimplements condition formulas.
 - `confidence` is a deprecated pre-1.2 alias for source freshness and coverage,
   not outcome probability. The view models expose it as `dataQuality` and drop
   the alias, so no component can render it under the wrong label.
