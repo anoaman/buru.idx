@@ -17,12 +17,17 @@ const CONDITION_CATALOG = {
     conditions: [
       { id: 'max_price', label: 'Maximum price', category: 'Universe', type: 'number', comparison: 'at_most', unit: 'IDR', defaultValue: 1000, min: 1, max: 100000, step: 1 },
       { id: 'exclude_fca', label: 'Exclude FCA', category: 'Universe', type: 'boolean', comparison: 'equals', defaultValue: true, options: [] },
-      { id: 'min_lead_net_buy', label: 'Lead broker net buy', category: 'Confirmation', type: 'number', comparison: 'at_least', unit: 'IDR', defaultValue: 1000000000, min: 0, max: 1000000000000, step: 100000000 },
+      { id: 'near_support', label: 'Near Support', category: 'Price setup', type: 'boolean', comparison: 'equals', defaultValue: true, options: [] },
+      { id: 'tight_base', label: 'Tight Base', category: 'Price setup', type: 'boolean', comparison: 'equals', defaultValue: true, options: [] },
+      { id: 'breakout_above_base', label: 'Breakout', category: 'Price setup', type: 'boolean', comparison: 'equals', defaultValue: true, options: [] },
+      { id: 'broker_accumulation', label: 'Broker Accumulation', category: 'Confirmation', type: 'boolean', comparison: 'equals', defaultValue: true, options: [] },
+      { id: 'volume_breakout_baseline', label: 'Volume Breakout', category: 'Confirmation', type: 'select', comparison: 'equals', options: ['MA5', 'MA10', 'MA20'] },
+      { id: 'outperforming_ihsg', label: 'Relative Strength vs IHSG', category: 'Confirmation', type: 'boolean', comparison: 'equals', defaultValue: true, options: [] },
     ],
     templates: {
-      quiet_accumulation: [{ id: 'max_price', value: 1000 }],
-      dominant_broker: [{ id: 'min_lead_net_buy', value: 1000000000 }],
-      support_compression: [{ id: 'max_price', value: 1500 }],
+      quiet_accumulation: [{ id: 'max_price', value: 1000 }, { id: 'near_support', value: true }, { id: 'broker_accumulation', value: true }],
+      dominant_broker: [{ id: 'broker_accumulation', value: true }],
+      support_compression: [{ id: 'tight_base', value: true }],
     },
   },
 };
@@ -119,7 +124,12 @@ describe('Radar', () => {
     expect(screen.getByText('CC accumulated Rp1200M, 4.0× YP, across 6/7 sessions.')).toBeInTheDocument();
     expect(screen.getByText('CC distributed in 1 observed session.')).toBeInTheDocument();
 
-    expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({ recipe: 'quiet_accumulation', brokerPreset: '7d', conditions: [{ id: 'max_price', value: 1000 }] }));
+    expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({
+      recipe: 'quiet_accumulation',
+      brokerPreset: '7d',
+      useBroker: true,
+      conditions: expect.arrayContaining([{ id: 'near_support', value: true }, { id: 'broker_accumulation', value: true }]),
+    }));
   });
 
   it('keeps advanced controls secondary and omits unverified session-change claims', async () => {
@@ -179,20 +189,29 @@ describe('Radar', () => {
     })));
   });
 
-  it('submits the lead-broker minimum once the condition is enabled', async () => {
+  it('submits the selected volume-breakout baseline', async () => {
     getRadarScout.mockResolvedValue(scoutResponse({ candidates: [] }));
 
     renderRadar();
     await selectQuietTemplate();
     fireEvent.click(screen.getByRole('button', { name: /Add conditions/ }));
-    fireEvent.click(screen.getByRole('checkbox', { name: /Lead broker net buy/ }));
-    fireEvent.change(screen.getByLabelText('Lead broker net buy value'), { target: { value: '2.5B' } });
-    fireEvent.blur(screen.getByLabelText('Lead broker net buy value'));
+    fireEvent.click(screen.getByRole('checkbox', { name: /Volume Breakout/ }));
+    fireEvent.change(screen.getByRole('combobox', { name: 'Volume Breakout' }), { target: { value: 'MA10' } });
     fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
     await waitFor(() => expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({
-      conditions: expect.arrayContaining([{ id: 'min_lead_net_buy', value: 2_500_000_000 }]),
+      conditions: expect.arrayContaining([{ id: 'volume_breakout_baseline', value: 'MA10' }]),
     })));
+  });
+
+  it('keeps price setup choices mutually exclusive', async () => {
+    renderRadar();
+    await selectQuietTemplate();
+    fireEvent.click(screen.getByRole('button', { name: /Add conditions/ }));
+    expect(screen.getByRole('checkbox', { name: 'Near Support' })).toBeChecked();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Tight Base' }));
+    expect(screen.getByRole('checkbox', { name: 'Near Support' })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Tight Base' })).toBeChecked();
   });
 
   it('renders the evidence band as a signal-strength badge on every qualified row', async () => {

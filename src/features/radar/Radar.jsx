@@ -30,13 +30,9 @@ const BROKER_PRESET_SESSIONS = Object.freeze({
   '14d': 14,
   '1m': 22,
 });
-const BROKER_CONDITIONS = new Set([
-  'min_positive_brokers', 'min_lead_net_buy', 'min_lead_intensity_pct',
-  'min_lead_share_pct', 'max_lead_share_pct', 'min_lead_ratio',
-  'max_lead_ratio', 'min_lead_buy_session_pct',
-]);
-const SUPPORT_CONDITIONS = new Set(['min_support_distance_pct', 'max_support_distance_pct', 'min_support_touches']);
-const RANGE_CONDITIONS = new Set(['max_range_width_pct', 'min_distinct_closes']);
+const BROKER_CONDITIONS = new Set(['broker_accumulation']);
+const SUPPORT_CONDITIONS = new Set(['near_support', 'tight_base']);
+const RANGE_CONDITIONS = new Set(['tight_base', 'breakout_above_base']);
 function scoutRequestPayload(filters) {
   const payload = { ...filters };
   const conditionIds = new Set(filters.conditions.map((condition) => condition.id));
@@ -462,14 +458,21 @@ function Scout({ onInvestigate, onActors }) {
     setFiltersOpen(true);
   };
   const updateCondition = (id, value) => setFilters((current) => ({ ...current, conditions: current.conditions.map((item) => item.id === id ? { ...item, value } : item) }));
-  const toggleCondition = (definition, enabled) => setFilters((current) => ({
-    ...current,
-    conditions: enabled
-      ? current.conditions.length >= MAX_CONDITIONS
-        ? current.conditions
-        : [...current.conditions, { id: definition.id, value: definition.defaultValue ?? definition.options?.[0] ?? true }]
-      : current.conditions.filter((item) => item.id !== definition.id),
-  }));
+  const toggleCondition = (definition, enabled) => setFilters((current) => {
+    const withoutCurrentSetup = enabled && definition.category === 'Price setup'
+      ? current.conditions.filter((condition) => (
+        catalog.conditions.find((item) => item.id === condition.id)?.category !== 'Price setup'
+      ))
+      : current.conditions;
+    return {
+      ...current,
+      conditions: enabled
+        ? withoutCurrentSetup.length >= MAX_CONDITIONS
+          ? withoutCurrentSetup
+          : [...withoutCurrentSetup, { id: definition.id, value: definition.defaultValue ?? definition.options?.[0] ?? true }]
+        : current.conditions.filter((item) => item.id !== definition.id),
+    };
+  });
   const run = (event) => {
     event?.preventDefault();
     const requestId = ++requestRef.current;
