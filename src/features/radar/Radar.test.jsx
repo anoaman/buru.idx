@@ -17,6 +17,7 @@ const CONDITION_CATALOG = {
     conditions: [
       { id: 'max_price', label: 'Maximum price', category: 'Universe', type: 'number', comparison: 'at_most', unit: 'IDR', defaultValue: 1000, min: 1, max: 100000, step: 1 },
       { id: 'exclude_fca', label: 'Exclude FCA', category: 'Universe', type: 'boolean', comparison: 'equals', defaultValue: true, options: [] },
+      { id: 'fca_only', label: 'FCA only', category: 'Universe', type: 'boolean', comparison: 'equals', defaultValue: true, options: [] },
       { id: 'near_support', label: 'Near Support', category: 'Price setup', type: 'boolean', comparison: 'equals', defaultValue: true, options: [] },
       { id: 'tight_base', label: 'Tight Base', category: 'Price setup', type: 'boolean', comparison: 'equals', defaultValue: true, options: [] },
       { id: 'breakout_above_base', label: 'Breakout', category: 'Price setup', type: 'boolean', comparison: 'equals', defaultValue: true, options: [] },
@@ -159,16 +160,16 @@ describe('Radar', () => {
 
     renderRadar();
     await selectQuietTemplate();
-    fireEvent.click(screen.getByText(/Time windows/));
-    fireEvent.change(screen.getByLabelText('Broker window'), { target: { value: 'custom' } });
-    fireEvent.change(screen.getByLabelText('From'), { target: { value: '2026-07-01' } });
-    fireEvent.change(screen.getByLabelText('To'), { target: { value: '2026-07-31' } });
+    fireEvent.click(screen.getByText(/Analysis settings/));
+    fireEvent.change(screen.getByLabelText(/^Analysis date/), { target: { value: '2026-07-31' } });
+    fireEvent.change(screen.getByLabelText(/^Broker periodEnds/), { target: { value: 'custom' } });
+    fireEvent.change(screen.getByLabelText(/Broker period starts/), { target: { value: '2026-07-01' } });
     fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
     await waitFor(() => expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({
       brokerPreset: 'custom',
       brokerFrom: '2026-07-01',
-      brokerTo: '2026-07-31',
+      asOf: '2026-07-31',
     })));
     const payload = getRadarScout.mock.calls.at(-1)[0];
     expect(payload).not.toHaveProperty('brokerSessions');
@@ -179,8 +180,8 @@ describe('Radar', () => {
 
     renderRadar();
     await selectQuietTemplate();
-    fireEvent.click(screen.getByText(/Time windows/));
-    fireEvent.change(screen.getByLabelText('Broker window'), { target: { value: '14d' } });
+    fireEvent.click(screen.getByText(/Analysis settings/));
+    fireEvent.change(screen.getByLabelText(/^Broker periodEnds/), { target: { value: '14d' } });
     fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
     await waitFor(() => expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({
@@ -212,6 +213,34 @@ describe('Radar', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: 'Tight Base' }));
     expect(screen.getByRole('checkbox', { name: 'Near Support' })).not.toBeChecked();
     expect(screen.getByRole('checkbox', { name: 'Tight Base' })).toBeChecked();
+  });
+
+  it('keeps FCA universe modes mutually exclusive', async () => {
+    renderRadar();
+    await selectQuietTemplate();
+    fireEvent.click(screen.getByRole('button', { name: /Add conditions/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Exclude FCA' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'FCA only' }));
+    expect(screen.getByRole('checkbox', { name: 'Exclude FCA' })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'FCA only' })).toBeChecked();
+  });
+
+  it('submits a chosen broker, accumulation floor, and optional price windows', async () => {
+    getRadarScout.mockResolvedValue(scoutResponse({ candidates: [] }));
+    renderRadar();
+    await selectQuietTemplate();
+    fireEvent.click(screen.getByText(/Analysis settings/));
+    fireEvent.change(screen.getByLabelText(/^Broker code/), { target: { value: 'cc' } });
+    fireEvent.change(screen.getByLabelText(/^Minimum broker accumulation/), { target: { value: '2.5B' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: /Custom support window/ }));
+    fireEvent.change(screen.getByLabelText('Support window sessions'), { target: { value: '40' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
+
+    await waitFor(() => expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({
+      brokerCode: 'CC',
+      minBrokerAccumulation: 2_500_000_000,
+      supportSessions: 40,
+    })));
   });
 
   it('renders the evidence band as a signal-strength badge on every qualified row', async () => {

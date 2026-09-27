@@ -81,6 +81,10 @@ case tracking from the retiring cockpit without duplicating backend engines.
   the public allowlist. Price Setup is a mutually exclusive choice between Near
   Support, Tight Base and Breakout; Confirmation can combine Broker
   Accumulation, Volume Breakout (MA5/MA10/MA20) and Relative Strength vs IHSG.
+  Universe can include all stocks, exclude FCA, or keep FCA only. Broker
+  Accumulation exposes an optional broker code, minimum cumulative net buy and
+  one period ending at the shared Analysis date. Support and range lookbacks
+  are contextual opt-in overrides; otherwise backend defaults apply.
   Numeric inputs accept readable K/M/B/T abbreviations; the compact filter UI
   never owns or reimplements condition formulas.
 - `confidence` is a deprecated pre-1.2 alias for source freshness and coverage,

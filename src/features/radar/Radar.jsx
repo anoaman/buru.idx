@@ -18,10 +18,12 @@ const DEFAULT_SCOUT_FILTERS = Object.freeze({
   recipe: '', conditions: [], asOf: '', brokerSessions: 7, brokerPreset: '7d', brokerFrom: '', brokerTo: '', consolidationSessions: 10,
   supportSessions: 20, maxPrice: 1000, minAverageValue: 500_000_000, limit: 10,
   minLeadBrokerValue: 1_000_000_000, useLeadBrokerValue: false,
+  minBrokerAccumulation: 1_000_000_000, brokerCode: '',
   minRsVsIhsgPct: 0, useRsVsIhsg: false, excludeFca: false,
+  customSupportWindow: false, customRangeWindow: false,
   useBroker: false, useSupport: false, useSideways: false, useMaxPrice: false, useLiquidity: false,
 });
-const BROKER_RANGES = [['latest', 'Latest'], ['previous', 'Previous'], ['7d', '7D'], ['14d', '14D'], ['1m', '1M'], ['custom', 'Custom (up to 60 days)']];
+const BROKER_RANGES = [['this_week', 'This week'], ['last_week', 'Last week'], ['7d', 'Last 7 days'], ['14d', 'Last 14 days'], ['1m', 'Last month'], ['latest', 'Latest session'], ['previous', 'Previous session'], ['custom', 'Custom start date']];
 const MAX_CONDITIONS = 20;
 const BROKER_PRESET_SESSIONS = Object.freeze({
   latest: 1,
@@ -31,7 +33,7 @@ const BROKER_PRESET_SESSIONS = Object.freeze({
   '1m': 22,
 });
 const BROKER_CONDITIONS = new Set(['broker_accumulation']);
-const SUPPORT_CONDITIONS = new Set(['near_support', 'tight_base']);
+const SUPPORT_CONDITIONS = new Set(['near_support']);
 const RANGE_CONDITIONS = new Set(['tight_base', 'breakout_above_base']);
 function scoutRequestPayload(filters) {
   const payload = { ...filters };
@@ -41,6 +43,7 @@ function scoutRequestPayload(filters) {
   payload.useSideways = [...conditionIds].some((id) => RANGE_CONDITIONS.has(id));
   if (filters.brokerPreset === 'custom') {
     delete payload.brokerSessions;
+    delete payload.brokerTo;
   } else if (BROKER_PRESET_SESSIONS[filters.brokerPreset] != null) {
     payload.brokerSessions = BROKER_PRESET_SESSIONS[filters.brokerPreset];
   }
@@ -48,12 +51,19 @@ function scoutRequestPayload(filters) {
     delete payload.brokerFrom;
     delete payload.brokerTo;
   }
+  if (!filters.customSupportWindow) delete payload.supportSessions;
+  if (!filters.customRangeWindow) delete payload.consolidationSessions;
+  delete payload.customSupportWindow;
+  delete payload.customRangeWindow;
   return payload;
 }
 
 function scoutBrokerHandoffRange(filters) {
   if (filters.brokerPreset === 'custom' && filters.brokerFrom && filters.brokerTo) {
     return { preset: 'custom', from: filters.brokerFrom, to: filters.brokerTo };
+  }
+  if (filters.brokerPreset === 'custom' && filters.brokerFrom && filters.asOf) {
+    return { preset: 'custom', from: filters.brokerFrom, to: filters.asOf };
   }
   if (filters.brokerPreset && filters.brokerPreset !== 'custom') {
     return { preset: filters.brokerPreset };
@@ -446,6 +456,10 @@ function Scout({ onInvestigate, onActors }) {
     category,
     items: catalog.conditions.filter((item) => item.category === category),
   })), [catalog.conditions]);
+  const activeConditionIds = useMemo(() => new Set(filters.conditions.map((condition) => condition.id)), [filters.conditions]);
+  const brokerActive = [...activeConditionIds].some((id) => BROKER_CONDITIONS.has(id));
+  const supportActive = [...activeConditionIds].some((id) => SUPPORT_CONDITIONS.has(id));
+  const rangeActive = [...activeConditionIds].some((id) => RANGE_CONDITIONS.has(id));
   const persistPermalink = (nextFilters) => {
     const params = new URLSearchParams();
     for (const [key, value] of Object.entries(nextFilters)) if (value !== '' && value !== false) params.set(key, Array.isArray(value) ? JSON.stringify(value) : String(value));
@@ -459,10 +473,13 @@ function Scout({ onInvestigate, onActors }) {
   };
   const updateCondition = (id, value) => setFilters((current) => ({ ...current, conditions: current.conditions.map((item) => item.id === id ? { ...item, value } : item) }));
   const toggleCondition = (definition, enabled) => setFilters((current) => {
+    const mutuallyExclusiveIds = new Set(['exclude_fca', 'fca_only']);
     const withoutCurrentSetup = enabled && definition.category === 'Price setup'
       ? current.conditions.filter((condition) => (
         catalog.conditions.find((item) => item.id === condition.id)?.category !== 'Price setup'
       ))
+      : enabled && mutuallyExclusiveIds.has(definition.id)
+        ? current.conditions.filter((condition) => !mutuallyExclusiveIds.has(condition.id))
       : current.conditions;
     return {
       ...current,
@@ -548,13 +565,17 @@ function Scout({ onInvestigate, onActors }) {
             </div>}
           </section>
           <details className="scout-screen-settings">
-            <summary><span>Time windows</span><span>{BROKER_RANGES.find(([value]) => value === filters.brokerPreset)?.[1]} broker flow</span></summary>
+            <summary><span>Analysis settings</span><span>{filters.asOf || 'Latest data'}</span></summary>
             <div className="scout-execution-settings" aria-label="Screen settings">
-              <label>Broker window<select value={filters.brokerPreset} onChange={(event) => setFilters((current) => ({ ...current, brokerPreset: event.target.value }))}>{BROKER_RANGES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-              {filters.brokerPreset === 'custom' && <><label>From<input type="date" required value={filters.brokerFrom} onChange={(event) => setFilters((current) => ({ ...current, brokerFrom: event.target.value }))} /></label><label>To<input type="date" required min={filters.brokerFrom || undefined} value={filters.brokerTo} onChange={(event) => setFilters((current) => ({ ...current, brokerTo: event.target.value }))} /></label></>}
-              <label>As-of date<input type="date" value={filters.asOf} onChange={(event) => setFilters((current) => ({ ...current, asOf: event.target.value }))} /><small>Leave blank for latest available</small></label>
-              <label>Support window<input type="number" min="5" max="120" value={filters.supportSessions} onChange={update('supportSessions')} /><small>Trading sessions</small></label>
-              <label>Range window<input type="number" min="5" max="60" value={filters.consolidationSessions} onChange={update('consolidationSessions')} /><small>Trading sessions</small></label>
+              <label>Analysis date<input type="date" value={filters.asOf} onChange={(event) => setFilters((current) => ({ ...current, asOf: event.target.value }))} /><small>Leave blank for latest available data</small></label>
+              {brokerActive && <>
+                <label>Broker period<select value={filters.brokerPreset} onChange={(event) => setFilters((current) => ({ ...current, brokerPreset: event.target.value }))}>{BROKER_RANGES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><small>Ends on the analysis date</small></label>
+                {filters.brokerPreset === 'custom' && <label>Broker period starts<input type="date" required max={filters.asOf || undefined} value={filters.brokerFrom} onChange={(event) => setFilters((current) => ({ ...current, brokerFrom: event.target.value }))} /><small>Ends on the analysis date</small></label>}
+                <label>Broker code<input type="text" maxLength="2" placeholder="Any broker" value={filters.brokerCode} onChange={(event) => setFilters((current) => ({ ...current, brokerCode: event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 2) }))} /><small>Blank uses the leading accumulating broker; enter CC, AK, etc.</small></label>
+                <label>Minimum broker accumulation<input type="text" inputMode="decimal" value={compactNumber(filters.minBrokerAccumulation)} onChange={(event) => { const value = parseCompactNumber(event.target.value); if (value != null) setFilters((current) => ({ ...current, minBrokerAccumulation: value })); }} /><small>Net buy across the selected broker period; K/M/B/T accepted</small></label>
+              </>}
+              {supportActive && <label><span><input type="checkbox" checked={filters.customSupportWindow} onChange={(event) => setFilters((current) => ({ ...current, customSupportWindow: event.target.checked }))} /> Custom support window</span><input aria-label="Support window sessions" type="number" min="5" max="120" disabled={!filters.customSupportWindow} value={filters.supportSessions} onChange={update('supportSessions')} /><small>Lookback used to find repeatedly tested price support</small></label>}
+              {rangeActive && <label><span><input type="checkbox" checked={filters.customRangeWindow} onChange={(event) => setFilters((current) => ({ ...current, customRangeWindow: event.target.checked }))} /> Custom range window</span><input aria-label="Range window sessions" type="number" min="5" max="60" disabled={!filters.customRangeWindow} value={filters.consolidationSessions} onChange={update('consolidationSessions')} /><small>Recent lookback used to measure the base and breakout resistance</small></label>}
             </div>
           </details>
           <div className="scout-controls__footer">
