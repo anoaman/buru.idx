@@ -25,13 +25,6 @@ const DEFAULT_SCOUT_FILTERS = Object.freeze({
 });
 const BROKER_RANGES = [['this_week', 'This week'], ['last_week', 'Last week'], ['7d', 'Last 7 days'], ['14d', 'Last 14 days'], ['1m', 'Last month'], ['latest', 'Latest session'], ['previous', 'Previous session'], ['custom', 'Custom start date']];
 const MAX_CONDITIONS = 20;
-const BROKER_PRESET_SESSIONS = Object.freeze({
-  latest: 1,
-  previous: 1,
-  '7d': 7,
-  '14d': 14,
-  '1m': 22,
-});
 const BROKER_CONDITIONS = new Set(['broker_accumulation']);
 const SUPPORT_CONDITIONS = new Set(['near_support']);
 const RANGE_CONDITIONS = new Set(['tight_base', 'breakout_above_base']);
@@ -44,8 +37,8 @@ function scoutRequestPayload(filters) {
   if (filters.brokerPreset === 'custom') {
     delete payload.brokerSessions;
     delete payload.brokerTo;
-  } else if (BROKER_PRESET_SESSIONS[filters.brokerPreset] != null) {
-    payload.brokerSessions = BROKER_PRESET_SESSIONS[filters.brokerPreset];
+  } else {
+    delete payload.brokerSessions;
   }
   if (filters.brokerPreset !== 'custom') {
     delete payload.brokerFrom;
@@ -147,6 +140,8 @@ function EvidenceBandBadge({ band }) {
 // primary columns differ between the two tables.
 function ScoutDetail({ row }) {
   const breakdown = Object.entries(row.scoreBreakdown || {});
+  const brokerFocus = row.broker?.focus || row.broker?.lead || null;
+  const brokerSharePct = row.broker?.focusSharePct ?? row.broker?.leadSharePct;
   return (
     <div className="radar-detail">
       <div>
@@ -163,10 +158,10 @@ function ScoutDetail({ row }) {
       </div>
       {row.broker && (
         <div>
-          <h4>Lead broker share</h4>
+          <h4>{brokerFocus?.code ? `${brokerFocus.code} broker activity` : 'Broker activity'}</h4>
           <p>
-            {formatPct(row.broker.leadSharePct, 0, false)} of buying value
-            {row.broker.lead ? ` · ${row.broker.lead.buySessions}/${row.broker.expectedSessions} buying days` : ''}
+            {formatPct(brokerSharePct, 0, false)} of buying value
+            {brokerFocus ? ` · ${brokerFocus.buySessions}/${row.broker.expectedSessions} buying days` : ''}
           </p>
         </div>
       )}
@@ -188,8 +183,10 @@ const QUALIFIED_COLUMNS = 4;
 
 function QualifiedRow({ row, recipeId, onInvestigate, onActors }) {
   const [expanded, setExpanded] = useState(false);
+  const brokerFocus = row.broker?.focus || row.broker?.lead || null;
+  const focusIsLead = brokerFocus?.code === row.broker?.lead?.code;
   const persistence = row.broker?.expectedSessions
-    ? (row.broker.lead?.buySessions || 0) / row.broker.expectedSessions * 100
+    ? (brokerFocus?.buySessions || 0) / row.broker.expectedSessions * 100
     : null;
   return (
     <>
@@ -208,8 +205,8 @@ function QualifiedRow({ row, recipeId, onInvestigate, onActors }) {
             <span>{formatPct(row.price.distanceFromSupportPct)} · {row.price.supportTouches} touches</span>
             <span>{formatPct(row.price.consolidationRangePct, 1, false)} range{row.price.volatilityContracting ? ' · contracting' : ''}</span>
           </div> : <div className="radar-cell-metric">
-            <strong>{row.broker?.lead?.code || '—'} · {formatIDR(row.broker?.lead?.netValue, true)}</strong>
-            <span>{formatPct(row.broker?.leadSharePct, 0, false)} share · {formatRatio(row.broker?.leadToSecondRatio)} vs second</span>
+            <strong>{brokerFocus?.code || '—'} · {formatIDR(brokerFocus?.netValue, true)}</strong>
+            <span>{formatPct(row.broker?.focusSharePct ?? row.broker?.leadSharePct, 0, false)} share{focusIsLead ? ` · ${formatRatio(row.broker?.leadToSecondRatio)} vs second` : ''}</span>
             <span>{formatPct(persistence, 0, false)} persistence</span>
             {recipeId === 'quiet_accumulation' && <span>{formatPct(row.price.distanceFromSupportPct)} from support · {formatPct(row.price.consolidationRangePct, 1, false)} range</span>}
           </div>}

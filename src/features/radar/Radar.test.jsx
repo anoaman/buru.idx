@@ -51,6 +51,7 @@ function scoutCandidate(overrides = {}) {
     broker: {
       observedSessions: 7, expectedSessions: 7,
       lead: { code: 'CC', netValue: 1_200_000_000, buySessions: 6, sellSessions: 1 },
+      focus: { code: 'CC', netValue: 1_200_000_000, buySessions: 6, sellSessions: 1 },
       second: { code: 'YP', netValue: 300_000_000 },
       leadToSecondRatio: 4, leadSharePct: 58,
     },
@@ -175,7 +176,7 @@ describe('Radar', () => {
     expect(payload).not.toHaveProperty('brokerSessions');
   });
 
-  it('syncs brokerSessions from the named Scout preset', async () => {
+  it('lets the backend resolve named broker periods from actual archive dates', async () => {
     getRadarScout.mockResolvedValue(scoutResponse({ candidates: [] }));
 
     renderRadar();
@@ -184,10 +185,8 @@ describe('Radar', () => {
     fireEvent.change(screen.getByLabelText(/^Broker periodEnds/), { target: { value: '14d' } });
     fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
-    await waitFor(() => expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({
-      brokerPreset: '14d',
-      brokerSessions: 14,
-    })));
+    await waitFor(() => expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({ brokerPreset: '14d' })));
+    expect(getRadarScout.mock.calls.at(-1)[0]).not.toHaveProperty('brokerSessions');
   });
 
   it('submits the selected volume-breakout baseline', async () => {
@@ -241,6 +240,26 @@ describe('Radar', () => {
       minBrokerAccumulation: 2_500_000_000,
       supportSessions: 40,
     })));
+  });
+
+  it('renders the selected broker instead of an unrelated lead broker', async () => {
+    getRadarScout.mockResolvedValue(scoutResponse({ candidates: [scoutCandidate({
+      broker: {
+        observedSessions: 5,
+        expectedSessions: 5,
+        lead: { code: 'AK', netValue: 10_000_000_000, buySessions: 5, sellSessions: 0 },
+        focus: { code: 'CC', netValue: 4_000_000_000, buySessions: 4, sellSessions: 1 },
+        second: { code: 'CC', netValue: 4_000_000_000 },
+        leadToSecondRatio: 2.5,
+        leadSharePct: 60,
+        focusSharePct: 24,
+      },
+    })] }));
+    renderRadar();
+    await selectQuietTemplate();
+    fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
+    expect(await screen.findByText(/CC · Rp4\.0B/)).toBeInTheDocument();
+    expect(screen.queryByText(/AK · Rp10\.0B/)).not.toBeInTheDocument();
   });
 
   it('renders the evidence band as a signal-strength badge on every qualified row', async () => {

@@ -504,11 +504,20 @@ function normalizeScoutCandidate(row) {
                 sellSessions: Number.isFinite(broker.lead.sellSessions) ? broker.lead.sellSessions : 0,
               }
             : null,
+          focus: broker.focus && broker.focus.code
+            ? {
+                code: String(broker.focus.code).toUpperCase(),
+                netValue: preserveFiniteOrNull(broker.focus.netValue),
+                buySessions: Number.isFinite(broker.focus.buySessions) ? broker.focus.buySessions : 0,
+                sellSessions: Number.isFinite(broker.focus.sellSessions) ? broker.focus.sellSessions : 0,
+              }
+            : null,
           second: broker.second?.code
             ? { code: String(broker.second.code).toUpperCase(), netValue: preserveFiniteOrNull(broker.second.netValue) }
             : null,
           leadToSecondRatio: preserveFiniteOrNull(broker.leadToSecondRatio),
           leadSharePct: preserveFiniteOrNull(broker.leadSharePct),
+          focusSharePct: preserveFiniteOrNull(broker.focusSharePct),
         }
       : null,
     reasons: normalizeStringList(row.reasons, 6),
