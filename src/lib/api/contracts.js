@@ -518,6 +518,11 @@ function normalizeScoutCandidate(row) {
           leadToSecondRatio: preserveFiniteOrNull(broker.leadToSecondRatio),
           leadSharePct: preserveFiniteOrNull(broker.leadSharePct),
           focusSharePct: preserveFiniteOrNull(broker.focusSharePct),
+          brokers: Array.isArray(broker.brokers) ? broker.brokers.filter((item) => item?.code).slice(0, 8).map((item) => ({
+            code: String(item.code).toUpperCase(),
+            netValue: preserveFiniteOrNull(item.netValue),
+            buySessions: Number.isFinite(item.buySessions) ? item.buySessions : 0,
+          })) : [],
         }
       : null,
     reasons: normalizeStringList(row.reasons, 6),

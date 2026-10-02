@@ -246,6 +246,13 @@ describe('public Stock Analysis contracts', () => {
 });
 
 describe('Radar Scout contracts', () => {
+  it('keeps a bounded per-stock broker list for the screener panel', () => {
+    const brokers = Array.from({ length: 10 }, (_, index) => ({ code: `b${index}`, netValue: 10 - index, buySessions: 2 }));
+    const row = guardRadarScout({ success: true, data: { candidates: [{ ticker: 'AHAP', broker: { brokers: [...brokers, { netValue: 1 }] } }], nearMisses: [] } }).data.candidates[0];
+    expect(row.broker.brokers).toHaveLength(8);
+    expect(row.broker.brokers[0]).toEqual({ code: 'B0', netValue: 10, buySessions: 2 });
+  });
+
   it('passes through the ranking mode and derives it from the recipe for older APIs', () => {
     const wrap = (data) => guardRadarScout({ success: true, data: { candidates: [], nearMisses: [], ...data } }).data.ranking;
     expect(wrap({ ranking: 'structure' })).toBe('structure');
