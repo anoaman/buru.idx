@@ -235,12 +235,21 @@ describe('Radar', () => {
     expect(screen.getByRole('button', { name: 'Beats IHSG' })).toHaveAttribute('aria-pressed', 'true');
   });
 
+  it('applies price limits as you type, without Enter', async () => {
+    renderRadar();
+    await waitForRun();
+    fireEvent.click(chip('Price'));
+    fireEvent.change(screen.getByLabelText('Max price'), { target: { value: '500' } });
+    expect(screen.getByLabelText('Max price')).toHaveValue('500');
+    expect(chip('Price')).toHaveTextContent('≤ 500');
+    await waitFor(() => expect(lastRequest().conditions).toEqual(expect.arrayContaining([{ id: 'max_price', value: 500 }])));
+  });
+
   it('does not screen when every filter is off', async () => {
     renderRadar();
     await waitForRun();
     fireEvent.click(chip('Price'));
     fireEvent.change(screen.getByLabelText('Max price'), { target: { value: '' } });
-    fireEvent.blur(screen.getByLabelText('Max price'));
     choose('Liquidity', 'Any');
     choose('Setup', 'Any');
     fireEvent.click(chip('Broker'));

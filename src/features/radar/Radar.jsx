@@ -152,10 +152,15 @@ function Scout({ onInvestigate, onActors }) {
           {blocked && <p className="scout-result-status" role="status">{blocked}</p>}
           {!blocked && state.error && <ErrorState title="Screener unavailable" error={state.error} onRetry={run} />}
           {!blocked && !state.data && state.loading && <Skeleton label="Screening the market…" />}
+          {!blocked && state.data && state.loading && (
+            <div className="sr-loading" role="status" aria-live="polite">
+              <span className="sr-loading__bar" aria-hidden="true" />
+              <span className="sr-loading__label"><span className="sr-spinner" aria-hidden="true" />Updating results…</span>
+            </div>
+          )}
           {!blocked && state.data && <>
             <div className="scout-results-tools">
               <ScoutProvenance data={state.data} />
-              {state.loading && <span className="scout-updating" role="status">Updating…</span>}
               {state.data.nearMisses.length > 0 && (
                 <label className="sr-toggle">
                   <input type="checkbox" checked={showNear} onChange={(event) => setShowNear(event.target.checked)} />

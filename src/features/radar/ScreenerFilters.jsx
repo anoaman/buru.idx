@@ -178,22 +178,21 @@ function OptionList({ options, value, onSelect }) {
   );
 }
 
+// Applies as you type; the screen's own short debounce batches the keystrokes,
+// so there is no Enter or blur step.
 function PriceInput({ label, value, onCommit }) {
-  const [draft, setDraft] = useState(value === '' ? '' : Number(value).toLocaleString('en-US'));
-  useEffect(() => setDraft(value === '' ? '' : Number(value).toLocaleString('en-US')), [value]);
-  const commit = () => {
-    const digits = draft.replace(/[^0-9]/g, '');
+  const format = (next) => (next === '' ? '' : Number(next).toLocaleString('en-US'));
+  const [draft, setDraft] = useState(format(value));
+  useEffect(() => setDraft(format(value)), [value]);
+  const change = (raw) => {
+    const digits = raw.replace(/[^0-9]/g, '');
     const parsed = digits === '' ? '' : Math.min(10_000, Math.max(1, Number(digits)));
+    setDraft(format(parsed));
     onCommit(parsed);
-    setDraft(parsed === '' ? '' : parsed.toLocaleString('en-US'));
   };
   return (
     <label>{label}
-      <input
-        type="text" inputMode="numeric" placeholder="No limit" value={draft}
-        onChange={(event) => setDraft(event.target.value)} onBlur={commit}
-        onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); commit(); } }}
-      />
+      <input type="text" inputMode="numeric" placeholder="No limit" value={draft} onChange={(event) => change(event.target.value)} />
     </label>
   );
 }
