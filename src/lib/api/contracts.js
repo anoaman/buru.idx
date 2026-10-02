@@ -525,6 +525,8 @@ function normalizeScoutCandidate(row) {
   };
 }
 
+const SCOUT_RANKINGS = new Set(['broker', 'structure', 'blended']);
+
 export function guardRadarScout(raw) {
   if (!raw || raw.success === false) {
     return { ok: false, error: raw?.error || 'Invalid Scout response', data: null };
@@ -545,6 +547,10 @@ export function guardRadarScout(raw) {
         label: recipe.label || 'Scout',
         description: recipe.description || null,
       },
+      // Older APIs only name the recipe; its weights map onto the same three modes.
+      ranking: SCOUT_RANKINGS.has(data.ranking) ? data.ranking
+        : recipe.id === 'dominant_broker' ? 'broker'
+          : recipe.id === 'support_compression' ? 'structure' : 'blended',
       options: data.options && typeof data.options === 'object' ? data.options : {},
       asOf: {
         priceDate: asOf.priceDate || null,

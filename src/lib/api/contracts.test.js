@@ -246,6 +246,14 @@ describe('public Stock Analysis contracts', () => {
 });
 
 describe('Radar Scout contracts', () => {
+  it('passes through the ranking mode and derives it from the recipe for older APIs', () => {
+    const wrap = (data) => guardRadarScout({ success: true, data: { candidates: [], nearMisses: [], ...data } }).data.ranking;
+    expect(wrap({ ranking: 'structure' })).toBe('structure');
+    expect(wrap({ recipe: { id: 'dominant_broker' } })).toBe('broker');
+    expect(wrap({ recipe: { id: 'support_compression' } })).toBe('structure');
+    expect(wrap({ ranking: 'bogus', recipe: { id: 'quiet_accumulation' } })).toBe('blended');
+  });
+
   const scoutPrice = {
     lastPrice: 1000,
     priceDate: '2026-08-11',

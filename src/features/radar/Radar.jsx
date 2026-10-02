@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { getRadarScout, getRadarScoutConditions } from '../../lib/api/client.js';
+import ScreenerFilters, { DEFAULT_SLOTS, blockingReason, requestFromSlots, rupiah } from './ScreenerFilters.jsx';
 import { guardRadarScout, guardRadarScoutConditions } from '../../lib/api/contracts.js';
 import { formatDate, formatIDR, formatPct, formatPrice, formatRatio } from '../../lib/format/market.js';
 import EmptyState from '../../components/EmptyState.jsx';
@@ -9,120 +10,17 @@ import Skeleton from '../../components/Skeleton.jsx';
 import { useAnalysisContext } from '../../components/AnalysisContext.jsx';
 import './Screener.css';
 
-const RECIPES = [
-  { id: '', label: 'Custom', description: 'Pick your own conditions.' },
-  { id: 'quiet_accumulation', label: 'Quiet accumulation', description: 'Persistent buying near confirmed support.' },
-  { id: 'dominant_broker', label: 'Dominant broker', description: 'A clear leader in broker buying.' },
-  { id: 'support_compression', label: 'Support compression', description: 'Tight price ranges near repeated support.' },
-];
-const DEFAULT_SCOUT_FILTERS = Object.freeze({
-  recipe: '', conditions: [], asOf: '', brokerSessions: 7, brokerPreset: '7d', brokerFrom: '', brokerTo: '', consolidationSessions: 10,
-  supportSessions: 20, maxPrice: 1000, minAverageValue: 500_000_000, limit: 10,
-  minLeadBrokerValue: 1_000_000_000, useLeadBrokerValue: false,
-  minBrokerAccumulation: 1_000_000_000, brokerCode: '',
-  minRsVsIhsgPct: 0, useRsVsIhsg: false, excludeFca: false,
-  customSupportWindow: false, customRangeWindow: false,
-  useBroker: false, useSupport: false, useSideways: false, useMaxPrice: false, useLiquidity: false,
-});
-const BROKER_RANGES = [['this_week', 'This week'], ['last_week', 'Last week'], ['7d', 'Last 7 days'], ['14d', 'Last 14 days'], ['1m', 'Last month'], ['latest', 'Latest session'], ['previous', 'Previous session'], ['custom', 'Custom start date']];
-const MAX_CONDITIONS = 20;
-const BROKER_CONDITIONS = new Set(['broker_accumulation']);
-const SUPPORT_CONDITIONS = new Set(['near_support']);
-const RANGE_CONDITIONS = new Set(['tight_base', 'breakout_above_base']);
-function scoutRequestPayload(filters) {
-  const payload = { ...filters };
-  const conditionIds = new Set(filters.conditions.map((condition) => condition.id));
-  payload.useBroker = [...conditionIds].some((id) => BROKER_CONDITIONS.has(id));
-  payload.useSupport = [...conditionIds].some((id) => SUPPORT_CONDITIONS.has(id));
-  payload.useSideways = [...conditionIds].some((id) => RANGE_CONDITIONS.has(id));
-  if (filters.brokerPreset === 'custom') {
-    delete payload.brokerSessions;
-    delete payload.brokerTo;
-  } else {
-    delete payload.brokerSessions;
+function scoutBrokerHandoffRange(slots) {
+  if (slots.brokerPreset === 'custom' && slots.brokerFrom) {
+    return { preset: 'custom', from: slots.brokerFrom, to: slots.asOf || slots.brokerFrom };
   }
-  if (filters.brokerPreset !== 'custom') {
-    delete payload.brokerFrom;
-    delete payload.brokerTo;
-  }
-  if (!filters.customSupportWindow) delete payload.supportSessions;
-  if (!filters.customRangeWindow) delete payload.consolidationSessions;
-  delete payload.customSupportWindow;
-  delete payload.customRangeWindow;
-  return payload;
-}
-
-function scoutBrokerHandoffRange(filters) {
-  if (filters.brokerPreset === 'custom' && filters.brokerFrom && filters.brokerTo) {
-    return { preset: 'custom', from: filters.brokerFrom, to: filters.brokerTo };
-  }
-  if (filters.brokerPreset === 'custom' && filters.brokerFrom && filters.asOf) {
-    return { preset: 'custom', from: filters.brokerFrom, to: filters.asOf };
-  }
-  if (filters.brokerPreset && filters.brokerPreset !== 'custom') {
-    return { preset: filters.brokerPreset };
-  }
-  return null;
+  return slots.brokerPreset ? { preset: slots.brokerPreset } : null;
 }
 
 function formatRank(rank) {
   return Number.isFinite(rank) ? String(rank).padStart(2, '0') : '—';
 }
 
-const PRICE_CONDITIONS = new Set(['min_price', 'max_price']);
-
-function compactNumber(value) {
-  const number = Number(value);
-  if (!Number.isFinite(number)) return '';
-  if (Math.abs(number) >= 1e12) return `${Number((number / 1e12).toFixed(2))}T`;
-  if (Math.abs(number) >= 1e9) return `${Number((number / 1e9).toFixed(2))}B`;
-  if (Math.abs(number) >= 1e6) return `${Number((number / 1e6).toFixed(2))}M`;
-  return number.toLocaleString('en-US');
-}
-
-function parseCompactNumber(value) {
-  const clean = String(value || '').trim().toUpperCase().replaceAll(',', '');
-  const match = clean.match(/^(-?\d+(?:\.\d+)?)\s*([KMBT])?$/);
-  if (!match) return null;
-  const scale = { K: 1e3, M: 1e6, B: 1e9, T: 1e12 }[match[2]] || 1;
-  const parsed = Number(match[1]) * scale;
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-function ConditionInput({ definition, condition, onChange }) {
-  const formatValue = (value) => definition.unit === 'IDR'
-    ? (PRICE_CONDITIONS.has(definition.id) ? Number(value).toLocaleString('en-US') : compactNumber(value))
-    : String(value);
-  const [draft, setDraft] = useState(() => formatValue(condition.value));
-  useEffect(() => setDraft(formatValue(condition.value)), [condition.value]);
-  if (definition.type === 'select') {
-    return <select id={`condition-${definition.id}`} aria-label={definition.label} value={condition.value} onChange={(event) => onChange(event.target.value)}>{definition.options.map((option) => <option key={option}>{option}</option>)}</select>;
-  }
-  const commit = () => {
-    const parsed = parseCompactNumber(draft);
-    if (parsed == null) {
-      setDraft(formatValue(condition.value));
-      return;
-    }
-    const bounded = Math.min(definition.max, Math.max(definition.min, parsed));
-    onChange(bounded);
-    setDraft(formatValue(bounded));
-  };
-  return (
-    <span className="scout-filter__value">
-      <input
-        id={`condition-${definition.id}`} aria-label={`${definition.label} value`}
-        type="text"
-        inputMode="decimal"
-        value={draft}
-        onChange={(event) => setDraft(event.target.value)}
-        onBlur={commit}
-        onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); commit(); event.currentTarget.blur(); } }}
-      />
-      {definition.unit && <small>{definition.unit === 'IDR' && !PRICE_CONDITIONS.has(definition.id) ? 'Rp · use M/B/T' : definition.unit}</small>}
-    </span>
-  );
-}
 const EVIDENCE_BAND_LABEL = { high: 'High signal', medium: 'Medium signal', low: 'Low signal' };
 const EVIDENCE_BAND_TONE = { high: 'badge-positive', medium: 'badge-info', low: 'badge-neutral' };
 
@@ -182,7 +80,7 @@ function ScoutDetail({ row }) {
 
 const QUALIFIED_COLUMNS = 4;
 
-function QualifiedRow({ row, recipeId, onInvestigate, onActors }) {
+function QualifiedRow({ row, ranking, onInvestigate, onActors }) {
   const [expanded, setExpanded] = useState(false);
   const brokerFocus = row.broker?.focus || row.broker?.lead || null;
   const focusIsLead = brokerFocus?.code === row.broker?.lead?.code;
@@ -201,7 +99,7 @@ function QualifiedRow({ row, recipeId, onInvestigate, onActors }) {
         </td>
         <td className="tabular"><div className="radar-cell-metric"><strong>{formatPrice(row.price.lastPrice)}</strong><span>{formatIDR(row.price.averageValue, true)} / day</span></div></td>
         <td className="tabular">
-          {recipeId === 'support_compression' ? <div className="radar-cell-metric">
+          {ranking === 'structure' ? <div className="radar-cell-metric">
             <strong>{formatPrice(row.price.support)}</strong>
             <span>{formatPct(row.price.distanceFromSupportPct)} · {row.price.supportTouches} touches</span>
             <span>{formatPct(row.price.consolidationRangePct, 1, false)} range{row.price.volatilityContracting ? ' · contracting' : ''}</span>
@@ -209,7 +107,7 @@ function QualifiedRow({ row, recipeId, onInvestigate, onActors }) {
             <strong>{brokerFocus?.code || '—'} · {formatIDR(brokerFocus?.netValue, true)}</strong>
             <span>{formatPct(row.broker?.focusSharePct ?? row.broker?.leadSharePct, 0, false)} share{focusIsLead ? ` · ${formatRatio(row.broker?.leadToSecondRatio)} vs second` : ''}</span>
             <span>{formatPct(persistence, 0, false)} persistence</span>
-            {recipeId === 'quiet_accumulation' && <span>{formatPct(row.price.distanceFromSupportPct)} from support · {formatPct(row.price.consolidationRangePct, 1, false)} range</span>}
+            {ranking === 'blended' && <span>{formatPct(row.price.distanceFromSupportPct)} from support · {formatPct(row.price.consolidationRangePct, 1, false)} range</span>}
           </div>}
         </td>
         <td>
@@ -237,7 +135,7 @@ function QualifiedRow({ row, recipeId, onInvestigate, onActors }) {
   );
 }
 
-function ScoutQualifiedTable({ rows, recipeId, onInvestigate, onActors }) {
+function ScoutQualifiedTable({ rows, ranking, onInvestigate, onActors }) {
   return (
     <div className="ui-table-wrap">
       <table className="ui-table ui-table--scout" aria-label="Scout candidates">
@@ -245,7 +143,7 @@ function ScoutQualifiedTable({ rows, recipeId, onInvestigate, onActors }) {
           <tr>
             <th>Ticker</th>
             <th className="tabular">Price / liquidity</th>
-            <th className="tabular">{recipeId === 'support_compression' ? 'Support / range' : 'Strategy evidence'}</th>
+            <th className="tabular">{ranking === 'structure' ? 'Support / range' : 'Broker evidence'}</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -254,7 +152,7 @@ function ScoutQualifiedTable({ rows, recipeId, onInvestigate, onActors }) {
             <QualifiedRow
               key={row.ticker}
               row={row}
-              recipeId={recipeId}
+              ranking={ranking}
               onInvestigate={() => onInvestigate(row.ticker)}
               onActors={() => onActors(row.ticker)}
             />
@@ -265,12 +163,15 @@ function ScoutQualifiedTable({ rows, recipeId, onInvestigate, onActors }) {
   );
 }
 
+const RANKING_LABEL = { broker: 'broker strength', structure: 'setup quality', blended: 'broker + setup' };
+
 function ScoutProvenance({ data }) {
   return (
     <p className="radar-run">
       <span>{data.coverage.matched} matched</span>
       <span>Showing {data.coverage.returned}</span>
       <span>{data.coverage.evaluated} scanned</span>
+      <span>Ranked by {RANKING_LABEL[data.ranking]}</span>
       <span>Prices to {formatDate(data.asOf.priceDate)}</span>
       {data.asOf.brokerFrom && (
         <span>Broker {formatDate(data.asOf.brokerFrom)}–{formatDate(data.asOf.brokerTo)} · {data.asOf.brokerSessions} trading days</span>
@@ -286,7 +187,7 @@ const NEAR_MISS_COLUMNS = 6;
 // else keeps its suffix.
 function formatConditionValue(value, unit) {
   if (!Number.isFinite(value)) return '—';
-  if (unit === 'IDR') return `Rp${compactNumber(value)}`;
+  if (unit === 'IDR') return `Rp${rupiah(value)}`;
   if (unit === '%') return `${Number(value.toFixed(2))}%`;
   if (unit === 'x') return `${Number(value.toFixed(2))}×`;
   return String(Number(value.toFixed(2)));
@@ -399,29 +300,28 @@ function ScoutNearMissSection({ rows, onInvestigate, onActors }) {
   );
 }
 
+const SLOT_KEYS = Object.keys(DEFAULT_SLOTS);
+
+function slotsFromParams(params) {
+  const slots = { ...DEFAULT_SLOTS };
+  for (const key of SLOT_KEYS) {
+    const raw = params.get(key);
+    if (raw == null) continue;
+    const fallback = DEFAULT_SLOTS[key];
+    if (typeof fallback === 'boolean') slots[key] = raw === 'true';
+    else if (typeof fallback === 'number') slots[key] = Number(raw) || 0;
+    else if (key === 'minPrice' || key === 'maxPrice') slots[key] = raw === '' ? '' : Number(raw) || '';
+    else slots[key] = raw;
+  }
+  return slots;
+}
+
 function Scout({ onInvestigate, onActors }) {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [filters, setFilters] = useState(() => {
-    const next = { ...DEFAULT_SCOUT_FILTERS };
-    for (const key of Object.keys(next)) {
-      const raw = searchParams.get(key);
-      if (raw == null) continue;
-      if (Array.isArray(next[key])) {
-        try { next[key] = JSON.parse(raw); } catch { next[key] = []; }
-      } else if (typeof next[key] === 'boolean') next[key] = raw === 'true';
-      else if (typeof next[key] === 'number') next[key] = Number(raw);
-      else next[key] = raw;
-    }
-    return next;
-  });
-  const [catalog, setCatalog] = useState({ loading: true, error: null, conditions: [], templates: {} });
+  const [slots, setSlots] = useState(() => slotsFromParams(searchParams));
+  const [templates, setTemplates] = useState({ ready: false, byId: {} });
   const [state, setState] = useState({ loading: false, error: null, data: null });
-  const [showCatalog, setShowCatalog] = useState(filters.conditions.length === 0);
-  const [filterQuery, setFilterQuery] = useState('');
-  const [resultQuery, setResultQuery] = useState('');
   const [sort, setSort] = useState('score');
-  const [appliedFilters, setAppliedFilters] = useState(null);
-  const [filtersOpen, setFiltersOpen] = useState(true);
   const requestRef = useRef(0);
   useEffect(() => () => { requestRef.current += 1; }, []);
   useEffect(() => {
@@ -429,160 +329,66 @@ function Scout({ onInvestigate, onActors }) {
     getRadarScoutConditions().then((raw) => {
       if (!active) return;
       const result = guardRadarScoutConditions(raw);
-      setCatalog(result.ok ? { loading: false, error: null, ...result.data } : { loading: false, error: result.error, conditions: [], templates: {} });
-    }).catch((error) => { if (active) setCatalog({ loading: false, error: error.message, conditions: [], templates: {} }); });
+      if (result.ok) setTemplates({ ready: true, byId: result.data.templates || {} });
+    }).catch(() => {});
     return () => { active = false; };
   }, []);
-  const update = (key) => (event) => {
-    const value = event.target.type === 'checkbox'
-      ? event.target.checked
-      : event.target.type === 'text'
-        ? Number(event.target.value.replace(/[^0-9]/g, ''))
-        : Number(event.target.value);
-    setFilters((current) => ({ ...current, [key]: value }));
-  };
-  const conditionGroups = useMemo(() => ['Universe', 'Price setup', 'Confirmation'].map((category) => ({
-    category,
-    items: catalog.conditions.filter((item) => item.category === category),
-  })), [catalog.conditions]);
-  const activeConditionIds = useMemo(() => new Set(filters.conditions.map((condition) => condition.id)), [filters.conditions]);
-  const brokerActive = [...activeConditionIds].some((id) => BROKER_CONDITIONS.has(id));
-  const supportActive = [...activeConditionIds].some((id) => SUPPORT_CONDITIONS.has(id));
-  const rangeActive = [...activeConditionIds].some((id) => RANGE_CONDITIONS.has(id));
-  const persistPermalink = (nextFilters) => {
-    const params = new URLSearchParams();
-    for (const [key, value] of Object.entries(nextFilters)) if (value !== '' && value !== false) params.set(key, Array.isArray(value) ? JSON.stringify(value) : String(value));
-    setSearchParams(params, { replace: true });
-  };
-  const selectRecipe = (recipeId) => {
-    setFilters((current) => ({ ...current, recipe: recipeId, conditions: (catalog.templates[recipeId] || []).map((item) => ({ ...item })) }));
-    setShowCatalog(!recipeId);
-    setFilterQuery('');
-    setFiltersOpen(true);
-  };
-  const updateCondition = (id, value) => setFilters((current) => ({ ...current, conditions: current.conditions.map((item) => item.id === id ? { ...item, value } : item) }));
-  const toggleCondition = (definition, enabled) => setFilters((current) => {
-    const mutuallyExclusiveIds = new Set(['exclude_fca', 'fca_only']);
-    const withoutCurrentSetup = enabled && definition.category === 'Price setup'
-      ? current.conditions.filter((condition) => (
-        catalog.conditions.find((item) => item.id === condition.id)?.category !== 'Price setup'
-      ))
-      : enabled && mutuallyExclusiveIds.has(definition.id)
-        ? current.conditions.filter((condition) => !mutuallyExclusiveIds.has(condition.id))
-      : current.conditions;
-    return {
-      ...current,
-      conditions: enabled
-        ? withoutCurrentSetup.length >= MAX_CONDITIONS
-          ? withoutCurrentSetup
-          : [...withoutCurrentSetup, { id: definition.id, value: definition.defaultValue ?? definition.options?.[0] ?? true }]
-        : current.conditions.filter((item) => item.id !== definition.id),
-    };
-  });
-  const run = (event) => {
-    event?.preventDefault();
+  const blocked = blockingReason(slots);
+  const requestKey = JSON.stringify(requestFromSlots(slots));
+  const run = () => {
+    if (blocked) return;
     const requestId = ++requestRef.current;
     setState((current) => ({ ...current, loading: true, error: null }));
-    persistPermalink(filters);
-    getRadarScout(scoutRequestPayload(filters)).then((raw) => {
+    getRadarScout(JSON.parse(requestKey)).then((raw) => {
       if (requestId !== requestRef.current) return;
       const result = guardRadarScout(raw);
       setState({ loading: false, error: result.ok ? null : result.error, data: result.data });
-      if (result.ok) { setAppliedFilters(filters); setResultQuery(''); setFiltersOpen(false); }
-      if (result.ok && !filters.asOf && result.data.asOf.priceDate) {
-        const pinned = { ...filters, asOf: result.data.asOf.priceDate };
-        persistPermalink(pinned);
-      }
     }).catch((error) => {
       if (requestId !== requestRef.current) return;
       setState({ loading: false, error: error.message || 'Screener request failed', data: null });
     });
   };
-  const handoffActors = (ticker) => onActors(ticker, scoutBrokerHandoffRange(appliedFilters || filters));
-  const dirty = appliedFilters && JSON.stringify(filters) !== JSON.stringify(appliedFilters);
+  // Results follow the filters. Each committed edit re-runs after a short pause
+  // and a newer request always supersedes an older one still in flight.
+  useEffect(() => {
+    const params = new URLSearchParams();
+    for (const key of SLOT_KEYS) if (slots[key] !== DEFAULT_SLOTS[key]) params.set(key, String(slots[key]));
+    setSearchParams(params, { replace: true });
+    if (blocked) {
+      requestRef.current += 1;
+      setState((current) => ({ ...current, loading: false }));
+      return undefined;
+    }
+    const timer = setTimeout(run, 350);
+    return () => clearTimeout(timer);
+  }, [requestKey, blocked]);
+  const handoffActors = (ticker) => onActors(ticker, scoutBrokerHandoffRange(slots));
   const visibleRows = useMemo(() => {
-    const query = resultQuery.trim().toLowerCase();
-    const rows = (state.data?.candidates || []).filter((row) => !query || `${row.ticker} ${row.name}`.toLowerCase().includes(query));
+    const rows = state.data?.candidates || [];
     return [...rows].sort((a, b) => sort === 'ticker' ? a.ticker.localeCompare(b.ticker)
       : sort === 'liquidity' ? (b.price.averageValue ?? -Infinity) - (a.price.averageValue ?? -Infinity)
         : (b.score ?? -Infinity) - (a.score ?? -Infinity));
-  }, [state.data, resultQuery, sort]);
+  }, [state.data, sort]);
   return (
     <div className="scout-view">
-      <div className="scout-layout">
-        <form className="scout-controls scout-layout__conditions" data-collapsed={!filtersOpen} onSubmit={run}>
-          <label className="scout-strategy">Strategy<select value={filters.recipe} disabled={catalog.loading || Boolean(catalog.error)} onChange={(event) => selectRecipe(event.target.value)}>{RECIPES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select><small>{RECIPES.find((item) => item.id === filters.recipe)?.description}</small></label>
-          <header className="scout-filter-heading"><h2>Conditions <span>{filters.conditions.length}</span></h2><div className="scout-filter-heading-actions"><button type="button" className="scout-text-button" disabled={!filters.conditions.length} onClick={() => { selectRecipe(''); }}>Clear all</button><button type="button" className="scout-mobile-toggle" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((value) => !value)}>{filtersOpen ? 'Hide filters' : 'Edit filters'}</button></div></header>
-          <div className="scout-active-filters" aria-label="Active conditions">
-            {!filters.conditions.length && <p className="scout-filter-hint">Pick a strategy or add a condition.</p>}
-            {filters.conditions.map((condition) => {
-              const definition = catalog.conditions.find((item) => item.id === condition.id);
-              if (!definition) return null;
-              return <div className="scout-active-filter" key={condition.id}>
-                <div title={definition.description}>{definition.type === 'boolean' ? <span className="scout-active-filter__label">{definition.label}</span> : <label htmlFor={`condition-${definition.id}`}>{definition.label}</label>}<button type="button" className="scout-remove" aria-label={`Remove ${definition.label}`} onClick={() => toggleCondition(definition, false)}>×</button></div>
-                {definition.type !== 'boolean' && <ConditionInput definition={definition} condition={condition} onChange={(value) => updateCondition(definition.id, value)} />}
-              </div>;
-            })}
-          </div>
-          <section className="scout-catalog" aria-label="Screener filters">
-            <button type="button" className="scout-add-button" aria-expanded={showCatalog} aria-controls="scout-catalog" onClick={() => setShowCatalog((value) => !value)}>{showCatalog ? 'Done' : '+ Add conditions'}</button>
-            {catalog.loading && <Skeleton label="Loading condition catalog…" />}
-            {catalog.error && <p className="scout-catalog-error" role="alert">Filters are unavailable. {catalog.error}</p>}
-            {showCatalog && !catalog.loading && !catalog.error && <div id="scout-catalog">
-              <input type="search" aria-label="Find a condition" placeholder="Find a condition…" value={filterQuery} onChange={(event) => setFilterQuery(event.target.value)} />
-              <div className="scout-filter-groups">{conditionGroups.map((group) => {
-                const items = group.items.filter((item) => `${item.label} ${item.description}`.toLowerCase().includes(filterQuery.toLowerCase()));
-                if (!items.length) return null;
-                return <section key={group.category} className="scout-filter-group"><h3>{group.category}</h3><div>{items.map((definition) => {
-                  const enabled = filters.conditions.some((item) => item.id === definition.id);
-                  return <label className={`scout-library-option ${enabled ? 'is-enabled' : ''}`} key={definition.id} title={definition.description}><input type="checkbox" checked={enabled} disabled={!enabled && filters.conditions.length >= MAX_CONDITIONS} onChange={(event) => toggleCondition(definition, event.target.checked)} /><span>{definition.label}</span></label>;
-                })}</div></section>;
-              })}</div>
-              {!catalog.conditions.some((item) => `${item.label} ${item.description}`.toLowerCase().includes(filterQuery.toLowerCase())) && <p className="scout-filter-hint">No conditions found. Try “price” or “broker”.</p>}
-            </div>}
-          </section>
-          <details className="scout-screen-settings">
-            <summary><span>Analysis settings</span><span>{filters.asOf || 'Latest data'}</span></summary>
-            <div className="scout-execution-settings" aria-label="Screen settings">
-              <label>Analysis date<input type="date" value={filters.asOf} onChange={(event) => setFilters((current) => ({ ...current, asOf: event.target.value }))} /><small>Leave blank for latest available data</small></label>
-              {brokerActive && <>
-                <label>Broker period<select value={filters.brokerPreset} onChange={(event) => setFilters((current) => ({ ...current, brokerPreset: event.target.value }))}>{BROKER_RANGES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><small>Ends on the analysis date</small></label>
-                {filters.brokerPreset === 'custom' && <label>Broker period starts<input type="date" required max={filters.asOf || undefined} value={filters.brokerFrom} onChange={(event) => setFilters((current) => ({ ...current, brokerFrom: event.target.value }))} /><small>Ends on the analysis date</small></label>}
-                <label>Broker code<input type="text" maxLength="2" placeholder="Any broker" value={filters.brokerCode} onChange={(event) => setFilters((current) => ({ ...current, brokerCode: event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 2) }))} /><small>Blank uses the leading accumulating broker; enter CC, AK, etc.</small></label>
-                <label>Minimum broker accumulation<input type="text" inputMode="decimal" value={compactNumber(filters.minBrokerAccumulation)} onChange={(event) => { const value = parseCompactNumber(event.target.value); if (value != null) setFilters((current) => ({ ...current, minBrokerAccumulation: value })); }} /><small>Net buy across the selected broker period; K/M/B/T accepted</small></label>
-              </>}
-              {supportActive && <label><span><input type="checkbox" checked={filters.customSupportWindow} onChange={(event) => setFilters((current) => ({ ...current, customSupportWindow: event.target.checked }))} /> Custom support window</span><input aria-label="Support window sessions" type="number" min="5" max="120" disabled={!filters.customSupportWindow} value={filters.supportSessions} onChange={update('supportSessions')} /><small>Lookback used to find repeatedly tested price support</small></label>}
-              {rangeActive && <label><span><input type="checkbox" checked={filters.customRangeWindow} onChange={(event) => setFilters((current) => ({ ...current, customRangeWindow: event.target.checked }))} /> Custom range window</span><input aria-label="Range window sessions" type="number" min="5" max="60" disabled={!filters.customRangeWindow} value={filters.consolidationSessions} onChange={update('consolidationSessions')} /><small>Recent lookback used to measure the base and breakout resistance</small></label>}
-            </div>
-          </details>
-          <div className="scout-controls__footer">
-            <label>Result limit<select value={filters.limit} onChange={update('limit')}><option value="10">10 stocks</option><option value="25">25 stocks</option><option value="50">50 stocks</option><option value="100">100 stocks</option></select></label>
-            <button type="submit" className="ui-btn ui-btn--primary" disabled={state.loading || catalog.loading || Boolean(catalog.error) || filters.conditions.length === 0}>{state.loading ? 'Screening…' : 'Run Screener'} <span aria-hidden="true">→</span></button>
-            <p>{filters.conditions.length ? `All ${filters.conditions.length} active conditions must pass.` : 'Add a condition to start screening.'}</p>
-          </div>
-        </form>
-
-        <section className="scout-results" aria-label="Screening results" aria-busy={state.loading}>
-          <header className="scout-results-heading"><h2>Results</h2></header>
-          {state.error && <ErrorState title="Screener unavailable" error={state.error} onRetry={run} />}
-          {!state.data && state.loading && <Skeleton label="Screening the market…" />}
-          {!state.data && !state.loading && !state.error && <div className="scout-welcome">
-            <p>Pick a strategy or add conditions, then run the screener.</p>
-            <button type="button" className="ui-btn ui-btn--primary" disabled={catalog.loading || Boolean(catalog.error)} onClick={() => selectRecipe('quiet_accumulation')}>Try quiet accumulation</button>
-          </div>}
-          {state.data && <>
-            {(state.loading || dirty) && <div className="scout-result-status" role="status">{state.loading ? 'Updating results…' : 'Conditions changed. Run again to update.'}</div>}
+      <ScreenerFilters slots={slots} onChange={setSlots} templates={templates.byId} templatesReady={templates.ready} />
+      <section className="scout-results" aria-label="Screening results" aria-busy={state.loading}>
+        {blocked && <p className="scout-result-status" role="status">{blocked}</p>}
+        {!blocked && state.error && <ErrorState title="Screener unavailable" error={state.error} onRetry={run} />}
+        {!blocked && !state.data && state.loading && <Skeleton label="Screening the market…" />}
+        {!blocked && state.data && <>
+          <div className="scout-results-tools">
             <ScoutProvenance data={state.data} />
-            <div className="scout-results-tools"><label><span className="sr-only">Search returned stocks</span><input type="search" placeholder="Search ticker or company…" value={resultQuery} onChange={(event) => setResultQuery(event.target.value)} /></label><label>Sort by<select value={sort} onChange={(event) => setSort(event.target.value)}><option value="score">Highest score</option><option value="liquidity">Most liquid</option><option value="ticker">Ticker A–Z</option></select></label></div>
-            {state.data.candidates.length === 0
-              ? <EmptyState title="No stocks passed this screen" message="Review your active conditions or explore the near misses below to see which threshold kept a stock out." />
-              : visibleRows.length === 0 ? <EmptyState title="No matching tickers" message="Try another ticker or company name within the returned results." />
-                : <ScoutQualifiedTable rows={visibleRows} recipeId={state.data.recipe.id} onInvestigate={onInvestigate} onActors={handoffActors} />}
-            <ScoutNearMissSection rows={state.data.nearMisses} onInvestigate={onInvestigate} onActors={handoffActors} />
-            <div className="scout-disclosures">{state.data.disclosures.map((item) => <p key={item}>{item}</p>)}</div>
-          </>}
-        </section>
-      </div>
+            {state.loading && <span className="scout-updating" role="status">Updating…</span>}
+            <label>Sort by<select value={sort} onChange={(event) => setSort(event.target.value)}><option value="score">Highest score</option><option value="liquidity">Most liquid</option><option value="ticker">Ticker A–Z</option></select></label>
+          </div>
+          {state.data.candidates.length === 0
+            ? <EmptyState title="No stocks pass these filters" message="Loosen a filter, or check the near misses below to see which one kept a stock out." />
+            : <ScoutQualifiedTable rows={visibleRows} ranking={state.data.ranking} onInvestigate={onInvestigate} onActors={handoffActors} />}
+          <ScoutNearMissSection rows={state.data.nearMisses} onInvestigate={onInvestigate} onActors={handoffActors} />
+          <div className="scout-disclosures">{state.data.disclosures.map((item) => <p key={item}>{item}</p>)}</div>
+        </>}
+      </section>
     </div>
   );
 }

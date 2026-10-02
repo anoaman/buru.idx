@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { AnalysisProvider } from '../../components/AnalysisContext.jsx';
 import Radar from './Radar.jsx';
@@ -26,9 +26,9 @@ const CONDITION_CATALOG = {
       { id: 'outperforming_ihsg', label: 'Relative Strength vs IHSG', category: 'Confirmation', type: 'boolean', comparison: 'equals', defaultValue: true, options: [] },
     ],
     templates: {
-      quiet_accumulation: [{ id: 'max_price', value: 1000 }, { id: 'near_support', value: true }, { id: 'broker_accumulation', value: true }],
-      dominant_broker: [{ id: 'broker_accumulation', value: true }],
-      support_compression: [{ id: 'tight_base', value: true }],
+      quiet_accumulation: [{ id: 'max_price', value: 1000 }, { id: 'min_average_value', value: 500_000_000 }, { id: 'near_support', value: true }, { id: 'broker_accumulation', value: true }],
+      dominant_broker: [{ id: 'max_price', value: 1000 }, { id: 'min_average_value', value: 500_000_000 }, { id: 'broker_accumulation', value: true }],
+      support_compression: [{ id: 'max_price', value: 1000 }, { id: 'min_average_value', value: 500_000_000 }, { id: 'tight_base', value: true }],
     },
   },
 };
@@ -61,11 +61,12 @@ function scoutCandidate(overrides = {}) {
   };
 }
 
-function scoutResponse({ candidates = [], nearMisses = [], coverage, dailyDiff, asOf } = {}) {
+function scoutResponse({ candidates = [], nearMisses = [], coverage, dailyDiff, asOf, ranking = 'blended' } = {}) {
   return {
     success: true,
     data: {
       recipe: { id: 'quiet_accumulation', label: 'Quiet Accumulation Near Support' },
+      ranking,
       options: { brokerSessions: 7 },
       asOf: {
         priceDate: '2026-08-10',
@@ -95,10 +96,21 @@ function renderRadar() {
   return result;
 }
 
-async function selectQuietTemplate() {
-  const strategy = await screen.findByRole('combobox', { name: /^Strategy/ });
-  await waitFor(() => expect(strategy).toBeEnabled());
-  fireEvent.change(strategy, { target: { value: 'quiet_accumulation' } });
+function lastRequest() {
+  return getRadarScout.mock.calls.at(-1)[0];
+}
+
+function chip(label) {
+  return screen.getAllByRole('button').find((button) => button.classList.contains('sf-chip') && button.textContent.startsWith(label));
+}
+
+function choose(chipLabel, option) {
+  fireEvent.click(chip(chipLabel));
+  fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${option}`) }));
+}
+
+async function waitForRun(count = 1) {
+  await waitFor(() => expect(getRadarScout).toHaveBeenCalledTimes(count));
 }
 
 describe('Radar', () => {
@@ -106,142 +118,137 @@ describe('Radar', () => {
     vi.clearAllMocks();
     localStorage.clear();
     getRadarScoutConditions.mockResolvedValue(CONDITION_CATALOG);
+    getRadarScout.mockResolvedValue(scoutResponse({ candidates: [] }));
   });
 
-  it('runs deterministic Scout recipes and renders the returned evidence behind a disclosure', async () => {
+  it('runs the default Quiet Accumulation filters on load and keeps evidence behind a disclosure', async () => {
     getRadarScout.mockResolvedValue(scoutResponse({ candidates: [scoutCandidate()] }));
-
     renderRadar();
-    await selectQuietTemplate();
-    expect(screen.getByLabelText('Maximum price value')).toHaveValue('1,000');
-    expect(screen.queryByText(/Range resolution/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Foreign flow divergence/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Capitulation reversal/)).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
     expect(await screen.findByText('AHAP')).toBeInTheDocument();
     expect(screen.getByText('1 matched')).toBeInTheDocument();
-    // The dense results row shows primary metrics without the full narrative.
+    expect(screen.getByText('Ranked by broker + setup')).toBeInTheDocument();
+    await waitFor(() => expect(chip('Preset')).toHaveTextContent('Quiet accumulation'));
+    expect(lastRequest()).toEqual({
+      conditions: [
+        { id: 'max_price', value: 1000 },
+        { id: 'min_average_value', value: 500_000_000 },
+        { id: 'near_support', value: true },
+        { id: 'broker_accumulation', value: true },
+      ],
+      useBroker: true,
+      useSupport: true,
+      useSideways: false,
+      brokerPreset: '7d',
+      minBrokerAccumulation: 1_000_000_000,
+      limit: 100,
+    });
+    expect(screen.queryByRole('button', { name: 'Run Screener' })).not.toBeInTheDocument();
     expect(screen.queryByText('CC accumulated Rp1200M, 4.0× YP, across 6/7 sessions.')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Show AHAP evidence' }));
     expect(screen.getByText('CC accumulated Rp1200M, 4.0× YP, across 6/7 sessions.')).toBeInTheDocument();
     expect(screen.getByText('CC distributed in 1 observed session.')).toBeInTheDocument();
-
-    expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({
-      recipe: 'quiet_accumulation',
-      brokerPreset: '7d',
-      useBroker: true,
-      conditions: expect.arrayContaining([{ id: 'near_support', value: true }, { id: 'broker_accumulation', value: true }]),
-    }));
   });
 
-  it('keeps advanced controls secondary and omits unverified session-change claims', async () => {
-    getRadarScout.mockResolvedValue(scoutResponse({
-      candidates: [scoutCandidate()],
-      dailyDiff: {
-        new: [scoutCandidate({ ticker: 'AHAP' })],
-        still: [scoutCandidate({ ticker: 'BBCA', qualificationStreak: 3 })],
-        dropped: [scoutCandidate({ ticker: 'ELSA', failedCondition: 'liquidity floor' })],
-      },
-    }));
-
+  it('treats setup as a single choice and shows Custom once the slots leave a preset', async () => {
     renderRadar();
-    await selectQuietTemplate();
-    expect(document.querySelector('.scout-advanced')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Add conditions/ }));
-    fireEvent.click(screen.getByRole('checkbox', { name: /Exclude FCA/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
+    await waitForRun();
+    await waitFor(() => expect(chip('Preset')).toHaveTextContent('Quiet accumulation'));
 
-    expect(await screen.findByText('AHAP')).toBeInTheDocument();
-    expect(screen.queryByText(/Changes since the previous session/)).not.toBeInTheDocument();
-    expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({ conditions: expect.arrayContaining([{ id: 'exclude_fca', value: true }]) }));
+    choose('Setup', 'Tight base');
+    await waitForRun(2);
+    const ids = lastRequest().conditions.map((item) => item.id);
+    expect(ids).toContain('tight_base');
+    expect(ids).not.toContain('near_support');
+    expect(chip('Preset')).toHaveTextContent('Custom');
+
+    choose('Preset', 'Support compression');
+    await waitForRun(3);
+    expect(lastRequest().conditions.map((item) => item.id)).toEqual(['max_price', 'min_average_value', 'tight_base']);
+    expect(lastRequest().useBroker).toBe(false);
+    expect(chip('Broker')).toHaveTextContent('Off');
   });
 
-  it('submits a custom broker date range through the client', async () => {
-    getRadarScout.mockResolvedValue(scoutResponse({ candidates: [] }));
-
+  it('keeps the FCA board modes in one slot', async () => {
     renderRadar();
-    await selectQuietTemplate();
-    fireEvent.click(screen.getByText(/Analysis settings/));
-    fireEvent.change(screen.getByLabelText(/^Analysis date/), { target: { value: '2026-07-31' } });
-    fireEvent.change(screen.getByLabelText(/^Broker periodEnds/), { target: { value: 'custom' } });
-    fireEvent.change(screen.getByLabelText(/Broker period starts/), { target: { value: '2026-07-01' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
-
-    await waitFor(() => expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({
-      brokerPreset: 'custom',
-      brokerFrom: '2026-07-01',
-      asOf: '2026-07-31',
-    })));
-    const payload = getRadarScout.mock.calls.at(-1)[0];
-    expect(payload).not.toHaveProperty('brokerSessions');
+    await waitForRun();
+    choose('Board', 'Exclude FCA');
+    await waitForRun(2);
+    choose('Board', 'FCA only');
+    await waitForRun(3);
+    const ids = lastRequest().conditions.map((item) => item.id);
+    expect(ids).toContain('fca_only');
+    expect(ids).not.toContain('exclude_fca');
   });
 
-  it('lets the backend resolve named broker periods from actual archive dates', async () => {
-    getRadarScout.mockResolvedValue(scoutResponse({ candidates: [] }));
-
+  it('configures a specific broker, net-buy floor and period inside the Broker slot', async () => {
     renderRadar();
-    await selectQuietTemplate();
-    fireEvent.click(screen.getByText(/Analysis settings/));
-    fireEvent.change(screen.getByLabelText(/^Broker periodEnds/), { target: { value: '14d' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
+    await waitForRun();
+    fireEvent.click(chip('Broker'));
+    fireEvent.change(screen.getByLabelText('Who'), { target: { value: 'code' } });
+    fireEvent.change(screen.getByLabelText('Broker code'), { target: { value: 'cc' } });
+    fireEvent.change(screen.getByLabelText('Net buy at least'), { target: { value: '2500000000' } });
+    fireEvent.change(screen.getByLabelText('Over'), { target: { value: '14d' } });
 
-    await waitFor(() => expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({ brokerPreset: '14d' })));
-    expect(getRadarScout.mock.calls.at(-1)[0]).not.toHaveProperty('brokerSessions');
-  });
-
-  it('submits the selected volume-breakout baseline', async () => {
-    getRadarScout.mockResolvedValue(scoutResponse({ candidates: [] }));
-
-    renderRadar();
-    await selectQuietTemplate();
-    fireEvent.click(screen.getByRole('button', { name: /Add conditions/ }));
-    fireEvent.click(screen.getByRole('checkbox', { name: /Volume Breakout/ }));
-    fireEvent.change(screen.getByRole('combobox', { name: 'Volume Breakout' }), { target: { value: 'MA10' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
-
-    await waitFor(() => expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({
-      conditions: expect.arrayContaining([{ id: 'volume_breakout_baseline', value: 'MA10' }]),
-    })));
-  });
-
-  it('keeps price setup choices mutually exclusive', async () => {
-    renderRadar();
-    await selectQuietTemplate();
-    fireEvent.click(screen.getByRole('button', { name: /Add conditions/ }));
-    expect(screen.getByRole('checkbox', { name: 'Near Support' })).toBeChecked();
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Tight Base' }));
-    expect(screen.getByRole('checkbox', { name: 'Near Support' })).not.toBeChecked();
-    expect(screen.getByRole('checkbox', { name: 'Tight Base' })).toBeChecked();
-  });
-
-  it('keeps FCA universe modes mutually exclusive', async () => {
-    renderRadar();
-    await selectQuietTemplate();
-    fireEvent.click(screen.getByRole('button', { name: /Add conditions/ }));
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Exclude FCA' }));
-    fireEvent.click(screen.getByRole('checkbox', { name: 'FCA only' }));
-    expect(screen.getByRole('checkbox', { name: 'Exclude FCA' })).not.toBeChecked();
-    expect(screen.getByRole('checkbox', { name: 'FCA only' })).toBeChecked();
-  });
-
-  it('submits a chosen broker, accumulation floor, and optional price windows', async () => {
-    getRadarScout.mockResolvedValue(scoutResponse({ candidates: [] }));
-    renderRadar();
-    await selectQuietTemplate();
-    fireEvent.click(screen.getByText(/Analysis settings/));
-    fireEvent.change(screen.getByLabelText(/^Broker code/), { target: { value: 'cc' } });
-    fireEvent.change(screen.getByLabelText(/^Minimum broker accumulation/), { target: { value: '2.5B' } });
-    fireEvent.click(screen.getByRole('checkbox', { name: /Custom support window/ }));
-    fireEvent.change(screen.getByLabelText('Support window sessions'), { target: { value: '40' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
-
-    await waitFor(() => expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({
+    await waitFor(() => expect(lastRequest()).toEqual(expect.objectContaining({
       brokerCode: 'CC',
       minBrokerAccumulation: 2_500_000_000,
-      supportSessions: 40,
+      brokerPreset: '14d',
     })));
+    expect(lastRequest()).not.toHaveProperty('brokerSessions');
+    expect(chip('Broker')).toHaveTextContent('CC · ≥ 2.5B · 14D');
+  });
+
+  it('waits for a start date before screening a custom broker period', async () => {
+    renderRadar();
+    await waitForRun();
+    fireEvent.click(chip('As of'));
+    fireEvent.change(screen.getByLabelText('Analysis date'), { target: { value: '2026-07-31' } });
+    fireEvent.click(chip('Broker'));
+    fireEvent.change(screen.getByLabelText('Over'), { target: { value: 'custom' } });
+    expect(await screen.findByText('Pick a start date for the custom broker period.')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Starting'), { target: { value: '2026-07-01' } });
+    await waitFor(() => expect(lastRequest()).toEqual(expect.objectContaining({
+      brokerPreset: 'custom', brokerFrom: '2026-07-01', asOf: '2026-07-31',
+    })));
+  });
+
+  it('adds the volume and IHSG confirmations from their own slots', async () => {
+    renderRadar();
+    await waitForRun();
+    choose('Volume', 'vs 10-day average');
+    fireEvent.click(screen.getByRole('button', { name: 'Beats IHSG' }));
+    await waitFor(() => expect(lastRequest().conditions).toEqual(expect.arrayContaining([
+      { id: 'volume_breakout_baseline', value: 'MA10' },
+      { id: 'outperforming_ihsg', value: true },
+    ])));
+    expect(screen.getByRole('button', { name: 'Beats IHSG' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('does not screen when every filter is off', async () => {
+    renderRadar();
+    await waitForRun();
+    fireEvent.click(chip('Price'));
+    fireEvent.change(screen.getByLabelText('Max price'), { target: { value: '' } });
+    fireEvent.blur(screen.getByLabelText('Max price'));
+    choose('Liquidity', 'Any');
+    choose('Setup', 'Any');
+    fireEvent.click(chip('Broker'));
+    fireEvent.change(screen.getByLabelText('Who'), { target: { value: 'off' } });
+
+    expect(await screen.findByText('Turn on at least one filter.')).toBeInTheDocument();
+    const calls = getRadarScout.mock.calls.length;
+    await new Promise((resolve) => setTimeout(resolve, 450));
+    expect(getRadarScout).toHaveBeenCalledTimes(calls);
+  });
+
+  it('labels setup-only rankings and shows support evidence for them', async () => {
+    getRadarScout.mockResolvedValue(scoutResponse({ candidates: [scoutCandidate()], ranking: 'structure' }));
+    renderRadar();
+    expect(await screen.findByText('Ranked by setup quality')).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Support / range' })).toBeInTheDocument();
   });
 
   it('renders the selected broker instead of an unrelated lead broker', async () => {
@@ -258,19 +265,13 @@ describe('Radar', () => {
       },
     })] }));
     renderRadar();
-    await selectQuietTemplate();
-    fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
     expect(await screen.findByText(/CC · Rp4\.0B/)).toBeInTheDocument();
     expect(screen.queryByText(/AK · Rp10\.0B/)).not.toBeInTheDocument();
   });
 
   it('renders the evidence band as a signal-strength badge on every qualified row', async () => {
     getRadarScout.mockResolvedValue(scoutResponse({ candidates: [scoutCandidate({ evidenceBand: 'medium' })] }));
-
     renderRadar();
-    await selectQuietTemplate();
-    fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
-
     expect(await screen.findByText('Medium signal')).toBeInTheDocument();
   });
 
@@ -278,16 +279,13 @@ describe('Radar', () => {
     getRadarScout.mockResolvedValue(scoutResponse({
       candidates: [scoutCandidate({ scoreBreakdown: { broker: 41, supportCompression: 19 } })],
     }));
-
     renderRadar();
-    await selectQuietTemplate();
-    fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
     expect(await screen.findByText('AHAP')).toBeInTheDocument();
     expect(screen.queryByText('41')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Show AHAP evidence' }));
-    expect(screen.getByText('Broker')).toBeInTheDocument();
+    expect(within(screen.getByLabelText('Score breakdown')).getByText('Broker')).toBeInTheDocument();
     expect(screen.getByText('41')).toBeInTheDocument();
     expect(screen.getByText('Support Compression')).toBeInTheDocument();
     expect(screen.getByText('19')).toBeInTheDocument();
@@ -303,28 +301,23 @@ describe('Radar', () => {
       risks: ['thin average value'],
     });
     getRadarScout.mockResolvedValue(scoutResponse({ candidates: [scoutCandidate()], nearMisses: [nearMiss] }));
-
     renderRadar();
-    await selectQuietTemplate();
-    fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
     expect(await screen.findByText('Almost Matched')).toBeInTheDocument();
     expect(screen.getByText('ELSA')).toBeInTheDocument();
     expect(screen.getByText('Missed: liquidity floor ≥ Rp500M/day')).toBeInTheDocument();
 
-    // A near-miss keeps its own diagnostic table so it never reads as a
-    // qualified strategy result.
     const qualifiedTable = screen.getByRole('table', { name: 'Scout candidates' });
     const nearMissTable = screen.getByRole('table', { name: 'Almost matched stocks' });
     expect(nearMissTable.querySelectorAll('thead th').length).toBeGreaterThan(qualifiedTable.querySelectorAll('thead th').length);
 
     fireEvent.click(screen.getByRole('button', { name: 'Show ELSA evidence' }));
     expect(screen.getByText('thin average value')).toBeInTheDocument();
-    expect(screen.getByText('Broker')).toBeInTheDocument();
+    expect(within(screen.getByLabelText('Score breakdown')).getByText('Broker')).toBeInTheDocument();
     expect(screen.getByText('20')).toBeInTheDocument();
   });
 
-  it('renders qualified results at the 100-result limit', async () => {
+  it('renders every match up to the 100-result ceiling', async () => {
     const manyCandidates = Array.from({ length: 100 }, (_, index) => scoutCandidate({
       ticker: `T${String(index).padStart(3, '0')}`,
       rank: index + 1,
@@ -333,25 +326,18 @@ describe('Radar', () => {
       candidates: manyCandidates,
       coverage: { evaluated: 900, matched: 100, returned: 100, nearMisses: 0 },
     }));
-
     renderRadar();
-    await selectQuietTemplate();
-    fireEvent.change(screen.getByLabelText('Result limit'), { target: { value: '100' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
     expect(await screen.findByText('T099')).toBeInTheDocument();
     expect(screen.getByText('T000')).toBeInTheDocument();
     expect(screen.getByText('Showing 100')).toBeInTheDocument();
-    expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({ limit: 100 }));
+    expect(lastRequest()).toEqual(expect.objectContaining({ limit: 100 }));
   });
 
   it('preserves the new-tab Analysis / Broker Flow handoffs, carrying the broker window', async () => {
     const openSpy = vi.spyOn(window, 'open').mockImplementation(() => {});
     getRadarScout.mockResolvedValue(scoutResponse({ candidates: [scoutCandidate()] }));
-
     renderRadar();
-    await selectQuietTemplate();
-    fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
     fireEvent.click(await screen.findByRole('button', { name: 'Open AHAP analysis' }));
     expect(openSpy.mock.calls.at(-1)[0]).toBe('/workbench?ticker=AHAP');
@@ -383,10 +369,7 @@ describe('Radar', () => {
       },
     });
     getRadarScout.mockResolvedValue(scoutResponse({ candidates: [], nearMisses: [nearMiss] }));
-
     renderRadar();
-    await selectQuietTemplate();
-    fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
     expect(await screen.findByText('Liquidity floor')).toBeInTheDocument();
     expect(screen.getByText(/Rp40M vs Rp500M · off by Rp460M \(92%\)/)).toBeInTheDocument();
@@ -412,10 +395,7 @@ describe('Radar', () => {
         scoutCandidate({ ticker: 'BBCA', rank: 2, failedDetail: detail(60) }),
       ],
     }));
-
     renderRadar();
-    await selectQuietTemplate();
-    fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
     const rows = await screen.findAllByText('Minimum lead-to-second ratio');
     expect(rows[0].closest('.scout-near-miss__missed')).toHaveClass('scout-near-miss__missed--close');
@@ -427,10 +407,7 @@ describe('Radar', () => {
       candidates: [scoutCandidate()],
       asOf: { requestedBrokerSessions: 7, brokerSessions: 5 },
     }));
-
     renderRadar();
-    await selectQuietTemplate();
-    fireEvent.click(screen.getByRole('button', { name: 'Run Screener' }));
 
     expect(await screen.findByText(/5 trading days/)).toBeInTheDocument();
     expect(screen.queryByText(/sessions available/)).not.toBeInTheDocument();
