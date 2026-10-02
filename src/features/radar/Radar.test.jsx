@@ -443,6 +443,51 @@ describe('Radar', () => {
     expect(rows[1].closest('.scout-near-miss__missed')).not.toHaveClass('scout-near-miss__missed--close');
   });
 
+  it('shows the 1D change and a 30-day sparkline, and the panel reuses the shipped closes', async () => {
+    getRadarScout.mockResolvedValue(scoutResponse({ candidates: [scoutCandidate({
+      price: { ...scoutCandidate().price, lastPrice: 101, changePct: -1.94, recentCloses: [99, 103, 101] },
+    })] }));
+    renderRadar();
+    const row = (await screen.findByRole('button', { name: 'Show AHAP details' })).closest('tr');
+    expect(within(row).getByText('-1.94%')).toHaveClass('is-negative');
+    expect(row.querySelector('.sr-spark polyline')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show AHAP details' }));
+    expect(screen.getByRole('img', { name: 'Last 3 closes' })).toBeInTheDocument();
+    expect(analyzeTicker).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: '1D' }));
+    expect(screen.getByRole('columnheader', { name: '1D ↓' })).toHaveAttribute('aria-sort', 'descending');
+  });
+
+  it('saves, recalls and deletes named screens in this browser', async () => {
+    renderRadar();
+    await waitForRun();
+    choose('Setup', 'Breakout');
+    await waitFor(() => expect(chip('Preset')).toHaveTextContent('Custom'));
+
+    fireEvent.click(chip('Preset'));
+    fireEvent.change(screen.getByLabelText('Screen name'), { target: { value: 'Morning breakouts' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(chip('Preset')).toHaveTextContent('Morning breakouts');
+    expect(JSON.parse(localStorage.getItem('nalar.screener.savedScreens'))[0]).toEqual(expect.objectContaining({
+      name: 'Morning breakouts',
+      slots: expect.objectContaining({ setup: 'breakout_above_base', broker: 'any' }),
+    }));
+
+    choose('Preset', 'Support compression');
+    await waitFor(() => expect(chip('Preset')).toHaveTextContent('Support compression'));
+    fireEvent.click(chip('Preset'));
+    fireEvent.click(screen.getByRole('button', { name: 'Morning breakouts' }));
+    await waitFor(() => expect(lastRequest().conditions.map((item) => item.id)).toContain('breakout_above_base'));
+    expect(chip('Preset')).toHaveTextContent('Morning breakouts');
+
+    fireEvent.click(chip('Preset'));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Morning breakouts' }));
+    expect(chip('Preset')).toHaveTextContent('Custom');
+    expect(JSON.parse(localStorage.getItem('nalar.screener.savedScreens'))).toEqual([]);
+  });
+
   it('reports observed trading sessions without treating weekends as missing data', async () => {
     getRadarScout.mockResolvedValue(scoutResponse({
       candidates: [scoutCandidate()],

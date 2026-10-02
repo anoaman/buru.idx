@@ -121,6 +121,50 @@ export function requestFromSlots(slots) {
   return request;
 }
 
+// Saved screens live in this browser. They keep every slot except the analysis
+// date, so a screen saved last week still runs on the latest data.
+const SAVED_KEY = 'nalar.screener.savedScreens';
+const SAVED_FIELDS = Object.keys(DEFAULT_SLOTS).filter((key) => key !== 'asOf');
+
+function loadSavedScreens() {
+  try {
+    const list = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]');
+    return Array.isArray(list) ? list.filter((item) => item?.name && item.slots && typeof item.slots === 'object') : [];
+  } catch {
+    return [];
+  }
+}
+
+export function useSavedScreens() {
+  const [saved, setSaved] = useState(loadSavedScreens);
+  const persist = (next) => {
+    setSaved(next);
+    try { localStorage.setItem(SAVED_KEY, JSON.stringify(next)); } catch { /* storage full or blocked: keep in memory */ }
+  };
+  return {
+    saved,
+    save: (name, slots) => persist([
+      ...saved.filter((item) => item.name !== name),
+      { name, slots: Object.fromEntries(SAVED_FIELDS.map((key) => [key, slots[key]])) },
+    ]),
+    remove: (name) => persist(saved.filter((item) => item.name !== name)),
+  };
+}
+
+export function matchingSavedScreen(slots, saved) {
+  return saved.find((item) => SAVED_FIELDS.every((key) => item.slots[key] === slots[key]))?.name || '';
+}
+
+function SaveScreenForm({ onSave }) {
+  const [name, setName] = useState('');
+  return (
+    <form className="sf-save" onSubmit={(event) => { event.preventDefault(); if (name.trim()) { onSave(name.trim()); setName(''); } }}>
+      <input type="text" aria-label="Screen name" placeholder="Name this screen" maxLength="40" value={name} onChange={(event) => setName(event.target.value)} />
+      <button type="submit" className="ui-btn ui-btn--primary" disabled={!name.trim()}>Save</button>
+    </form>
+  );
+}
+
 function OptionList({ options, value, onSelect }) {
   return (
     <div className="sf-options">
@@ -200,14 +244,27 @@ export default function ScreenerFilters({ slots, onChange, templates, templatesR
     if (!keepOpen) setOpenId(null);
   };
   const preset = matchingPreset(slots, templates);
+  const { saved, save, remove } = useSavedScreens();
+  const savedName = matchingSavedScreen(slots, saved);
   const chip = { openId, setOpenId };
 
   return (
     <div className="sf-bar" ref={barRef} aria-label="Screener filters">
-      <Chip id="preset" label="Preset" value={PRESETS.find((item) => item.id === preset)?.label || 'Custom'} {...chip}>
+      <Chip id="preset" label="Preset" value={savedName || PRESETS.find((item) => item.id === preset)?.label || 'Custom'} {...chip}>
         {templatesReady
-          ? <OptionList options={PRESETS.map((item) => ({ value: item.id, label: item.label, hint: item.hint }))} value={preset} onSelect={(id) => set(applyPreset(slots, templates, id))} />
+          ? <OptionList options={PRESETS.map((item) => ({ value: item.id, label: item.label, hint: item.hint }))} value={savedName ? '' : preset} onSelect={(id) => set(applyPreset(slots, templates, id))} />
           : <p className="sf-note">Presets are unavailable right now.</p>}
+        <p className="sf-heading">My screens</p>
+        {saved.length === 0 && <p className="sf-note">Nothing saved yet. Set the filters, then name and save them here.</p>}
+        <div className="sf-options">
+          {saved.map((item) => (
+            <div key={item.name} className="sf-saved">
+              <button type="button" aria-pressed={item.name === savedName} onClick={() => set({ ...item.slots })}><strong>{item.name}</strong></button>
+              <button type="button" className="sf-remove" aria-label={`Delete ${item.name}`} onClick={() => remove(item.name)}>×</button>
+            </div>
+          ))}
+        </div>
+        {!savedName && <SaveScreenForm onSave={(name) => { save(name, slots); setOpenId(null); }} />}
       </Chip>
       <span className="sf-sep" aria-hidden="true" />
       <Chip id="price" label="Price" value={priceLabel(slots)} active={slots.minPrice !== '' || slots.maxPrice !== ''} {...chip}>

@@ -12,8 +12,10 @@ const buyDaysOf = (row) => {
 
 // Sort keys read straight off the row so a header click never needs a lookup table.
 export const COLUMNS = [
+  { key: 'trend', label: '30D', align: 'left', sortable: false, narrow: true },
   { key: 'ticker', label: 'Ticker', align: 'left', value: (row) => row.ticker },
   { key: 'price', label: 'Price', value: (row) => row.price.lastPrice },
+  { key: 'change', label: '1D', value: (row) => row.price.changePct },
   { key: 'liquidity', label: 'Value/day', value: (row) => row.price.averageValue, wide: true },
   { key: 'broker', label: 'Broker', value: (row) => focusOf(row)?.code ?? null, wide: true },
   { key: 'netBuy', label: 'Net buy', value: (row) => focusOf(row)?.netValue ?? null },
@@ -25,7 +27,7 @@ export const COLUMNS = [
 ];
 
 export function sortRows(rows, { key, dir }) {
-  const column = COLUMNS.find((item) => item.key === key) || COLUMNS.at(-1);
+  const column = COLUMNS.find((item) => item.key === key && item.value) || COLUMNS.at(-1);
   return [...rows].sort((a, b) => {
     const left = column.value(a);
     const right = column.value(b);
@@ -81,6 +83,20 @@ function ScoreCell({ score }) {
   );
 }
 
+function Sparkline({ closes }) {
+  if (closes.length < 2) return <span className="sr-spark is-empty" aria-hidden="true" />;
+  const low = Math.min(...closes);
+  const span = Math.max(...closes) - low || 1;
+  const points = closes.map((value, index) => `${((index / (closes.length - 1)) * 72).toFixed(1)},${(20 - ((value - low) / span) * 18).toFixed(1)}`).join(' ');
+  return (
+    <svg className={`sr-spark ${closes.at(-1) >= closes[0] ? 'is-up' : 'is-down'}`} viewBox="0 0 72 22" aria-hidden="true">
+      <polyline points={points} />
+    </svg>
+  );
+}
+
+const changeTone = (value) => (value > 0 ? 'is-positive' : value < 0 ? 'is-negative' : '');
+
 function ResultRow({ row, selected, onSelect }) {
   const focus = focusOf(row);
   const buyDays = focus && row.broker.expectedSessions ? `${focus.buySessions}/${row.broker.expectedSessions}` : '—';
@@ -90,6 +106,7 @@ function ResultRow({ row, selected, onSelect }) {
       aria-selected={selected}
       onClick={() => onSelect(selected ? null : row.ticker)}
     >
+      <td className="sr-trend"><Sparkline closes={row.price.recentCloses || []} /></td>
       <td className="sr-ticker">
         <button type="button" aria-label={`Show ${row.ticker} details`} onClick={(event) => { event.stopPropagation(); onSelect(selected ? null : row.ticker); }}>
           {row.ticker}
@@ -100,6 +117,7 @@ function ResultRow({ row, selected, onSelect }) {
           : <span>{row.name}</span>}
       </td>
       <td><strong>{formatPrice(row.price.lastPrice)}</strong></td>
+      <td className={changeTone(row.price.changePct)}>{formatPct(row.price.changePct)}</td>
       <td className="sr-wide">{formatIDR(row.price.averageValue, true)}</td>
       <td className="sr-wide"><strong>{focus?.code || '—'}</strong></td>
       <td className={focus?.netValue > 0 ? 'is-positive' : ''}>{focus ? formatIDR(focus.netValue, true) : '—'}</td>
@@ -114,6 +132,7 @@ function ResultRow({ row, selected, onSelect }) {
 
 export function ResultsTable({ rows, nearMisses, sort, onSort, selected, onSelect }) {
   const header = (column) => {
+    if (column.sortable === false) return <th key={column.key} className="sr-left sr-trend"><span>{column.label}</span></th>;
     const active = sort.key === column.key;
     return (
       <th
@@ -145,11 +164,12 @@ export function ResultsTable({ rows, nearMisses, sort, onSort, selected, onSelec
 
 const closeCache = new Map();
 
-/** Last 30 closes, fetched once per ticker for the panel chart. */
-function useRecentCloses(ticker) {
+/** Last 30 closes: shipped with the screen, or fetched once per ticker from older APIs. */
+function useRecentCloses(ticker, shipped) {
   const [state, setState] = useState({ ticker: null, closes: null });
+  const hasShipped = shipped?.length > 1;
   useEffect(() => {
-    if (!ticker) return undefined;
+    if (!ticker || hasShipped) return undefined;
     if (closeCache.has(ticker)) {
       setState({ ticker, closes: closeCache.get(ticker) });
       return undefined;
@@ -163,7 +183,8 @@ function useRecentCloses(ticker) {
       if (active) setState({ ticker, closes });
     }).catch(() => { if (active) setState({ ticker, closes: [] }); });
     return () => { active = false; };
-  }, [ticker]);
+  }, [ticker, hasShipped]);
+  if (hasShipped) return shipped;
   return state.ticker === ticker ? state.closes : null;
 }
 
@@ -192,7 +213,7 @@ function breakdownLabel(key) {
 }
 
 export function StockPanel({ row, brokerSessions, onInvestigate, onActors, onClose }) {
-  const closes = useRecentCloses(row.ticker);
+  const closes = useRecentCloses(row.ticker, row.price.recentCloses);
   const brokers = row.broker?.brokers || [];
   const largest = Math.max(1, ...brokers.map((item) => Math.abs(item.netValue || 0)));
   const breakdown = Object.entries(row.scoreBreakdown || {});
@@ -206,7 +227,10 @@ export function StockPanel({ row, brokerSessions, onInvestigate, onActors, onClo
         </div>
         <button type="button" className="sr-close" aria-label="Close details" onClick={onClose}>×</button>
       </header>
-      <p className="sr-price">{formatPrice(row.price.lastPrice)}</p>
+      <p className="sr-price">
+        {formatPrice(row.price.lastPrice)}
+        {Number.isFinite(row.price.changePct) && <small className={changeTone(row.price.changePct)}>{formatPct(row.price.changePct)}</small>}
+      </p>
       <PriceLine closes={closes} support={row.price.support} />
       <p className="sr-caption">
         {closes?.length ? `${closes.length} sessions` : '30 sessions'}

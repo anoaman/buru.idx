@@ -476,6 +476,8 @@ function normalizeScoutCandidate(row) {
       : {},
     price: {
       lastPrice: preserveFiniteOrNull(price.lastPrice),
+      changePct: preserveFiniteOrNull(price.changePct),
+      recentCloses: Array.isArray(price.recentCloses) ? price.recentCloses.map(Number).filter(Number.isFinite).slice(-30) : [],
       priceDate: price.priceDate || null,
       support: preserveFiniteOrNull(price.support),
       supportTouches: Number.isFinite(price.supportTouches) ? price.supportTouches : 0,

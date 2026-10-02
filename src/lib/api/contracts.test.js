@@ -246,6 +246,14 @@ describe('public Stock Analysis contracts', () => {
 });
 
 describe('Radar Scout contracts', () => {
+  it('keeps the 1D change and at most 30 finite recent closes', () => {
+    const closes = Array.from({ length: 35 }, (_, index) => index + 1);
+    const { price } = guardRadarScout({ success: true, data: { candidates: [{ ticker: 'AHAP', price: { changePct: 1.5, recentCloses: [...closes, 'x'] } }], nearMisses: [] } }).data.candidates[0];
+    expect(price.changePct).toBe(1.5);
+    expect(price.recentCloses).toHaveLength(30);
+    expect(price.recentCloses.at(-1)).toBe(35);
+  });
+
   it('keeps a bounded per-stock broker list for the screener panel', () => {
     const brokers = Array.from({ length: 10 }, (_, index) => ({ code: `b${index}`, netValue: 10 - index, buySessions: 2 }));
     const row = guardRadarScout({ success: true, data: { candidates: [{ ticker: 'AHAP', broker: { brokers: [...brokers, { netValue: 1 }] } }], nearMisses: [] } }).data.candidates[0];
