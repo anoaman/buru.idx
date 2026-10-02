@@ -10,9 +10,10 @@ import { useAnalysisContext } from '../../components/AnalysisContext.jsx';
 import './Screener.css';
 
 const RECIPES = [
-  { id: 'quiet_accumulation', label: 'Quiet accumulation', description: 'Persistent buying near confirmed support.', icon: '↗' },
-  { id: 'dominant_broker', label: 'Dominant broker', description: 'Find a clear leader in broker buying.', icon: '◎' },
-  { id: 'support_compression', label: 'Support compression', description: 'Tight price ranges near repeated support.', icon: '≋' },
+  { id: '', label: 'Custom', description: 'Pick your own conditions.' },
+  { id: 'quiet_accumulation', label: 'Quiet accumulation', description: 'Persistent buying near confirmed support.' },
+  { id: 'dominant_broker', label: 'Dominant broker', description: 'A clear leader in broker buying.' },
+  { id: 'support_compression', label: 'Support compression', description: 'Tight price ranges near repeated support.' },
 ];
 const DEFAULT_SCOUT_FILTERS = Object.freeze({
   recipe: '', conditions: [], asOf: '', brokerSessions: 7, brokerPreset: '7d', brokerFrom: '', brokerTo: '', consolidationSessions: 10,
@@ -217,12 +218,12 @@ function QualifiedRow({ row, recipeId, onInvestigate, onActors }) {
             <button type="button" className="ui-btn ui-btn--ghost" aria-label={`Open ${row.ticker} broker flow`} onClick={onActors}>Flow ↗</button>
             <button
               type="button"
-              className="ui-btn ui-btn--ghost"
+              className="ui-btn ui-btn--ghost radar-row__toggle"
               aria-expanded={expanded}
               aria-label={`${expanded ? 'Hide' : 'Show'} ${row.ticker} evidence`}
               onClick={() => setExpanded((value) => !value)}
             >
-              {expanded ? 'Hide' : 'Details'}
+              <span aria-hidden="true">{expanded ? '▴' : '▾'}</span>
             </button>
           </div>
         </td>
@@ -265,22 +266,16 @@ function ScoutQualifiedTable({ rows, recipeId, onInvestigate, onActors }) {
 }
 
 function ScoutProvenance({ data }) {
-  const observed = data.asOf.brokerSessions;
   return (
-    <div className="radar-run">
-      <strong>{data.recipe.label}</strong>
-      <span>Prices through {formatDate(data.asOf.priceDate)}</span>
-      {data.asOf.brokerFrom ? (
-        <span>
-          Broker flow {formatDate(data.asOf.brokerFrom)}–{formatDate(data.asOf.brokerTo)}
-          {` · ${observed} trading days`}
-        </span>
-      ) : (
-        <span>No broker window in this screen</span>
-      )}
+    <p className="radar-run">
       <span>{data.coverage.matched} matched</span>
       <span>Showing {data.coverage.returned}</span>
-    </div>
+      <span>{data.coverage.evaluated} scanned</span>
+      <span>Prices to {formatDate(data.asOf.priceDate)}</span>
+      {data.asOf.brokerFrom && (
+        <span>Broker {formatDate(data.asOf.brokerFrom)}–{formatDate(data.asOf.brokerTo)} · {data.asOf.brokerSessions} trading days</span>
+      )}
+    </p>
   );
 }
 
@@ -347,16 +342,16 @@ function NearMissRow({ row, onInvestigate, onActors }) {
         <td><MissedCondition detail={row.failedDetail} fallback={row.failedCondition} /></td>
         <td>
           <div className="radar-row__actions">
-            <button type="button" className="ui-btn ui-btn--ghost" aria-label={`Open ${row.ticker} analysis`} onClick={onInvestigate}>Open Analysis</button>
-            <button type="button" className="ui-btn ui-btn--ghost" aria-label={`Open ${row.ticker} broker flow`} onClick={onActors}>Broker Flow</button>
+            <button type="button" className="ui-btn ui-btn--ghost" aria-label={`Open ${row.ticker} analysis`} onClick={onInvestigate}>Analyze ↗</button>
+            <button type="button" className="ui-btn ui-btn--ghost" aria-label={`Open ${row.ticker} broker flow`} onClick={onActors}>Flow ↗</button>
             <button
               type="button"
-              className="ui-btn ui-btn--ghost"
+              className="ui-btn ui-btn--ghost radar-row__toggle"
               aria-expanded={expanded}
               aria-label={`${expanded ? 'Hide' : 'Show'} ${row.ticker} evidence`}
               onClick={() => setExpanded((value) => !value)}
             >
-              {expanded ? 'Hide' : 'Details'}
+              <span aria-hidden="true">{expanded ? '▴' : '▾'}</span>
             </button>
           </div>
         </td>
@@ -375,10 +370,7 @@ function ScoutNearMissSection({ rows, onInvestigate, onActors }) {
   return (
     <section className="scout-near-miss" aria-label="Almost matched stocks">
       <h3 className="scout-near-miss__title">Almost Matched</h3>
-      <p className="scout-near-miss__intro">
-        These stocks missed exactly one enabled condition. The margin is shown against the
-        threshold you set, so a narrow miss is a tuning decision and a wide one is a rejection.
-      </p>
+      <p className="scout-near-miss__intro">Missed exactly one condition. A small gap is worth a look; a big one is a real no.</p>
       <div className="ui-table-wrap">
         <table className="ui-table ui-table--near-miss" aria-label="Almost matched stocks">
           <thead>
@@ -517,35 +509,23 @@ function Scout({ onInvestigate, onActors }) {
   }, [state.data, resultQuery, sort]);
   return (
     <div className="scout-view">
-      <fieldset className="scout-strategies">
-        <legend>Start with a strategy</legend>
-        <div role="radiogroup" aria-label="Screening strategy">
-          {[...RECIPES, { id: '', label: 'Custom screen', description: 'Choose your own market conditions.', icon: '+' }].map((item) => (
-            <button key={item.id} type="button" role="radio" aria-checked={filters.recipe === item.id} disabled={catalog.loading || Boolean(catalog.error)} className={filters.recipe === item.id ? 'is-selected' : ''} onClick={() => selectRecipe(item.id)}>
-              <span className="scout-strategy-icon" aria-hidden="true">{item.icon}</span>
-              <span className="scout-strategy-copy"><strong>{item.label}</strong><span>{item.description}</span></span>
-              <span className="scout-strategy-check" aria-hidden="true">{filters.recipe === item.id ? '✓' : ''}</span>
-            </button>
-          ))}
-        </div>
-      </fieldset>
       <div className="scout-layout">
         <form className="scout-controls scout-layout__conditions" data-collapsed={!filtersOpen} onSubmit={run}>
-          <header className="scout-filter-heading"><div><span className="scout-eyebrow">Build your screen</span><h2>Conditions <span>{filters.conditions.length}</span></h2></div><div className="scout-filter-heading-actions"><button type="button" className="scout-text-button" disabled={!filters.conditions.length} onClick={() => { selectRecipe(''); }}>Clear all</button><button type="button" className="scout-mobile-toggle" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((value) => !value)}>{filtersOpen ? 'Hide filters' : 'Edit filters'}</button></div></header>
+          <label className="scout-strategy">Strategy<select value={filters.recipe} disabled={catalog.loading || Boolean(catalog.error)} onChange={(event) => selectRecipe(event.target.value)}>{RECIPES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select><small>{RECIPES.find((item) => item.id === filters.recipe)?.description}</small></label>
+          <header className="scout-filter-heading"><h2>Conditions <span>{filters.conditions.length}</span></h2><div className="scout-filter-heading-actions"><button type="button" className="scout-text-button" disabled={!filters.conditions.length} onClick={() => { selectRecipe(''); }}>Clear all</button><button type="button" className="scout-mobile-toggle" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((value) => !value)}>{filtersOpen ? 'Hide filters' : 'Edit filters'}</button></div></header>
           <div className="scout-active-filters" aria-label="Active conditions">
-            {!filters.conditions.length && <p className="scout-filter-hint">Add a condition below, or start with a strategy above.</p>}
+            {!filters.conditions.length && <p className="scout-filter-hint">Pick a strategy or add a condition.</p>}
             {filters.conditions.map((condition) => {
               const definition = catalog.conditions.find((item) => item.id === condition.id);
               if (!definition) return null;
               return <div className="scout-active-filter" key={condition.id}>
-                <div>{definition.type === 'boolean' ? <span className="scout-active-filter__label">{definition.label}</span> : <label htmlFor={`condition-${definition.id}`}>{definition.label}</label>}<button type="button" className="scout-remove" aria-label={`Remove ${definition.label}`} onClick={() => toggleCondition(definition, false)}>×</button></div>
-                {definition.type !== 'boolean' ? <ConditionInput definition={definition} condition={condition} onChange={(value) => updateCondition(definition.id, value)} /> : <span className="scout-condition-enabled">✓ Enabled</span>}
-                {definition.description && <span className="scout-condition-description">{definition.description}</span>}
+                <div title={definition.description}>{definition.type === 'boolean' ? <span className="scout-active-filter__label">{definition.label}</span> : <label htmlFor={`condition-${definition.id}`}>{definition.label}</label>}<button type="button" className="scout-remove" aria-label={`Remove ${definition.label}`} onClick={() => toggleCondition(definition, false)}>×</button></div>
+                {definition.type !== 'boolean' && <ConditionInput definition={definition} condition={condition} onChange={(value) => updateCondition(definition.id, value)} />}
               </div>;
             })}
           </div>
           <section className="scout-catalog" aria-label="Screener filters">
-            <button type="button" className="scout-add-button" aria-expanded={showCatalog} aria-controls="scout-catalog" onClick={() => setShowCatalog((value) => !value)}>{showCatalog ? '− Close filter library' : '+ Add conditions'}</button>
+            <button type="button" className="scout-add-button" aria-expanded={showCatalog} aria-controls="scout-catalog" onClick={() => setShowCatalog((value) => !value)}>{showCatalog ? 'Done' : '+ Add conditions'}</button>
             {catalog.loading && <Skeleton label="Loading condition catalog…" />}
             {catalog.error && <p className="scout-catalog-error" role="alert">Filters are unavailable. {catalog.error}</p>}
             {showCatalog && !catalog.loading && !catalog.error && <div id="scout-catalog">
@@ -583,19 +563,15 @@ function Scout({ onInvestigate, onActors }) {
         </form>
 
         <section className="scout-results" aria-label="Screening results" aria-busy={state.loading}>
-          <header className="scout-results-heading"><div><span className="scout-eyebrow">Your research queue</span><h2>Shortlist {state.data && <span>{state.data.coverage.matched}</span>}</h2></div><span className="scout-data-badge"><i /> End-of-day data</span></header>
+          <header className="scout-results-heading"><h2>Results</h2></header>
           {state.error && <ErrorState title="Screener unavailable" error={state.error} onRetry={run} />}
           {!state.data && state.loading && <Skeleton label="Screening the market…" />}
           {!state.data && !state.loading && !state.error && <div className="scout-welcome">
-            <div className="scout-empty-art" aria-hidden="true"><svg width="160" height="104" viewBox="0 0 160 104" fill="none"><rect x="18" y="8" width="124" height="88" rx="10" /><path d="M35 31h42M35 52h65M35 73h51" /><path className="scout-art-accent" d="m111 28 4 4 9-10m-13 27 4 4 9-10" /><circle cx="117" cy="74" r="5" /></svg></div>
-            <span className="scout-eyebrow">From the market to your shortlist</span>
-            <h3>Find stocks worth a closer look.</h3>
-            <p>Start with a strategy, fine-tune your conditions, and compare the stocks that match.</p>
-            <button type="button" className="ui-btn ui-btn--primary" disabled={catalog.loading || Boolean(catalog.error)} onClick={() => selectRecipe('quiet_accumulation')}>Try quiet accumulation <span aria-hidden="true">↗</span></button>
-            <div className="scout-welcome-steps"><div><span>01</span><strong>Define your universe</strong><p>Price and liquidity boundaries.</p></div><div><span>02</span><strong>Look for a setup</strong><p>Support, range and confirmation.</p></div><div><span>03</span><strong>Investigate the evidence</strong><p>Open charts and broker activity.</p></div></div>
+            <p>Pick a strategy or add conditions, then run the screener.</p>
+            <button type="button" className="ui-btn ui-btn--primary" disabled={catalog.loading || Boolean(catalog.error)} onClick={() => selectRecipe('quiet_accumulation')}>Try quiet accumulation</button>
           </div>}
           {state.data && <>
-            <div className="scout-result-status" role="status">{state.loading ? 'Updating results…' : dirty ? 'Conditions changed. Run the screener to update these results.' : `${state.data.coverage.returned} returned from ${state.data.coverage.evaluated} evaluated stocks.`}</div>
+            {(state.loading || dirty) && <div className="scout-result-status" role="status">{state.loading ? 'Updating results…' : 'Conditions changed. Run again to update.'}</div>}
             <ScoutProvenance data={state.data} />
             <div className="scout-results-tools"><label><span className="sr-only">Search returned stocks</span><input type="search" placeholder="Search ticker or company…" value={resultQuery} onChange={(event) => setResultQuery(event.target.value)} /></label><label>Sort by<select value={sort} onChange={(event) => setSort(event.target.value)}><option value="score">Highest score</option><option value="liquidity">Most liquid</option><option value="ticker">Ticker A–Z</option></select></label></div>
             {state.data.candidates.length === 0
@@ -628,7 +604,7 @@ export default function Radar() {
   return (
     <section className="radar-page screener-v2" aria-labelledby="radar-title">
       <header className="module-heading">
-        <div><span className="scout-eyebrow">Market discovery</span><h2 id="radar-title">A sharper view of the market.</h2><p>Turn price action and broker activity into a focused research list.</p></div><span className="scout-page-note">IDX equities <span> / </span> Screener</span>
+        <h2 id="radar-title">Screener</h2>
       </header>
       <Scout onInvestigate={openInvestigationTab} onActors={openBrokerFlowTab} />
     </section>

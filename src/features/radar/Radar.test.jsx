@@ -96,7 +96,9 @@ function renderRadar() {
 }
 
 async function selectQuietTemplate() {
-  fireEvent.click(await screen.findByRole('radio', { name: /Quiet accumulation/i }));
+  const strategy = await screen.findByRole('combobox', { name: /^Strategy/ });
+  await waitFor(() => expect(strategy).toBeEnabled());
+  fireEvent.change(strategy, { target: { value: 'quiet_accumulation' } });
 }
 
 describe('Radar', () => {
