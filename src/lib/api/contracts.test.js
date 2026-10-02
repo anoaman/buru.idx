@@ -246,6 +246,14 @@ describe('public Stock Analysis contracts', () => {
 });
 
 describe('Radar Scout contracts', () => {
+  it('passes through the ranking mode and derives it from the recipe for older APIs', () => {
+    const wrap = (data) => guardRadarScout({ success: true, data: { candidates: [], nearMisses: [], ...data } }).data.ranking;
+    expect(wrap({ ranking: 'structure' })).toBe('structure');
+    expect(wrap({ recipe: { id: 'dominant_broker' } })).toBe('broker');
+    expect(wrap({ recipe: { id: 'support_compression' } })).toBe('structure');
+    expect(wrap({ ranking: 'bogus', recipe: { id: 'quiet_accumulation' } })).toBe('blended');
+  });
+
   const scoutPrice = {
     lastPrice: 1000,
     priceDate: '2026-08-11',
@@ -268,6 +276,7 @@ describe('Radar Scout contracts', () => {
           score: 82.5,
           evidenceBand: 'high',
           scoreBreakdown: { broker: 40, support: 30, compression: 12.5, junk: 'x' },
+          conditionEvidence: [{ id: 'min_lead_ratio', observed: 2.4, expected: 2, passed: true }],
           failedCondition: null,
           price: scoutPrice,
           reasons: ['lead buyer near support'],
@@ -283,6 +292,7 @@ describe('Radar Scout contracts', () => {
       evidenceBand: 'high',
       failedCondition: null,
       scoreBreakdown: { broker: 40, support: 30, compression: 12.5, junk: null },
+      conditionEvidence: [{ id: 'min_lead_ratio', label: 'min_lead_ratio', actual: 2.4, target: 2, passed: true }],
     });
   });
 

@@ -465,8 +465,10 @@ function normalizeScoutCandidate(row) {
       : {},
     conditionEvidence: Array.isArray(row.conditionEvidence) ? row.conditionEvidence.filter((item) => item?.id).map((item) => ({
       id: String(item.id), label: item.label ? String(item.label) : String(item.id),
-      actual: typeof item.actual === 'boolean' || typeof item.actual === 'string' ? item.actual : preserveFiniteOrNull(item.actual),
-      target: typeof item.target === 'boolean' || typeof item.target === 'string' ? item.target : preserveFiniteOrNull(item.target),
+      actual: typeof (item.observed ?? item.actual) === 'boolean' || typeof (item.observed ?? item.actual) === 'string'
+        ? (item.observed ?? item.actual) : preserveFiniteOrNull(item.observed ?? item.actual),
+      target: typeof (item.expected ?? item.target) === 'boolean' || typeof (item.expected ?? item.target) === 'string'
+        ? (item.expected ?? item.target) : preserveFiniteOrNull(item.expected ?? item.target),
       passed: item.passed === true,
     })) : [],
     scoreBreakdown: row.scoreBreakdown && typeof row.scoreBreakdown === 'object'
@@ -502,17 +504,28 @@ function normalizeScoutCandidate(row) {
                 sellSessions: Number.isFinite(broker.lead.sellSessions) ? broker.lead.sellSessions : 0,
               }
             : null,
+          focus: broker.focus && broker.focus.code
+            ? {
+                code: String(broker.focus.code).toUpperCase(),
+                netValue: preserveFiniteOrNull(broker.focus.netValue),
+                buySessions: Number.isFinite(broker.focus.buySessions) ? broker.focus.buySessions : 0,
+                sellSessions: Number.isFinite(broker.focus.sellSessions) ? broker.focus.sellSessions : 0,
+              }
+            : null,
           second: broker.second?.code
             ? { code: String(broker.second.code).toUpperCase(), netValue: preserveFiniteOrNull(broker.second.netValue) }
             : null,
           leadToSecondRatio: preserveFiniteOrNull(broker.leadToSecondRatio),
           leadSharePct: preserveFiniteOrNull(broker.leadSharePct),
+          focusSharePct: preserveFiniteOrNull(broker.focusSharePct),
         }
       : null,
     reasons: normalizeStringList(row.reasons, 6),
     risks: normalizeStringList(row.risks, 6),
   };
 }
+
+const SCOUT_RANKINGS = new Set(['broker', 'structure', 'blended']);
 
 export function guardRadarScout(raw) {
   if (!raw || raw.success === false) {
@@ -534,6 +547,10 @@ export function guardRadarScout(raw) {
         label: recipe.label || 'Scout',
         description: recipe.description || null,
       },
+      // Older APIs only name the recipe; its weights map onto the same three modes.
+      ranking: SCOUT_RANKINGS.has(data.ranking) ? data.ranking
+        : recipe.id === 'dominant_broker' ? 'broker'
+          : recipe.id === 'support_compression' ? 'structure' : 'blended',
       options: data.options && typeof data.options === 'object' ? data.options : {},
       asOf: {
         priceDate: asOf.priceDate || null,
@@ -541,6 +558,7 @@ export function guardRadarScout(raw) {
         brokerTo: asOf.brokerTo || null,
         brokerSessions: Number.isFinite(asOf.brokerSessions) ? asOf.brokerSessions : 0,
         requestedBrokerSessions: Number.isFinite(asOf.requestedBrokerSessions) ? asOf.requestedBrokerSessions : null,
+        brokerCalendarPreset: asOf.brokerCalendarPreset || null,
       },
       coverage: {
         evaluated: Number.isFinite(coverage.evaluated) ? coverage.evaluated : 0,
@@ -548,6 +566,7 @@ export function guardRadarScout(raw) {
         returned: Number.isFinite(coverage.returned) ? coverage.returned : 0,
         nearMisses: Number.isFinite(coverage.nearMisses) ? coverage.nearMisses : 0,
         insufficientHistorySkipped: Number.isFinite(coverage.insufficientHistorySkipped) ? coverage.insufficientHistorySkipped : 0,
+        unavailableEvidenceSkipped: Number.isFinite(coverage.unavailableEvidenceSkipped) ? coverage.unavailableEvidenceSkipped : 0,
       },
       candidates: Array.isArray(data.candidates)
         ? data.candidates.map(normalizeScoutCandidate).filter(Boolean)
