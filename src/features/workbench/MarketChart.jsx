@@ -155,8 +155,11 @@ export default function MarketChart({ chart, plan, buyerCost, ticker }) {
     }
     if (plan?.alt) addLevel('plan', plan.alt.trigger, 'trigger', 'Breakout', { width: 1, style: 2 });
     if (buyerCost?.avg) addLevel('cost', buyerCost.avg, 'cost', `${buyerCost.code} cost`, { width: 2, style: 1 });
+    // A support or resistance that is also a plan level is drawn once, as the plan level.
+    const planPrices = new Set(priceLines.filter((item) => item.group === 'plan').map((item) => item.price));
     const updateLevels = () => priceLines.forEach(({ group, price, colorKey, line }) => {
-      const visible = shown[group] && isPriceInCandleWindow(price, currentScale);
+      const duplicate = (group === 'support' || group === 'resistance') && shown.plan && planPrices.has(price);
+      const visible = shown[group] && !duplicate && isPriceInCandleWindow(price, currentScale);
       line?.applyOptions({ color: colors[colorKey], lineVisible: visible, axisLabelVisible: visible });
     });
     const chooseRange = (value) => {

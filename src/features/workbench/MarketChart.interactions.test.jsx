@@ -151,6 +151,17 @@ describe('chart interaction continuity', () => {
     expect(JSON.parse(localStorage.getItem('nalar.chart.overlays'))).toEqual(expect.objectContaining({ support: true, resistance: false }));
   });
 
+  it('draws a level shared by the plan and a resistance only once', () => {
+    mount({ chart: { ...chart, levels: { supports: [], resistances: [{ price: 200 }] } }, plan: { available: true, stop: 150, target: 200, alt: null } });
+    const lines = series[4].createPriceLine.mock.results.map((result, index) => ({ args: series[4].createPriceLine.mock.calls[index][0], line: result.value }));
+    const resistance = lines.find((item) => item.args.title === 'R');
+    const target = lines.find((item) => item.args.title === 'Target');
+    expect(resistance.line.applyOptions).toHaveBeenLastCalledWith(expect.objectContaining({ lineVisible: false }));
+    expect(target.line.applyOptions).toHaveBeenLastCalledWith(expect.objectContaining({ lineVisible: true }));
+    fireEvent.click(screen.getByRole('button', { name: 'Plan' }));
+    expect(resistance.line.applyOptions).toHaveBeenLastCalledWith(expect.objectContaining({ lineVisible: true }));
+  });
+
   it('draws daily foreign net when the history carries it', () => {
     const withForeign = { ...chart, candles: chart.candles.map((row, index) => ({ ...row, foreignNet: index % 2 ? 5e8 : -2e8 })) };
     mount({ chart: withForeign });
