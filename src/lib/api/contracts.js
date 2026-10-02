@@ -84,6 +84,7 @@ export function guardAnalyze(raw) {
       low: Number(c.low) || 0,
       close: Number(c.close) || 0,
       volume: Number(c.volume) || 0,
+      foreignNet: Number.isFinite(c.foreignNet) ? c.foreignNet : null,
     })) : [],
     movingAverages: chart.movingAverages || {},
     levels: {
@@ -135,6 +136,73 @@ export function guardAnalyze(raw) {
       chart: normalizedChart,
       broker,
       setupGeometry: normalizeSetupGeometry(data),
+      read: normalizeRead(data.read),
+    },
+  };
+}
+
+const finiteOrNull = (value) => (Number.isFinite(value) ? value : null);
+const CHECK_STATUSES = new Set(['ok', 'warn', 'bad']);
+
+function normalizeBrokerWindow(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const row = (item) => ({
+    code: String(item.code).toUpperCase(),
+    type: item.type === 'F' ? 'F' : 'D',
+    net: finiteOrNull(item.net),
+    avg: finiteOrNull(item.avg),
+    days: Number.isFinite(item.days) ? item.days : 0,
+    of: Number.isFinite(item.of) ? item.of : 0,
+  });
+  const rows = (list) => (Array.isArray(list) ? list.filter((item) => item?.code).slice(0, 6).map(row) : []);
+  return {
+    sessions: Number.isFinite(raw.sessions) ? raw.sessions : 0,
+    from: raw.from || null,
+    to: raw.to || null,
+    buyers: rows(raw.buyers),
+    sellers: rows(raw.sellers),
+  };
+}
+
+function normalizePlanLevels(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  return {
+    trigger: finiteOrNull(raw.trigger),
+    stop: finiteOrNull(raw.stop),
+    target: finiteOrNull(raw.target),
+    text: typeof raw.text === 'string' ? raw.text : '',
+  };
+}
+
+/** The Stock Analysis decision layer; null when the API predates it or sends junk. */
+export function normalizeRead(raw) {
+  if (!raw || typeof raw !== 'object' || !raw.setup?.label) return null;
+  const plan = raw.plan && typeof raw.plan === 'object' ? raw.plan : {};
+  return {
+    setup: { id: String(raw.setup.id || 'none'), label: String(raw.setup.label), why: raw.setup.why || '' },
+    summary: typeof raw.summary === 'string' ? raw.summary : '',
+    plan: {
+      available: plan.available === true,
+      reason: plan.reason || null,
+      entryLow: finiteOrNull(plan.entryLow),
+      entryHigh: finiteOrNull(plan.entryHigh),
+      stop: finiteOrNull(plan.stop),
+      target: finiteOrNull(plan.target),
+      netRR: finiteOrNull(plan.netRR),
+      warning: plan.warning || null,
+      invalidIf: plan.invalidIf || null,
+      alt: normalizePlanLevels(plan.alt),
+    },
+    checks: Array.isArray(raw.checks)
+      ? raw.checks.filter((item) => item?.label && CHECK_STATUSES.has(item.status)).map((item) => ({ status: item.status, label: String(item.label), detail: String(item.detail || '') }))
+      : [],
+    changes: Array.isArray(raw.changes) ? raw.changes.filter((item) => typeof item === 'string').slice(0, 2) : [],
+    leadBuyer: raw.leadBuyer?.code ? { code: String(raw.leadBuyer.code), avg: finiteOrNull(raw.leadBuyer.avg), days: raw.leadBuyer.days ?? 0, of: raw.leadBuyer.of ?? 0 } : null,
+    limits: raw.limits && Number.isFinite(raw.limits.ara) && Number.isFinite(raw.limits.arb) ? { ara: raw.limits.ara, arb: raw.limits.arb } : null,
+    brokers: {
+      today: normalizeBrokerWindow(raw.brokers?.today),
+      d5: normalizeBrokerWindow(raw.brokers?.d5),
+      m1: normalizeBrokerWindow(raw.brokers?.m1),
     },
   };
 }

@@ -2,203 +2,40 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { analyzeTicker } from '../../lib/api/client.js';
 import { guardAnalyze } from '../../lib/api/contracts.js';
-import {
-  formatIDR, formatNumber, formatPrice, formatPct, formatVolume,
-} from '../../lib/format/market.js';
+import { formatIDR, formatPrice, formatPct, formatVolume } from '../../lib/format/market.js';
 import EmptyState from '../../components/EmptyState.jsx';
 import ErrorState from '../../components/ErrorState.jsx';
-import InfoTip from '../../components/InfoTip.jsx';
 import Skeleton from '../../components/Skeleton.jsx';
 import MarketChart from './MarketChart.jsx';
 import TechnicalEvidence from './TechnicalEvidence.jsx';
-import BrokerEvidence from './BrokerEvidence.jsx';
-import InvestigationBrief from './InvestigationBrief.jsx';
-import EvidenceDebate from './EvidenceDebate.jsx';
 import RiskSimulator from './RiskSimulator.jsx';
 import DetailDrawer from './DetailDrawer.jsx';
-import LevelsPanel from './LevelsPanel.jsx';
+import { BrokerWindows, Checks, ReadCard } from './StockRead.jsx';
+import './StockAnalysis.css';
 
-function TickerHeader({ ticker, priceHistory }) {
+const MORE_TABS = [
+  { id: 'indicators', label: 'Indicators' },
+  { id: 'risk', label: 'Risk calculator' },
+];
+
+function TickerHeader({ ticker, read, asOf }) {
   if (!ticker) return null;
-  const changeColor = ticker.changePct > 0 ? 'text-positive' : ticker.changePct < 0 ? 'text-negative' : 'text-secondary';
+  const tone = (value) => (value > 0 ? 'is-positive' : value < 0 ? 'is-negative' : '');
+  const flags = [...(ticker.notations || []), ...(ticker.uma ? ['UMA'] : [])];
   return (
-    <div className="wb-header">
-      <div className="wb-header__main">
-        <h2 className="wb-header__symbol">{ticker.symbol}</h2>
-        <span className="wb-header__name text-secondary">{ticker.name}</span>
-      </div>
-      <div className="wb-header__price">
-        <span className="wb-header__close tabular">{formatPrice(ticker.close)}</span>
-        <span className={`wb-header__change tabular ${changeColor}`}>
-          {formatPct(ticker.changePct)} · {formatPrice(ticker.change)}
-        </span>
-      </div>
-      <div className="wb-header__meta">
-        {ticker.tier && (
-          <span className={`badge ${ticker.tier === 'liquid' ? 'badge-positive' : ticker.tier === 'mid' ? 'badge-warning' : 'badge-neutral'}`}>
-            {ticker.tier}
-          </span>
-        )}
-      </div>
-      <div className="wb-overview-grid wb-header__key-metrics" aria-label="Session overview">
-        <div><span>Traded value</span><strong>{formatIDR(ticker.value)}</strong></div>
-        <div><span>Volume</span><strong>{formatVolume(ticker.volume)} · {ticker.volumeVsBaseline?.ratio?.toFixed(2) || '—'}x base</strong></div>
-        <div><span>Foreign net</span><strong className={ticker.fnet > 0 ? 'text-positive' : ticker.fnet < 0 ? 'text-negative' : ''}>{formatIDR(ticker.fnet)}</strong></div>
-        <div><span>RSI14 / ATR14</span><strong>{priceHistory?.rsi14?.toFixed(1) || '—'} / {formatPct(priceHistory?.atr14Pct)}</strong></div>
-      </div>
-      <details className="wb-session-details">
-        <summary>Session details <span>OHLC, VWAP & returns</span></summary>
-        <div className="wb-overview-grid">
-          <div><span>Open / High / Low</span><strong>{formatPrice(ticker.open)} / {formatPrice(ticker.high)} / {formatPrice(ticker.low)}</strong></div>
-          <div><span>VWAP</span><strong>{formatPrice(ticker.vwap)}</strong></div>
-          <div><span>Frequency</span><strong>{formatNumber(ticker.frequency)}</strong></div>
-          <div><span>Returns 5 / 20 / 60</span><strong>{formatPct(priceHistory?.ret5d)} / {formatPct(priceHistory?.ret20d)} / {formatPct(priceHistory?.ret60d)}</strong></div>
-        </div>
-      </details>
-      {(ticker.notations?.length > 0 || ticker.uma) && <div className="wb-overview-flags text-warning">{[...(ticker.notations || []), ...(ticker.uma ? ['UMA'] : [])].join(' · ')}</div>}
-    </div>
-  );
-}
-
-/**
- * The verdict and its counter-evidence, side by side, above the fold.
- *
- * This all used to live inside a collapsed <details> labelled "Methodology &
- * data quality", two clicks from the surface, so the screen opened on a price
- * header and a chart and said nothing about what it thought. The grade is the
- * reason this page exists; it belongs where it can be read.
- *
- * Contradictions sit in the same block deliberately. The product's claim is
- * evidence over verdict, and a grade shown alone, with its disagreements folded
- * away somewhere else, quietly makes the opposite claim.
- */
-function VerdictPanel({ grade, stance, scorecard, investigation, dataQuality }) {
-  const warnings = dataQuality?.warnings || [];
-  const factors = scorecard?.factors || [];
-  const contradictions = investigation?.contradictions || [];
-  const tally = factors.reduce((acc, factor) => {
-    if (factor.signal > 0) acc.positive += 1;
-    else if (factor.signal < 0) acc.negative += 1;
-    else acc.neutral += 1;
-    return acc;
-  }, { positive: 0, negative: 0, neutral: 0 });
-
-  return (
-    <section className="wb-verdict" aria-label="Verdict and counter-evidence">
-      <div className="wb-verdict__head">
-        <div className="wb-verdict__grade" data-grade={grade?.grade || 'none'}>
-          <span>
-            Grade
-            <InfoTip title="Grade">Weighted broker-flow, momentum, structure and risk score. A ≥82%, B ≥68%, C ≥54%, D ≥40%.</InfoTip>
-          </span>
-          <strong>{grade?.grade || '—'}</strong>
-          <small>not a win probability</small>
-        </div>
-        <dl className="wb-verdict__reads">
-          <div>
-            <dt>Regime <InfoTip title="Regime">Trending when MA separation, returns and distance from MA20 produce strength ≥7; otherwise rangebound.</InfoTip></dt>
-            <dd>{grade?.regime || 'Unknown'}</dd>
-          </div>
-          <div>
-            <dt>Pattern <InfoTip title="Pattern">Uses the 60-day range, returns, volume trend, and moving-average alignment.</InfoTip></dt>
-            <dd>{grade?.structurePhase || 'Unknown'}</dd>
-          </div>
-          <div>
-            <dt>Bias <InfoTip title="Bias">Summarizes whether the current setup leans constructive, defensive, or neutral.</InfoTip></dt>
-            <dd>{stance?.stance ? stance.stance.replace('_', ' ').toLowerCase() : 'neutral'}</dd>
-          </div>
-          <div>
-            <dt>Scorecard <InfoTip title="Scorecard">Eight deterministic factors counted as positive, negative or neutral. It is not a win probability.</InfoTip></dt>
-            <dd className="wb-verdict__tally">
-              <span className="text-positive">{tally.positive} for</span>
-              <span className="text-negative">{tally.negative} against</span>
-              <span className="text-secondary">{tally.neutral} neutral</span>
-            </dd>
-          </div>
-        </dl>
-      </div>
-
-      {factors.length > 0 && (
-        <details className="wb-verdict__factor-details">
-          <summary>Factor breakdown <span>{factors.length} signals</span></summary>
-          <ul className="wb-verdict__factors">
-          {factors.map((factor) => (
-            <li
-              key={factor.factor}
-              className={factor.signal > 0 ? 'is-positive' : factor.signal < 0 ? 'is-negative' : 'is-neutral'}
-              title={factor.reason}
-            >
-              <strong>{factor.factor}</strong>
-              <span>{factor.signal > 0 ? 'For' : factor.signal < 0 ? 'Against' : 'Neutral'}</span>
-            </li>
-          ))}
-          </ul>
-        </details>
-      )}
-
-      <div className="wb-verdict__counter">
-        <h3>Contradictions</h3>
-        {contradictions.length === 0 ? (
-          <p className="text-secondary">No factor disagreed with another on this reading.</p>
-        ) : (
-          <ul>
-            {contradictions.map((item) => (
-              <li key={item.code || item.title}>
-                <strong>{item.title || item.code}</strong>
-                <span className="text-secondary">{(item.evidence || []).join(' · ') || item.detail || ''}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      {warnings.length > 0 && (
-        <div className="wb-verdict__warnings">
-          {warnings.map((warning) => <p key={warning} className="text-warning">⚠ {warning}</p>)}
-        </div>
-      )}
-    </section>
-  );
-}
-
-function MethodologyDetail({ grade, scorecard }) {
-  const factors = scorecard?.factors || [];
-  return (
-    <section className="wb-method">
-      <div className="wb-method__lenses">
-        {Object.values(grade?.lenses || {}).map((lens) => (
-          <div key={lens.name}>
-            <strong>{lens.name}</strong>
-            <span>{Math.round((lens.score || 0) * 100)} score · {Math.round((lens.weight || 0) * 100)}% weight</span>
-            <small>{(lens.topReasons || []).join(' · ')}</small>
-          </div>
-        ))}
-      </div>
-      <h4>Factor reasoning</h4>
-      <div className="wb-method__factors">
-        {factors.map((factor) => (
-          <div key={factor.factor}>
-            <span>{factor.factor}</span>
-            <strong className={factor.signal > 0 ? 'text-positive' : factor.signal < 0 ? 'text-negative' : 'text-secondary'}>
-              {factor.signal > 0 ? 'Positive' : factor.signal < 0 ? 'Negative' : 'Neutral'}
-            </strong>
-            <small>{factor.reason}</small>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-// Contradictions moved up into VerdictPanel, where they sit against the grade
-// they argue with. Repeating them here would only make the same disagreement
-// look like two separate ones.
-function WhatChangedPanel({ data }) {
-  return (
-    <div className="wb-changed-panel">
-      <InvestigationBrief investigation={data?.investigation} />
-      <EvidenceDebate debate={data?.debate} stance={data?.stance} />
-    </div>
+    <header className="sa-header">
+      <h2>{ticker.symbol}</h2>
+      <span className="sa-header__name">{ticker.name}</span>
+      <span className="sa-header__price">{formatPrice(ticker.close)}<small className={tone(ticker.changePct)}>{formatPct(ticker.changePct)}</small></span>
+      <span className="sa-stat">Value <b>{formatIDR(ticker.value, true)}</b></span>
+      <span className="sa-stat">Volume <b>{Number.isFinite(ticker.volumeVsBaseline?.ratio) ? `${ticker.volumeVsBaseline.ratio.toFixed(1)}× avg` : formatVolume(ticker.volume)}</b></span>
+      <span className="sa-stat">Foreign <b className={tone(ticker.fnet)}>{formatIDR(ticker.fnet, true)}</b></span>
+      <span className="sa-tags">
+        {flags.map((flag) => <span key={flag} className="sa-tag is-warning">{flag}</span>)}
+        {read?.limits && <span className="sa-tag" title="Next session auto-reject prices">ARA {formatPrice(read.limits.ara)} · ARB {formatPrice(read.limits.arb)}</span>}
+        {asOf && <span className="sa-tag">{new Date(`${asOf}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>}
+      </span>
+    </header>
   );
 }
 
@@ -269,21 +106,12 @@ export default function Workbench() {
   const warmLoading = loading && hasDisplayed && analyzing && analyzing !== displayed.ticker;
   const coldLoading = loading && !hasDisplayed;
 
-  const renderDrawer = (active) => {
+  const renderMore = (active) => {
     const data = displayed.data;
     if (!data) return null;
-    switch (active) {
-      case 'setup':
-        return <><LevelsPanel data={data} /><WhatChangedPanel data={data} /></>;
-      case 'indicators':
-        return <TechnicalEvidence priceHistory={data.priceHistory} ticker={data.ticker} />;
-      case 'broker':
-        return <BrokerEvidence broker={data.broker} />;
-      case 'risk':
-        return <RiskSimulator ticker={data.ticker} geometry={data.setupGeometry || data.riskGeometry} />;
-      default:
-        return null;
-    }
+    if (active === 'indicators') return <TechnicalEvidence priceHistory={data.priceHistory} ticker={data.ticker} />;
+    if (active === 'risk') return <RiskSimulator ticker={data.ticker} geometry={data.setupGeometry || data.riskGeometry} />;
+    return null;
   };
 
   return (
@@ -306,31 +134,34 @@ export default function Workbench() {
               <span className="wb-analysis-frame__chip">Loading {analyzing}…</span>
             </div>
           )}
-          <div className="wb-result" data-displayed-ticker={displayed.ticker}>
-            <TickerHeader ticker={displayed.data.ticker} priceHistory={displayed.data.priceHistory} />
-            <VerdictPanel
-              grade={displayed.data.grade}
-              stance={displayed.data.stance}
-              scorecard={displayed.data.scorecard}
-              investigation={displayed.data.investigation}
-              dataQuality={displayed.data.dataQuality}
-            />
+          <div className="wb-result sa-page" data-displayed-ticker={displayed.ticker}>
+            <TickerHeader ticker={displayed.data.ticker} read={displayed.data.read} asOf={displayed.data.chart?.source?.lastDate} />
+            {displayed.data.read
+              ? <ReadCard read={displayed.data.read} />
+              : <p className="sa-muted">The read for this stock is unavailable right now; the chart and indicators below still apply.</p>}
             <div className="wb-chart-panel">
               <MarketChart
                 chart={displayed.data.chart}
-                geometry={displayed.data.setupGeometry || displayed.data.riskGeometry}
+                plan={displayed.data.read?.plan}
+                buyerCost={displayed.data.read?.leadBuyer}
                 ticker={displayed.data.ticker}
               />
             </div>
-            <DetailDrawer
-              key={displayed.ticker || 'empty'}
-              storageKey={displayed.ticker ? `nalar-drawer:${displayed.ticker}` : null}
-            >
-              {renderDrawer}
-            </DetailDrawer>
-            <details className="wb-methodology">
-              <summary>How this score was calculated</summary>
-              <MethodologyDetail grade={displayed.data.grade} scorecard={displayed.data.scorecard} />
+            {displayed.data.read && (
+              <div className="sa-row">
+                <BrokerWindows key={displayed.ticker} brokers={displayed.data.read.brokers} symbol={displayed.data.ticker?.symbol} />
+                <Checks checks={displayed.data.read.checks} />
+              </div>
+            )}
+            <details className="sa-more">
+              <summary>More: indicators and risk calculator</summary>
+              <DetailDrawer
+                key={displayed.ticker || 'empty'}
+                tabs={MORE_TABS}
+                storageKey={displayed.ticker ? `nalar-more:${displayed.ticker}` : null}
+              >
+                {renderMore}
+              </DetailDrawer>
             </details>
           </div>
         </div>

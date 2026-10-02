@@ -25,6 +25,7 @@
   --chart-resistance: #5d6a73;
   --chart-target: #18784a;
   --chart-stop: #a96808;
+  --chart-cost: #7c3aed;
   --chart-chrome-bg: #fffefa;
   --chart-chrome-border: rgba(31, 38, 43, 0.14);
   --chart-chrome-text: #4f575d;
@@ -138,6 +139,7 @@
   --chart-resistance: #77828a;
   --chart-target: #3fae6f;
   --chart-stop: #d99a34;
+  --chart-cost: #c084fc;
   --chart-chrome-bg: #14181c;
   --chart-chrome-border: rgba(255, 255, 255, 0.09);
   --chart-chrome-text: #e4e7ea;

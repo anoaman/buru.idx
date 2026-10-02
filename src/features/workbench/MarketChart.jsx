@@ -8,6 +8,27 @@ export { computeCandleOnlyScale, isPriceInCandleWindow } from './chartScale.js';
 const DEFAULT_CHART_HEIGHT = 480;
 const MA_KEYS = ['ma5', 'ma10', 'ma20', 'ma50', 'ma200'];
 const RANGES = [[20, '20D'], [60, '60D'], [120, '120D'], ['all', 'All']];
+// Each toggle owns one kind of line, so support and resistance switch separately.
+export const OVERLAYS = [
+  { key: 'support', label: 'Support', on: true },
+  { key: 'resistance', label: 'Resistance', on: true },
+  { key: 'plan', label: 'Plan', on: true },
+  { key: 'cost', label: 'Buyer cost', on: true },
+  { key: 'ma', label: 'MA', on: false },
+  { key: 'volume', label: 'Volume', on: true },
+  { key: 'foreign', label: 'Foreign', on: false },
+];
+const OVERLAY_STORAGE_KEY = 'nalar.chart.overlays';
+
+function readOverlays() {
+  const defaults = Object.fromEntries(OVERLAYS.map((item) => [item.key, item.on]));
+  try {
+    const saved = JSON.parse(localStorage.getItem(OVERLAY_STORAGE_KEY) || '{}');
+    return Object.fromEntries(OVERLAYS.map(({ key }) => [key, typeof saved[key] === 'boolean' ? saved[key] : defaults[key]]));
+  } catch {
+    return defaults;
+  }
+}
 
 function readChartTheme(element) {
   const styles = getComputedStyle(element || document.documentElement);
@@ -26,20 +47,22 @@ function readChartTheme(element) {
     resistance: token('--chart-resistance', '#77828a'),
     target: token('--chart-target', '#3fae6f'),
     entry: token('--color-accent', '#a8c93a'),
-    stop: token('--chart-stop', '#d99a34'),
+    stop: token('--chart-down', '#d9564d'),
+    trigger: token('--color-accent', '#a8c93a'),
+    cost: token('--chart-cost', '#c084fc'),
+    foreignBuy: token('--chart-volume-up', 'rgba(52,211,153,.3)'),
+    foreignSell: token('--chart-volume-down', 'rgba(248,113,113,.3)'),
     ma: Object.fromEntries(MA_KEYS.map((key) => [key, token('--chart-ma-' + key.slice(2), '#98a0a8')])),
   };
 }
 
-export default function MarketChart({ chart, geometry, ticker }) {
+export default function MarketChart({ chart, plan, buyerCost, ticker }) {
   const containerRef = useRef(null);
   const sectionRef = useRef(null);
   const controlsRef = useRef(null);
   const [fullscreen, setFullscreen] = useState(false);
   const [fullscreenError, setFullscreenError] = useState('');
-  const [showMovingAverages, setShowMovingAverages] = useState(false);
-  const [enabledMAs, setEnabledMAs] = useState(MA_KEYS);
-  const [showLevels, setShowLevels] = useState(true);
+  const [overlays, setOverlays] = useState(readOverlays);
   const [range, setRange] = useState(60);
   const [customRange, setCustomRange] = useState(false);
   const [inspectedIndex, setInspectedIndex] = useState(null);
@@ -52,7 +75,7 @@ export default function MarketChart({ chart, geometry, ticker }) {
     const data = chart.candles;
     let colors = readChartTheme(sectionRef.current);
     let currentScale = computeCandleOnlyScale(data);
-    let levelsVisible = true;
+    let shown = readOverlays();
     let choosingRange = false;
     setRange(60);
     setCustomRange(false);
@@ -78,7 +101,19 @@ export default function MarketChart({ chart, geometry, ticker }) {
     });
     candles.setData(data.map((row) => ({ time: row.date, open: row.open, high: row.high, low: row.low, close: row.close })));
     const volume = instance.addSeries(HistogramSeries, { priceFormat: { type: 'volume' }, priceScaleId: 'volume', lastValueVisible: false, priceLineVisible: false });
-    instance.priceScale('volume').applyOptions({ scaleMargins: { top: .84, bottom: 0 } });
+    const foreign = instance.addSeries(HistogramSeries, { priceScaleId: 'foreign', lastValueVisible: false, priceLineVisible: false, visible: false });
+    const hasForeign = data.some((row) => Number.isFinite(row.foreignNet));
+    const updateForeignColors = () => foreign.setData(data.filter((row) => Number.isFinite(row.foreignNet)).map((row) => ({
+      time: row.date, value: row.foreignNet, color: row.foreignNet >= 0 ? colors.foreignBuy : colors.foreignSell,
+    })));
+    updateForeignColors();
+    // Volume and foreign share the bottom of the pane; when both show, foreign sits just above volume.
+    const layoutBands = () => {
+      instance.priceScale('volume').applyOptions({ scaleMargins: { top: .84, bottom: 0 } });
+      instance.priceScale('foreign').applyOptions({ scaleMargins: shown.volume ? { top: .7, bottom: .17 } : { top: .84, bottom: 0 } });
+      volume.applyOptions({ visible: shown.volume });
+      foreign.applyOptions({ visible: shown.foreign && hasForeign });
+    };
     const updateVolumeColors = () => volume.setData(data.map((row) => ({
       time: row.date, value: row.volume,
       color: row.close >= row.open ? colors.volumeUp : colors.volumeDown,
@@ -106,25 +141,22 @@ export default function MarketChart({ chart, geometry, ticker }) {
     });
     overlays.setData(data.map((row) => ({ time: row.date, value: row.close })));
     const priceLines = [];
-    const addLevel = (price, colorKey, title, lineWidth = 1) => {
+    // lineStyle: 0 solid, 1 dotted, 2 dashed.
+    const addLevel = (group, price, colorKey, title, { width = 1, style = 2 } = {}) => {
       if (!Number.isFinite(price)) return;
-      const visible = isPriceInCandleWindow(price, currentScale);
-      const line = overlays.createPriceLine({
-        price, color: colors[colorKey], title, lineWidth,
-        lineStyle: lineWidth === 2 ? 0 : 2, lineVisible: visible, axisLabelVisible: visible,
-      });
-      priceLines.push({ price, colorKey, line });
+      const line = overlays.createPriceLine({ price, color: colors[colorKey], title, lineWidth: width, lineStyle: style, lineVisible: false, axisLabelVisible: false });
+      priceLines.push({ group, price, colorKey, line });
     };
-    (chart.levels?.supports || []).slice(0, 3).forEach((level) => addLevel(level.price, 'support', 'Support'));
-    (chart.levels?.resistances || []).slice(0, 3).forEach((level) => addLevel(level.price, 'resistance', 'Resistance'));
-    if (!(chart.levels?.resistances || []).length && ticker?.high > ticker?.close) {
-      addLevel(ticker.high, 'stop', 'Day high · unconfirmed');
+    (chart.levels?.supports || []).slice(0, 3).forEach((level) => addLevel('support', level.price, 'support', 'S'));
+    (chart.levels?.resistances || []).slice(0, 3).forEach((level) => addLevel('resistance', level.price, 'resistance', 'R'));
+    if (plan?.available) {
+      addLevel('plan', plan.stop, 'stop', 'Stop', { width: 2, style: 0 });
+      addLevel('plan', plan.target, 'target', 'Target', { width: 2, style: 0 });
     }
-    addLevel(geometry?.bestSetup?.entry, 'entry', 'Confirmation entry', 2);
-    addLevel(geometry?.bestSetup?.stop ?? geometry?.invalidation, 'stop', 'Setup fails below', 2);
-    addLevel(geometry?.bestSetup?.target ?? geometry?.target, 'target', 'Target', 2);
-    const updateLevels = () => priceLines.forEach(({ price, colorKey, line }) => {
-      const visible = levelsVisible && isPriceInCandleWindow(price, currentScale);
+    if (plan?.alt) addLevel('plan', plan.alt.trigger, 'trigger', 'Breakout', { width: 1, style: 2 });
+    if (buyerCost?.avg) addLevel('cost', buyerCost.avg, 'cost', `${buyerCost.code} cost`, { width: 2, style: 1 });
+    const updateLevels = () => priceLines.forEach(({ group, price, colorKey, line }) => {
+      const visible = shown[group] && isPriceInCandleWindow(price, currentScale);
       line?.applyOptions({ color: colors[colorKey], lineVisible: visible, axisLabelVisible: visible });
     });
     const chooseRange = (value) => {
@@ -172,14 +204,19 @@ export default function MarketChart({ chart, geometry, ticker }) {
       });
       candles.applyOptions({ upColor: colors.up, downColor: colors.down, borderUpColor: colors.up, borderDownColor: colors.down, wickUpColor: colors.up, wickDownColor: colors.down });
       updateVolumeColors();
+      updateForeignColors();
       averages.forEach((line, key) => line.applyOptions({ color: colors.ma[key] }));
       updateLevels();
     });
     themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     controlsRef.current = {
       chooseRange,
-      setAverages: (show, enabled) => averages.forEach((line, key) => line.applyOptions({ visible: show && enabled.includes(key) })),
-      setLevels: (show) => { levelsVisible = show; updateLevels(); },
+      setOverlays: (next) => {
+        shown = next;
+        averages.forEach((line) => line.applyOptions({ visible: next.ma }));
+        layoutBands();
+        updateLevels();
+      },
       inspect: (index) => {
         const row = data[index];
         if (row) instance.setCrosshairPosition(row.close, row.date, candles);
@@ -193,12 +230,12 @@ export default function MarketChart({ chart, geometry, ticker }) {
       controlsRef.current = null;
       instance.remove();
     };
-  }, [chart, geometry, ticker]);
+  }, [chart, plan, buyerCost, ticker]);
 
   useEffect(() => {
-    controlsRef.current?.setAverages(showMovingAverages, enabledMAs);
-    controlsRef.current?.setLevels(showLevels);
-  }, [chart, geometry, ticker, showMovingAverages, enabledMAs, showLevels]);
+    controlsRef.current?.setOverlays(overlays);
+    try { localStorage.setItem(OVERLAY_STORAGE_KEY, JSON.stringify(overlays)); } catch { /* storage blocked */ }
+  }, [chart, plan, buyerCost, ticker, overlays]);
 
   useEffect(() => {
     const sync = () => setFullscreen(document.fullscreenElement === sectionRef.current);
@@ -224,9 +261,11 @@ export default function MarketChart({ chart, geometry, ticker }) {
 
   if (!rows.length) return <div className="wb-market-chart wb-market-chart--empty">Chart history unavailable.</div>;
   const candle = rows[inspectedIndex ?? rows.length - 1] || rows[rows.length - 1];
-  const best = geometry?.bestSetup;
-  const target = best?.target ?? geometry?.target;
-  const ratio = best?.netRR ?? best?.rr;
+  const available = {
+    cost: Boolean(buyerCost?.avg),
+    plan: Boolean(plan?.available || plan?.alt),
+    foreign: rows.some((row) => Number.isFinite(row.foreignNet)),
+  };
 
   return (
     <section className="wb-market-chart" ref={sectionRef} aria-label="Price and volume chart">
@@ -244,17 +283,19 @@ export default function MarketChart({ chart, geometry, ticker }) {
           <span>{customRange ? 'Custom view' : Math.min(range === 'all' ? rows.length : range, rows.length) + ' sessions'}</span>
         </div>
         <div className="wb-chart-overlays" role="group" aria-label="Chart overlays">
-          <button type="button" aria-pressed={showLevels} onClick={() => setShowLevels((value) => !value)}>Levels</button>
-          <button type="button" aria-pressed={showMovingAverages} onClick={() => setShowMovingAverages((value) => !value)}>{showMovingAverages ? 'Hide MA lines' : 'Show MA lines'}</button>
+          {OVERLAYS.map(({ key, label }) => (
+            <button
+              type="button" key={key} className={`wb-overlay wb-overlay--${key}`}
+              aria-pressed={Boolean(overlays[key] && available[key] !== false)}
+              disabled={available[key] === false}
+              title={available[key] === false ? `${label} unavailable for this stock` : `Toggle ${label.toLowerCase()}`}
+              onClick={() => setOverlays((current) => ({ ...current, [key]: !current[key] }))}
+            >
+              <i aria-hidden="true" />{key === 'cost' && buyerCost?.code ? `${buyerCost.code} cost` : label}
+            </button>
+          ))}
         </div>
       </div>
-      {showMovingAverages && <div className="wb-chart-averages" role="group" aria-label="Moving averages">
-        <span>Moving averages</span>
-        {MA_KEYS.map((key) => {
-          const available = chart.movingAverages?.[key]?.some((point) => Number.isFinite(point.value));
-          return <button type="button" key={key} disabled={!available} aria-pressed={Boolean(available && enabledMAs.includes(key))} title={available ? 'Toggle ' + key.toUpperCase() : key.toUpperCase() + ' history unavailable'} onClick={() => setEnabledMAs((items) => items.includes(key) ? items.filter((item) => item !== key) : [...items, key])}><i style={{ background: 'var(--chart-ma-' + key.slice(2) + ')' }} />{key.toUpperCase()}</button>;
-        })}
-      </div>}
       <div className="wb-chart-readout" aria-label="Selected candle values">
         <div className="wb-chart-readout__date">
           <button type="button" aria-label="Previous session" disabled={inspectedIndex === 0} onClick={() => inspect(-1)}>‹</button>
@@ -274,12 +315,6 @@ export default function MarketChart({ chart, geometry, ticker }) {
       }} />
       <footer>
         <div className="wb-chart-help"><span>Drag to pan · Scroll to zoom · ← → to inspect</span><span>Daily candles · Delayed data</span></div>
-        <dl className="wb-chart-setup" aria-label="Chart setup levels">
-          <div><dt>Confirmation entry</dt><dd>{formatPrice(best?.entry)}</dd></div>
-          <div><dt>Setup fails below</dt><dd className="text-negative">{formatPrice(best?.stop ?? geometry?.invalidation)}</dd></div>
-          <div><dt>Target</dt><dd>{target != null ? formatPrice(target) : 'No confirmed target'}</dd></div>
-          <div><dt>Reward / risk</dt><dd>{Number.isFinite(ratio) ? ratio.toFixed(2) : '—'}</dd></div>
-        </dl>
       </footer>
     </section>
   );

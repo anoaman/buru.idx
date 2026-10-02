@@ -152,6 +152,36 @@ describe('Workbench', () => {
       timeline: [{ date: '2026-07-17', type: 'state', title: 'Current phase', detail: 'Evidence aligned.' }],
       contradictions: [{ code: 'NO_MAJOR_CONTRADICTION', title: 'No dominant contradiction', evidence: ['Recheck tomorrow'] }],
     },
+    read: {
+      setup: { id: 'accumulation_support', label: 'Accumulation at support', why: 'NI bought on 5 of 5 days.' },
+      summary: 'NI keeps buying: 5 of the last 5 days, average 4,420. Price is just above support 4,300.',
+      plan: {
+        available: true, entryLow: 4300, entryHigh: 4500, stop: 4250, target: 4700, netRR: 0.71,
+        warning: 'Reward is smaller than risk from here.', invalidIf: 'Close below 4,250.',
+        alt: { trigger: 4550, stop: 4500, target: 4700, text: 'Close above 4,550 on strong volume.' },
+      },
+      checks: [
+        { status: 'ok', label: 'Uptrend', detail: 'above MA20, MA50 and MA200' },
+        { status: 'warn', label: 'Weak market', detail: 'IHSG -9.0% in 20 days' },
+        { status: 'bad', label: 'Foreign selling', detail: '−Rp2.6T in 20 days' },
+      ],
+      changes: ['New buyer: PD bought Rp2.5B today at ~4,500.'],
+      leadBuyer: { code: 'NI', avg: 4420, days: 5, of: 5 },
+      limits: { ara: 5625, arb: 3830 },
+      brokers: {
+        today: {
+          sessions: 1, from: '2026-07-17', to: '2026-07-17',
+          buyers: [{ code: 'PD', type: 'D', net: 2.5e9, avg: 4500, days: 1, of: 1 }],
+          sellers: [{ code: 'YU', type: 'F', net: -1e9, avg: 4510, days: 1, of: 1 }],
+        },
+        d5: {
+          sessions: 5, from: '2026-07-11', to: '2026-07-17',
+          buyers: [{ code: 'NI', type: 'D', net: 23e9, avg: 4420, days: 5, of: 5 }],
+          sellers: [{ code: 'YU', type: 'F', net: -20e9, avg: 4450, days: 4, of: 5 }],
+        },
+        m1: null,
+      },
+    },
   };
 
   beforeEach(() => {
@@ -192,87 +222,85 @@ describe('Workbench', () => {
     expect(screen.getByText(/Loading BBRI/i)).toBeInTheDocument();
   });
 
-  it('renders full analysis result with all sub-components', async () => {
-    analyzeTicker.mockResolvedValue({ success: true, data: mockData });
-    render(
+  const renderBBRI = (data = mockData) => {
+    analyzeTicker.mockResolvedValue({ success: true, data });
+    return render(
       <MemoryRouter initialEntries={['/?ticker=BBRI']}>
         <Workbench />
       </MemoryRouter>
     );
+  };
 
-    expect(await screen.findByText('BBRI')).toBeInTheDocument();
-    expect(screen.getByText(/Bank Rakyat Indonesia/i)).toBeInTheDocument();
-    expect(screen.getByText('Price & volume')).toBeInTheDocument();
-    expect(screen.getByText(/Cost drag/i)).toBeInTheDocument();
-    expect(screen.getByText('Close above range resistance')).toBeInTheDocument();
-    expect(screen.getByText('-4.44% from current price')).toHaveClass('text-negative');
-    expect(screen.getByText('+3.30% from entry')).toHaveClass('text-positive');
-
-    fireEvent.click(screen.getByRole('tab', { name: /Indicators/i }));
-    expect(screen.getByText(/Technical indicators/i)).toBeInTheDocument();
-    expect(screen.getByText('RSI14')).toBeInTheDocument();
-    expect(screen.getByText('B+')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('tab', { name: /Risk Simulator/i }));
-    expect(screen.getByRole('heading', { name: /Risk Simulator/i })).toBeInTheDocument();
-    expect(screen.getAllByText('Support').length).toBeGreaterThan(0);
-
-    fireEvent.click(screen.getByRole('tab', { name: /^Broker Flow$/i }));
-    expect(await screen.findByRole('heading', { name: /^Broker Flow$/i })).toBeInTheDocument();
-
-    expect(screen.getAllByText('Regime').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Pattern').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('B+').length).toBeGreaterThan(0);
-    expect(screen.queryByText('Data')).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('tab', { name: /Setup/i }));
-    expect(screen.getByText(/What supports or challenges the setup/i)).toBeInTheDocument();
+  it('leads with one setup, a plain read and one trade plan instead of grades and regimes', async () => {
+    renderBBRI();
+    expect(await screen.findByText('Accumulation at support')).toBeInTheDocument();
+    expect(screen.getByText(/NI keeps buying: 5 of the last 5 days/)).toBeInTheDocument();
+    expect(screen.getByText('New buyer: PD bought Rp2.5B today at ~4,500.')).toBeInTheDocument();
+    const plan = screen.getByLabelText('Trade plan');
+    expect(within(plan).getByText('4.300–4.500')).toBeInTheDocument();
+    expect(within(plan).getByText('4.250')).toHaveClass('is-negative');
+    expect(within(plan).getByText('4.700')).toHaveClass('is-positive');
+    expect(within(plan).getByText('0.7')).toBeInTheDocument();
+    expect(within(plan).getByText('Reward is smaller than risk from here.')).toBeInTheDocument();
+    expect(screen.getByText('ARA 5.625 · ARB 3.830')).toBeInTheDocument();
+    for (const gone of ['Grade', 'Regime', 'Pattern', 'Bias', 'Scorecard', 'Contradictions', 'B+']) {
+      expect(screen.queryByText(gone)).not.toBeInTheDocument();
+    }
   });
 
-  it('exposes analysis detail tabs', async () => {
-    analyzeTicker.mockResolvedValue({ success: true, data: mockData });
-    render(
-      <MemoryRouter initialEntries={['/?ticker=BBRI']}>
-        <Workbench />
-      </MemoryRouter>
-    );
+  it('shows the reason and the breakout to watch when there is no plan', async () => {
+    renderBBRI({ ...mockData, read: { ...mockData.read, setup: { id: 'tight_range', label: 'Tight range', why: '' }, plan: { available: false, reason: 'Wait for the range to break.', alt: { trigger: 4550, stop: 4500, target: 4700 } } } });
+    const plan = await screen.findByLabelText('Trade plan');
+    expect(within(plan).getByText('Wait for the range to break.')).toBeInTheDocument();
+    expect(within(plan).getByText(/close above/).textContent).toBe('Watch: close above 4.550 → target 4.700, stop 4.500');
+  });
 
+  it('lists checks with their numbers, ordered as the read sends them', async () => {
+    renderBBRI();
+    const checks = await screen.findByRole('region', { name: 'Checks' });
+    expect(within(checks).getAllByRole('listitem').map((item) => [item.className, item.textContent])).toEqual([
+      ['is-ok', 'Uptrend · above MA20, MA50 and MA200'],
+      ['is-warn', 'Weak market · IHSG -9.0% in 20 days'],
+      ['is-bad', 'Foreign selling · −Rp2.6T in 20 days'],
+    ]);
+  });
+
+  it('switches broker windows, skips missing ones, and links to the full broker flow', async () => {
+    renderBBRI();
+    const brokers = await screen.findByRole('region', { name: 'Brokers' });
+    expect(within(brokers).getByRole('button', { name: '5D' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(brokers).getByText('NI')).toBeInTheDocument();
+    expect(within(brokers).getByText('5/5d')).toBeInTheDocument();
+    expect(within(brokers).getByText(/11 Jul – 17 Jul · 5 sessions/)).toBeInTheDocument();
+    expect(within(brokers).getByRole('button', { name: '1M' })).toBeDisabled();
+    expect(within(brokers).getByRole('link', { name: /Full broker flow/ }).getAttribute('href')).toBe('/broker-intelligence?lens=stock&ticker=BBRI&days=7');
+
+    fireEvent.click(within(brokers).getByRole('button', { name: 'Today' }));
+    expect(within(brokers).getByText('PD')).toBeInTheDocument();
+    expect(within(brokers).queryByText('1/1d')).not.toBeInTheDocument();
+    expect(within(brokers).getByRole('link', { name: /Full broker flow/ }).getAttribute('href')).toBe('/broker-intelligence?lens=stock&ticker=BBRI&days=1');
+  });
+
+  it('keeps indicators and the risk calculator behind one collapsed section', async () => {
+    renderBBRI();
     expect(await screen.findByText('Price & volume')).toBeInTheDocument();
     const tablist = screen.getByRole('tablist', { name: /Analysis detail sections/i });
-    expect(within(tablist).getByRole('tab', { name: /^Setup$/i })).toBeInTheDocument();
-    expect(within(tablist).getByRole('tab', { name: /^Indicators$/i })).toBeInTheDocument();
-    expect(within(tablist).getByRole('tab', { name: /^Broker Flow$/i })).toBeInTheDocument();
-    expect(within(tablist).getByRole('tab', { name: /^Risk Simulator$/i })).toBeInTheDocument();
-    expect(within(tablist).queryByRole('tab', { name: /^Methodology$/i })).not.toBeInTheDocument();
+    expect(within(tablist).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Indicators', 'Risk calculator']);
+    fireEvent.click(within(tablist).getByRole('tab', { name: 'Risk calculator' }));
+    expect(screen.getByRole('heading', { name: /Risk Simulator/i })).toBeInTheDocument();
   });
 
-  it('shows cost drag on the Levels tab', async () => {
-    analyzeTicker.mockResolvedValue({ success: true, data: mockData });
-    render(
-      <MemoryRouter initialEntries={['/?ticker=BBRI']}>
-        <Workbench />
-      </MemoryRouter>
-    );
-
-    expect(await screen.findByText(/Cost drag/i)).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /^Setup$/i })).toHaveAttribute('aria-selected', 'true');
+  it('still shows the chart and indicators when the API has no read block', async () => {
+    renderBBRI({ ...mockData, read: undefined });
+    expect(await screen.findByText(/The read for this stock is unavailable/)).toBeInTheDocument();
+    expect(screen.getByText('Price & volume')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Brokers' })).not.toBeInTheDocument();
   });
 
-  it('uses one TradingView-powered NALAR market chart', async () => {
-    analyzeTicker.mockResolvedValue({ success: true, data: mockData });
-    render(
-      <MemoryRouter initialEntries={['/?ticker=BBRI']}>
-        <Workbench />
-      </MemoryRouter>
-    );
-
-    expect(await screen.findByText('Price & volume')).toBeInTheDocument();
-    expect(screen.queryByText('MA5')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Show MA lines' }));
-    expect(screen.getAllByText('MA5').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('MA200').length).toBeGreaterThan(0);
+  it('labels the buyer-cost overlay with the lead buyer', async () => {
+    renderBBRI();
+    expect(await screen.findByRole('button', { name: 'NI cost' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Full screen' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /NALAR Analysis/i })).not.toBeInTheDocument();
   });
 
   it('updates TradingView symbol when ticker changes', async () => {
@@ -299,40 +327,6 @@ describe('Workbench', () => {
     expect(screen.getByRole('link', { name: /Open full TradingView/i }).getAttribute('href')).toContain('IDX%3ATLKM');
   });
 
-  it('loads the market chart with volume and moving-average legend', async () => {
-    analyzeTicker.mockResolvedValue({ success: true, data: mockData });
-    render(
-      <MemoryRouter initialEntries={['/?ticker=BBRI']}>
-        <Workbench />
-      </MemoryRouter>
-    );
-
-    expect(await screen.findByText('Price & volume')).toBeInTheDocument();
-    expect(screen.queryByText('MA20')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Show MA lines' }));
-    expect(screen.getAllByText('MA20').length).toBeGreaterThan(0);
-  });
-
-  it('shows Local and Foreign broker rows with full Rupiah values', async () => {
-    analyzeTicker.mockResolvedValue({ success: true, data: mockData });
-    render(
-      <MemoryRouter initialEntries={['/?ticker=BBRI']}>
-        <Workbench />
-      </MemoryRouter>
-    );
-
-    expect(await screen.findByText('Price & volume')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('tab', { name: /^Broker Flow$/i }));
-
-    expect((await screen.findAllByText('Local')).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('Foreign').length).toBeGreaterThanOrEqual(1);
-    expect(screen.queryByText('Pemerintah')).not.toBeInTheDocument();
-    expect(screen.queryByText('Lokal')).not.toBeInTheDocument();
-    expect(screen.queryByText('Asing')).not.toBeInTheDocument();
-    expect(screen.getAllByText('Rp229.975.060.500').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('-Rp229.975.060.500').length).toBeGreaterThan(0);
-  });
-
   it('shows a clear chart empty state when history is absent', async () => {
     const noChart = { ...mockData, chart: null };
     analyzeTicker.mockResolvedValue({ success: true, data: noChart });
@@ -356,61 +350,6 @@ describe('Workbench', () => {
     expect(await screen.findByText('Price & volume')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('tab', { name: /Indicators/i }));
     expect(await screen.findByText(/daily history unavailable/i)).toBeInTheDocument();
-  });
-
-  it('loads archived broker evidence when the analysis snapshot is unavailable', async () => {
-    const noBroker = {
-      ...mockData,
-      broker: { available: false, note: 'No broker data', symbol: 'BBRI' },
-    };
-    analyzeTicker.mockResolvedValue({ success: true, data: noBroker });
-    render(
-      <MemoryRouter initialEntries={['/?ticker=BBRI']}>
-        <Workbench />
-      </MemoryRouter>
-    );
-
-    expect(await screen.findByText('Price & volume')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('tab', { name: /^Broker Flow$/i }));
-    expect((await screen.findAllByText('NI')).length).toBeGreaterThan(0);
-  });
-
-  it('links Broker Flow to the full broker page with encoded ticker', async () => {
-    analyzeTicker.mockResolvedValue({ success: true, data: mockData });
-    render(
-      <MemoryRouter initialEntries={['/?ticker=BBRI']}>
-        <Workbench />
-      </MemoryRouter>
-    );
-
-    expect(await screen.findByText('Price & volume')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('tab', { name: /^Broker Flow$/i }));
-
-    const link = await screen.findByRole('link', { name: /Open Broker Flow/i });
-    expect(link.getAttribute('href')).toMatch(
-      /^\/broker-intelligence\?lens=stock&ticker=BBRI&days=1(?:&date=2026-07-17)?$/,
-    );
-  });
-
-  it('hides Broker Intelligence link when broker has no symbol', async () => {
-    analyzeTicker.mockResolvedValue({
-      success: true,
-      data: {
-        ...mockData,
-        ticker: { ...mockData.ticker, symbol: '' },
-        broker: { ...mockData.broker, symbol: '' },
-      },
-    });
-    render(
-      <MemoryRouter initialEntries={['/?ticker=BBRI']}>
-        <Workbench />
-      </MemoryRouter>
-    );
-
-    expect(await screen.findByText('Price & volume')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('tab', { name: /^Broker Flow$/i }));
-    expect(await screen.findByRole('heading', { name: /^Broker Flow$/i })).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /Open Broker Flow/i })).not.toBeInTheDocument();
   });
 
   it('loads analysis from the URL ticker param', async () => {
@@ -533,24 +472,6 @@ describe('Workbench', () => {
     fireEvent.click(screen.getByRole('button', { name: /clear ticker/i }));
     expect(await screen.findByText(/Enter a ticker to analyze/i)).toBeInTheDocument();
     expect(screen.queryByText(/Bank Rakyat Indonesia/i)).not.toBeInTheDocument();
-  });
-
-  it('reports the observed trading-day count for the broker range', async () => {
-    analyzeTicker.mockResolvedValue({ success: true, data: mockData });
-    render(
-      <MemoryRouter initialEntries={['/?ticker=BBRI']}>
-        <Workbench />
-      </MemoryRouter>
-    );
-
-    expect(await screen.findByText('Price & volume')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('tab', { name: /^Broker Flow$/i }));
-
-    await waitFor(() => {
-      const meta = document.querySelector('.wb-broker__meta');
-      expect(meta?.textContent).toMatch(/· 1 trading day\b/);
-    });
-    expect(document.querySelector('.wb-broker__meta').textContent).not.toMatch(/undefined/);
   });
 
   it('ignores a position size that resolves after the setup changed', async () => {
