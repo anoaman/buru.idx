@@ -7,9 +7,10 @@ import Radar from './Radar.jsx';
 vi.mock('../../lib/api/client.js', () => ({
   getRadarScout: vi.fn(),
   getRadarScoutConditions: vi.fn(),
+  analyzeTicker: vi.fn(),
 }));
 
-import { getRadarScout, getRadarScoutConditions } from '../../lib/api/client.js';
+import { analyzeTicker, getRadarScout, getRadarScoutConditions } from '../../lib/api/client.js';
 
 const CONDITION_CATALOG = {
   success: true,
@@ -119,9 +120,10 @@ describe('Radar', () => {
     localStorage.clear();
     getRadarScoutConditions.mockResolvedValue(CONDITION_CATALOG);
     getRadarScout.mockResolvedValue(scoutResponse({ candidates: [] }));
+    analyzeTicker.mockResolvedValue({ data: { chart: { candles: [{ close: 98 }, { close: 100 }, { close: 101 }] } } });
   });
 
-  it('runs the default Quiet Accumulation filters on load and keeps evidence behind a disclosure', async () => {
+  it('runs the default Quiet Accumulation filters on load and opens evidence in the side panel', async () => {
     getRadarScout.mockResolvedValue(scoutResponse({ candidates: [scoutCandidate()] }));
     renderRadar();
 
@@ -146,9 +148,15 @@ describe('Radar', () => {
     expect(screen.queryByRole('button', { name: 'Run Screener' })).not.toBeInTheDocument();
     expect(screen.queryByText('CC accumulated Rp1200M, 4.0× YP, across 6/7 sessions.')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Show AHAP evidence' }));
-    expect(screen.getByText('CC accumulated Rp1200M, 4.0× YP, across 6/7 sessions.')).toBeInTheDocument();
-    expect(screen.getByText('CC distributed in 1 observed session.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Show AHAP details' }));
+    const panel = screen.getByRole('complementary', { name: 'AHAP details' });
+    expect(within(panel).getByText('CC accumulated Rp1200M, 4.0× YP, across 6/7 sessions.')).toBeInTheDocument();
+    expect(within(panel).getByText('CC distributed in 1 observed session.')).toBeInTheDocument();
+    expect(await within(panel).findByRole('img', { name: 'Last 3 closes' })).toBeInTheDocument();
+    expect(analyzeTicker).toHaveBeenCalledWith('AHAP');
+
+    fireEvent.click(within(panel).getByRole('button', { name: 'Close details' }));
+    expect(screen.queryByRole('complementary', { name: 'AHAP details' })).not.toBeInTheDocument();
   });
 
   it('treats setup as a single choice and shows Custom once the slots leave a preset', async () => {
@@ -244,14 +252,13 @@ describe('Radar', () => {
     expect(getRadarScout).toHaveBeenCalledTimes(calls);
   });
 
-  it('labels setup-only rankings and shows support evidence for them', async () => {
+  it('states how results were ranked', async () => {
     getRadarScout.mockResolvedValue(scoutResponse({ candidates: [scoutCandidate()], ranking: 'structure' }));
     renderRadar();
     expect(await screen.findByText('Ranked by setup quality')).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'Support / range' })).toBeInTheDocument();
   });
 
-  it('renders the selected broker instead of an unrelated lead broker', async () => {
+  it('shows the selected broker instead of an unrelated lead broker', async () => {
     getRadarScout.mockResolvedValue(scoutResponse({ candidates: [scoutCandidate({
       broker: {
         observedSessions: 5,
@@ -265,56 +272,83 @@ describe('Radar', () => {
       },
     })] }));
     renderRadar();
-    expect(await screen.findByText(/CC · Rp4\.0B/)).toBeInTheDocument();
-    expect(screen.queryByText(/AK · Rp10\.0B/)).not.toBeInTheDocument();
+    const row = (await screen.findByRole('button', { name: 'Show AHAP details' })).closest('tr');
+    expect(within(row).getByText('CC')).toBeInTheDocument();
+    expect(within(row).getByText('Rp4.0B')).toBeInTheDocument();
+    expect(within(row).getByText('24%')).toBeInTheDocument();
+    expect(within(row).getByText('4/5')).toBeInTheDocument();
+    expect(within(row).queryByText('AK')).not.toBeInTheDocument();
   });
 
-  it('renders the evidence band as a signal-strength badge on every qualified row', async () => {
-    getRadarScout.mockResolvedValue(scoutResponse({ candidates: [scoutCandidate({ evidenceBand: 'medium' })] }));
+  it('sorts by any column header and flips direction on a second click', async () => {
+    getRadarScout.mockResolvedValue(scoutResponse({ candidates: [
+      scoutCandidate({ ticker: 'BBBB', score: 90, price: { ...scoutCandidate().price, lastPrice: 300 } }),
+      scoutCandidate({ ticker: 'AAAA', score: 70, price: { ...scoutCandidate().price, lastPrice: 500 } }),
+    ] }));
     renderRadar();
-    expect(await screen.findByText('Medium signal')).toBeInTheDocument();
+    await screen.findByText('BBBB');
+    const order = () => screen.getAllByRole('button', { name: /^Show .* details$/ }).map((button) => button.textContent);
+    expect(order()).toEqual(['BBBB', 'AAAA']);
+    fireEvent.click(screen.getByRole('button', { name: 'Price' }));
+    expect(order()).toEqual(['AAAA', 'BBBB']);
+    expect(screen.getByRole('columnheader', { name: 'Price ↓' })).toHaveAttribute('aria-sort', 'descending');
+    fireEvent.click(screen.getByRole('button', { name: 'Price ↓' }));
+    expect(order()).toEqual(['BBBB', 'AAAA']);
+    fireEvent.click(screen.getByRole('button', { name: 'Ticker' }));
+    expect(order()).toEqual(['AAAA', 'BBBB']);
   });
 
-  it('renders the score breakdown behind the row disclosure without dropping it', async () => {
+  it('moves the selection with the arrow keys and closes on Escape', async () => {
+    getRadarScout.mockResolvedValue(scoutResponse({ candidates: [
+      scoutCandidate({ ticker: 'AAAA', score: 90 }),
+      scoutCandidate({ ticker: 'BBBB', score: 80 }),
+    ] }));
+    renderRadar();
+    await screen.findByText('AAAA');
+    fireEvent.keyDown(document.body, { key: 'ArrowDown' });
+    expect(screen.getByRole('complementary', { name: 'AAAA details' })).toBeInTheDocument();
+    fireEvent.keyDown(document.body, { key: 'ArrowDown' });
+    expect(screen.getByRole('complementary', { name: 'BBBB details' })).toBeInTheDocument();
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    expect(screen.queryByRole('complementary', { name: /details$/ })).not.toBeInTheDocument();
+  });
+
+  it('keeps score breakdown in the panel rather than the row', async () => {
     getRadarScout.mockResolvedValue(scoutResponse({
       candidates: [scoutCandidate({ scoreBreakdown: { broker: 41, supportCompression: 19 } })],
     }));
     renderRadar();
-
-    expect(await screen.findByText('AHAP')).toBeInTheDocument();
-    expect(screen.queryByText('41')).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Show AHAP evidence' }));
-    expect(within(screen.getByLabelText('Score breakdown')).getByText('Broker')).toBeInTheDocument();
-    expect(screen.getByText('41')).toBeInTheDocument();
-    expect(screen.getByText('Support Compression')).toBeInTheDocument();
-    expect(screen.getByText('19')).toBeInTheDocument();
+    await screen.findByText('AHAP');
+    expect(screen.queryByLabelText('Score breakdown')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Show AHAP details' }));
+    const breakdown = screen.getByLabelText('Score breakdown');
+    expect(within(breakdown).getByText('Broker')).toBeInTheDocument();
+    expect(within(breakdown).getByText('41')).toBeInTheDocument();
+    expect(within(breakdown).getByText('Support Compression')).toBeInTheDocument();
+    expect(within(breakdown).getByText('19')).toBeInTheDocument();
   });
 
-  it('keeps near-miss stocks visually separate and shows the failed condition', async () => {
+  it('shows near misses in the same table only when asked, with what they missed', async () => {
     const nearMiss = scoutCandidate({
       ticker: 'ELSA',
-      evidenceBand: 'low',
       failedCondition: 'liquidity floor ≥ Rp500M/day',
-      scoreBreakdown: { broker: 20, liquidity: null },
       reasons: [],
       risks: ['thin average value'],
     });
     getRadarScout.mockResolvedValue(scoutResponse({ candidates: [scoutCandidate()], nearMisses: [nearMiss] }));
     renderRadar();
 
-    expect(await screen.findByText('Almost Matched')).toBeInTheDocument();
-    expect(screen.getByText('ELSA')).toBeInTheDocument();
-    expect(screen.getByText('Missed: liquidity floor ≥ Rp500M/day')).toBeInTheDocument();
+    await screen.findByText('AHAP');
+    expect(screen.queryByText('ELSA')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Show near misses (1)' }));
 
-    const qualifiedTable = screen.getByRole('table', { name: 'Scout candidates' });
-    const nearMissTable = screen.getByRole('table', { name: 'Almost matched stocks' });
-    expect(nearMissTable.querySelectorAll('thead th').length).toBeGreaterThan(qualifiedTable.querySelectorAll('thead th').length);
+    const table = screen.getByRole('table', { name: 'Scout candidates' });
+    expect(within(table).getByText('Near misses · failed exactly one filter')).toBeInTheDocument();
+    expect(within(table).getByText('ELSA').closest('tr')).toHaveClass('is-miss');
+    expect(within(table).getByText('Missed: liquidity floor ≥ Rp500M/day')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Show ELSA evidence' }));
-    expect(screen.getByText('thin average value')).toBeInTheDocument();
-    expect(within(screen.getByLabelText('Score breakdown')).getByText('Broker')).toBeInTheDocument();
-    expect(screen.getByText('20')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Show ELSA details' }));
+    expect(within(screen.getByRole('complementary', { name: 'ELSA details' })).getByText('thin average value')).toBeInTheDocument();
   });
 
   it('renders every match up to the 100-result ceiling', async () => {
@@ -324,7 +358,7 @@ describe('Radar', () => {
     }));
     getRadarScout.mockResolvedValue(scoutResponse({
       candidates: manyCandidates,
-      coverage: { evaluated: 900, matched: 100, returned: 100, nearMisses: 0 },
+      coverage: { evaluated: 900, matched: 120, returned: 100, nearMisses: 0 },
     }));
     renderRadar();
 
@@ -334,12 +368,13 @@ describe('Radar', () => {
     expect(lastRequest()).toEqual(expect.objectContaining({ limit: 100 }));
   });
 
-  it('preserves the new-tab Analysis / Broker Flow handoffs, carrying the broker window', async () => {
+  it('opens Analysis and Broker Flow from the panel and keys, carrying the broker window', async () => {
     const openSpy = vi.spyOn(window, 'open').mockImplementation(() => {});
     getRadarScout.mockResolvedValue(scoutResponse({ candidates: [scoutCandidate()] }));
     renderRadar();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Open AHAP analysis' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Show AHAP details' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open AHAP analysis' }));
     expect(openSpy.mock.calls.at(-1)[0]).toBe('/workbench?ticker=AHAP');
 
     fireEvent.click(screen.getByRole('button', { name: 'Open AHAP broker flow' }));
@@ -347,13 +382,17 @@ describe('Radar', () => {
     expect(openSpy.mock.calls.at(-1)[0]).toContain('ticker=AHAP');
     expect(openSpy.mock.calls.at(-1)[0]).toContain('preset=7d');
 
+    const calls = openSpy.mock.calls.length;
+    fireEvent.keyDown(document.body, { key: 'Enter' });
+    fireEvent.keyDown(document.body, { key: 'f' });
+    expect(openSpy.mock.calls.slice(calls).map(([url]) => url.split('?')[0])).toEqual(['/workbench', '/broker-intelligence']);
+
     openSpy.mockRestore();
   });
 
   it('reports how far a near miss fell short, not just which condition it failed', async () => {
     const nearMiss = scoutCandidate({
       ticker: 'ELSA',
-      evidenceBand: 'low',
       failedCondition: 'min_average_value',
       failedDetail: {
         id: 'min_average_value',
@@ -371,7 +410,8 @@ describe('Radar', () => {
     getRadarScout.mockResolvedValue(scoutResponse({ candidates: [], nearMisses: [nearMiss] }));
     renderRadar();
 
-    expect(await screen.findByText('Liquidity floor')).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'Show near misses (1)' }));
+    expect(screen.getByText('Liquidity floor')).toBeInTheDocument();
     expect(screen.getByText(/Rp40M vs Rp500M · off by Rp460M \(92%\)/)).toBeInTheDocument();
   });
 
@@ -391,13 +431,14 @@ describe('Radar', () => {
     getRadarScout.mockResolvedValue(scoutResponse({
       candidates: [],
       nearMisses: [
-        scoutCandidate({ ticker: 'ELSA', rank: 1, failedDetail: detail(10) }),
-        scoutCandidate({ ticker: 'BBCA', rank: 2, failedDetail: detail(60) }),
+        scoutCandidate({ ticker: 'ELSA', score: 90, failedDetail: detail(10) }),
+        scoutCandidate({ ticker: 'BBCA', score: 80, failedDetail: detail(60) }),
       ],
     }));
     renderRadar();
 
-    const rows = await screen.findAllByText('Minimum lead-to-second ratio');
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'Show near misses (2)' }));
+    const rows = screen.getAllByText('Minimum lead-to-second ratio');
     expect(rows[0].closest('.scout-near-miss__missed')).toHaveClass('scout-near-miss__missed--close');
     expect(rows[1].closest('.scout-near-miss__missed')).not.toHaveClass('scout-near-miss__missed--close');
   });
