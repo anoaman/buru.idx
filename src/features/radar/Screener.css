@@ -109,8 +109,8 @@
 .sr-keys { margin: 10px 0 0; font-size: 11px; color: var(--text-tertiary); }
 .sr-keys kbd { padding: 0 4px; margin-right: 2px; border: 1px solid var(--border-strong); border-radius: 3px; font: 11px var(--font-mono); }
 .screener-v2 .scout-disclosures { border-top: 1px solid var(--border-subtle); padding: 16px 22px; margin: 0; font-size: 11px; }
-/* With the panel open, its broker bars carry share and buy days, so the table drops them. */
-.sr-layout.has-panel .sr-table .sr-wide:nth-child(8), .sr-layout.has-panel .sr-table .sr-wide:nth-child(9) { display: none; }
+/* With the panel open it carries share, buy days, support and range, so the table drops them. */
+.sr-layout.has-panel .sr-table .sr-wide:nth-child(n+8) { display: none; }
 @media (max-width: 1250px) {
   .sr-table .sr-wide:nth-child(n+8) { display: none; }
 }
