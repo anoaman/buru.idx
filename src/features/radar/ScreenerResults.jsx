@@ -278,3 +278,23 @@ export function StockPanel({ row, brokerSessions, onInvestigate, onActors, onClo
     </aside>
   );
 }
+
+const SCAN_STEPS = ['Reading price structure', 'Matching broker flow', 'Ranking candidates'];
+
+/** Full-panel scan state, shown over stale results or on first load. */
+export function ScanLoader({ scanned, overlay = true }) {
+  return (
+    <div className={`sr-scan${overlay ? ' is-overlay' : ''}`} role="status" aria-live="polite">
+      <div className="sr-scan__card">
+        <div className="sr-scan__bars" aria-hidden="true">
+          {Array.from({ length: 9 }, (_, index) => <i key={index} style={{ '--i': index }} />)}
+        </div>
+        <strong>Scanning {scanned ? `${scanned.toLocaleString('en-US')} stocks` : 'the market'}</strong>
+        <span className="sr-scan__steps" aria-hidden="true">
+          {SCAN_STEPS.map((step, index) => <span key={step} style={{ '--i': index }}>{step}</span>)}
+        </span>
+        <span className="sr-scan__track" aria-hidden="true"><i /></span>
+      </div>
+    </div>
+  );
+}

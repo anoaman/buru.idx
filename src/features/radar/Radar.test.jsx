@@ -110,6 +110,10 @@ function choose(chipLabel, option) {
   fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${option}`) }));
 }
 
+function applyFilters() {
+  fireEvent.click(screen.getByRole('button', { name: /^Apply filters/ }));
+}
+
 async function waitForRun(count = 1) {
   await waitFor(() => expect(getRadarScout).toHaveBeenCalledTimes(count));
 }
@@ -165,6 +169,8 @@ describe('Radar', () => {
     await waitFor(() => expect(chip('Preset')).toHaveTextContent('Quiet accumulation'));
 
     choose('Setup', 'Tight base');
+    expect(chip('Preset')).toHaveTextContent('Custom');
+    applyFilters();
     await waitForRun(2);
     const ids = lastRequest().conditions.map((item) => item.id);
     expect(ids).toContain('tight_base');
@@ -182,8 +188,10 @@ describe('Radar', () => {
     renderRadar();
     await waitForRun();
     choose('Board', 'Exclude FCA');
+    applyFilters();
     await waitForRun(2);
     choose('Board', 'FCA only');
+    applyFilters();
     await waitForRun(3);
     const ids = lastRequest().conditions.map((item) => item.id);
     expect(ids).toContain('fca_only');
@@ -198,6 +206,7 @@ describe('Radar', () => {
     fireEvent.change(screen.getByLabelText('Broker code'), { target: { value: 'cc' } });
     fireEvent.change(screen.getByLabelText('Net buy at least'), { target: { value: '2500000000' } });
     fireEvent.change(screen.getByLabelText('Over'), { target: { value: '14d' } });
+    applyFilters();
 
     await waitFor(() => expect(lastRequest()).toEqual(expect.objectContaining({
       brokerCode: 'CC',
@@ -217,7 +226,9 @@ describe('Radar', () => {
     fireEvent.change(screen.getByLabelText('Over'), { target: { value: 'custom' } });
     expect(await screen.findByText('Pick a start date for the custom broker period.')).toBeInTheDocument();
 
+    expect(screen.getByRole('button', { name: /^Apply filters/ })).toBeDisabled();
     fireEvent.change(screen.getByLabelText('Starting'), { target: { value: '2026-07-01' } });
+    applyFilters();
     await waitFor(() => expect(lastRequest()).toEqual(expect.objectContaining({
       brokerPreset: 'custom', brokerFrom: '2026-07-01', asOf: '2026-07-31',
     })));
@@ -227,22 +238,52 @@ describe('Radar', () => {
     renderRadar();
     await waitForRun();
     choose('Volume', 'vs 10-day average');
-    fireEvent.click(screen.getByRole('button', { name: 'Beats IHSG' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Beats IHSG/ }));
+    applyFilters();
     await waitFor(() => expect(lastRequest().conditions).toEqual(expect.arrayContaining([
       { id: 'volume_breakout_baseline', value: 'MA10' },
       { id: 'outperforming_ihsg', value: true },
     ])));
-    expect(screen.getByRole('button', { name: 'Beats IHSG' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: /^Beats IHSG/ })).toHaveAttribute('aria-pressed', 'true');
   });
 
-  it('applies price limits as you type, without Enter', async () => {
+  it('collects several edits into one screen run when Apply is pressed', async () => {
+    renderRadar();
+    await waitForRun();
+    expect(screen.getByRole('button', { name: 'Apply filters' })).toBeDisabled();
+
+    fireEvent.click(chip('Price'));
+    fireEvent.change(screen.getByLabelText('Max price'), { target: { value: '500' } });
+    expect(chip('Price')).toHaveTextContent('≤ 500');
+    choose('Setup', 'Breakout');
+    choose('Liquidity', '≥ 1B');
+    expect(chip('Setup')).toHaveClass('is-changed');
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(getRadarScout).toHaveBeenCalledTimes(1);
+
+    applyFilters();
+    await waitForRun(2);
+    expect(lastRequest().conditions).toEqual(expect.arrayContaining([
+      { id: 'max_price', value: 500 },
+      { id: 'min_average_value', value: 1_000_000_000 },
+      { id: 'breakout_above_base', value: true },
+    ]));
+    expect(chip('Setup')).not.toHaveClass('is-changed');
+  });
+
+  it('applies on Enter in a filter input and discards drafts with Reset', async () => {
     renderRadar();
     await waitForRun();
     fireEvent.click(chip('Price'));
-    fireEvent.change(screen.getByLabelText('Max price'), { target: { value: '500' } });
-    expect(screen.getByLabelText('Max price')).toHaveValue('500');
-    expect(chip('Price')).toHaveTextContent('≤ 500');
-    await waitFor(() => expect(lastRequest().conditions).toEqual(expect.arrayContaining([{ id: 'max_price', value: 500 }])));
+    fireEvent.change(screen.getByLabelText('Max price'), { target: { value: '700' } });
+    fireEvent.keyDown(screen.getByLabelText('Max price'), { key: 'Enter' });
+    await waitForRun(2);
+    expect(lastRequest().conditions).toEqual(expect.arrayContaining([{ id: 'max_price', value: 700 }]));
+
+    choose('Setup', 'Tight base');
+    fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
+    expect(chip('Setup')).toHaveTextContent('Near support');
+    expect(screen.getByRole('button', { name: 'Apply filters' })).toBeDisabled();
   });
 
   it('does not screen when every filter is off', async () => {
@@ -256,6 +297,7 @@ describe('Radar', () => {
     fireEvent.change(screen.getByLabelText('Who'), { target: { value: 'off' } });
 
     expect(await screen.findByText('Turn on at least one filter.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Apply filters/ })).toBeDisabled();
     const calls = getRadarScout.mock.calls.length;
     await new Promise((resolve) => setTimeout(resolve, 450));
     expect(getRadarScout).toHaveBeenCalledTimes(calls);

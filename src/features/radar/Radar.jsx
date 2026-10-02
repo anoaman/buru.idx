@@ -4,7 +4,7 @@ import { getRadarScout, getRadarScoutConditions } from '../../lib/api/client.js'
 import ScreenerFilters, { DEFAULT_SLOTS, blockingReason, requestFromSlots } from './ScreenerFilters.jsx';
 import { guardRadarScout, guardRadarScoutConditions } from '../../lib/api/contracts.js';
 import { formatDate } from '../../lib/format/market.js';
-import { ResultsTable, StockPanel, sortRows } from './ScreenerResults.jsx';
+import { ResultsTable, ScanLoader, StockPanel, sortRows } from './ScreenerResults.jsx';
 import EmptyState from '../../components/EmptyState.jsx';
 import ErrorState from '../../components/ErrorState.jsx';
 import Skeleton from '../../components/Skeleton.jsx';
@@ -53,7 +53,9 @@ function slotsFromParams(params) {
 
 function Scout({ onInvestigate, onActors }) {
   const [searchParams, setSearchParams] = useSearchParams();
+  // `slots` is the applied screen; `draft` is what the filter bar is editing.
   const [slots, setSlots] = useState(() => slotsFromParams(searchParams));
+  const [draft, setDraft] = useState(slots);
   const [templates, setTemplates] = useState({ ready: false, byId: {} });
   const [state, setState] = useState({ loading: false, error: null, data: null });
   const [sort, setSort] = useState({ key: 'score', dir: -1 });
@@ -85,8 +87,8 @@ function Scout({ onInvestigate, onActors }) {
       setState({ loading: false, error: error.message || 'Screener request failed', data: null });
     });
   };
-  // Results follow the filters. Each committed edit re-runs after a short pause
-  // and a newer request always supersedes an older one still in flight.
+  // Results follow the applied screen; a newer request always supersedes an
+  // older one still in flight.
   useEffect(() => {
     const params = new URLSearchParams();
     for (const key of SLOT_KEYS) if (slots[key] !== DEFAULT_SLOTS[key]) params.set(key, String(slots[key]));
@@ -96,7 +98,7 @@ function Scout({ onInvestigate, onActors }) {
       setState((current) => ({ ...current, loading: false }));
       return undefined;
     }
-    const timer = setTimeout(run, 350);
+    const timer = setTimeout(run, 0);
     return () => clearTimeout(timer);
   }, [requestKey, blocked]);
   const handoffActors = (ticker) => onActors(ticker, scoutBrokerHandoffRange(slots));
@@ -146,18 +148,22 @@ function Scout({ onInvestigate, onActors }) {
   }, [selected]);
   return (
     <div className="scout-view">
-      <ScreenerFilters slots={slots} onChange={setSlots} templates={templates.byId} templatesReady={templates.ready} />
+      <ScreenerFilters
+        slots={draft}
+        applied={slots}
+        onChange={setDraft}
+        onApply={() => setSlots(draft)}
+        onApplyScreen={(next) => { setDraft(next); setSlots(next); }}
+        onDiscard={() => setDraft(slots)}
+        templates={templates.byId}
+        templatesReady={templates.ready}
+      />
       <div className={`sr-layout${selectedRow ? ' has-panel' : ''}`}>
         <section className="scout-results" aria-label="Screening results" aria-busy={state.loading}>
           {blocked && <p className="scout-result-status" role="status">{blocked}</p>}
           {!blocked && state.error && <ErrorState title="Screener unavailable" error={state.error} onRetry={run} />}
-          {!blocked && !state.data && state.loading && <Skeleton label="Screening the market…" />}
-          {!blocked && state.data && state.loading && (
-            <div className="sr-loading" role="status" aria-live="polite">
-              <span className="sr-loading__bar" aria-hidden="true" />
-              <span className="sr-loading__label"><span className="sr-spinner" aria-hidden="true" />Updating results…</span>
-            </div>
-          )}
+          {!blocked && !state.data && state.loading && <ScanLoader overlay={false} />}
+          {!blocked && state.data && state.loading && <ScanLoader scanned={state.data.coverage.evaluated} />}
           {!blocked && state.data && <>
             <div className="scout-results-tools">
               <ScoutProvenance data={state.data} />

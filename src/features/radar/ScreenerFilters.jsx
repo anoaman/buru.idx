@@ -197,15 +197,16 @@ function PriceInput({ label, value, onCommit }) {
   );
 }
 
-function Chip({ id, label, value, openId, setOpenId, active = true, children }) {
+function Chip({ id, label, value, openId, setOpenId, active = true, changed = false, children }) {
   const open = openId === id;
   return (
     <div className="sf-chip-wrap">
       <button
-        type="button" className={`sf-chip${active ? '' : ' is-off'}`} aria-expanded={open} aria-haspopup="dialog"
+        type="button" className={`sf-chip${active ? '' : ' is-off'}${changed ? ' is-changed' : ''}`} aria-expanded={open} aria-haspopup="dialog"
         onClick={() => setOpenId(open ? null : id)}
       >
         <span>{label}</span> <strong>{value}</strong> <i aria-hidden="true">▾</i>
+        {changed && <b className="sf-dot" aria-label="not applied yet" />}
       </button>
       {open && <div className="sf-pop" role="dialog" aria-label={label}>{children}</div>}
     </div>
@@ -227,7 +228,18 @@ function brokerLabel(slots) {
   return `${who} · ≥ ${rupiah(slots.minBrokerAccumulation)} · ${period}`;
 }
 
-export default function ScreenerFilters({ slots, onChange, templates, templatesReady }) {
+// Which slots each chip edits, so a chip can flag changes that are not applied yet.
+const CHIP_KEYS = {
+  price: ['minPrice', 'maxPrice'], liquidity: ['minValue'], board: ['board'], setup: ['setup'],
+  broker: ['broker', 'brokerCode', 'minBrokerAccumulation', 'brokerPreset', 'brokerFrom'],
+  volume: ['volume'], beatsIhsg: ['beatsIhsg'], asof: ['asOf'],
+};
+
+/**
+ * Edits stay in a draft until Apply (or Enter), so several filters change in
+ * one screen run. Presets and saved screens are whole screens and apply at once.
+ */
+export default function ScreenerFilters({ slots, applied, onChange, onApply, onApplyScreen, onDiscard, templates, templatesReady }) {
   const [openId, setOpenId] = useState(null);
   const barRef = useRef(null);
   useEffect(() => {
@@ -242,23 +254,35 @@ export default function ScreenerFilters({ slots, onChange, templates, templatesR
     onChange({ ...slots, ...patch });
     if (!keepOpen) setOpenId(null);
   };
+  const changedKeys = new Set(Object.keys(slots).filter((key) => slots[key] !== applied[key]));
+  const changed = (id) => CHIP_KEYS[id].some((key) => changedKeys.has(key));
+  const changedChips = Object.keys(CHIP_KEYS).filter(changed).length;
+  const dirty = changedKeys.size > 0;
+  const applyBlocked = blockingReason(slots);
+  const apply = () => { setOpenId(null); if (dirty && !applyBlocked) onApply(); };
+  const applyScreen = (next) => { setOpenId(null); onApplyScreen(next); };
   const preset = matchingPreset(slots, templates);
   const { saved, save, remove } = useSavedScreens();
   const savedName = matchingSavedScreen(slots, saved);
   const chip = { openId, setOpenId };
 
   return (
-    <div className="sf-bar" ref={barRef} aria-label="Screener filters">
+    <div
+      className="sf-bar" ref={barRef} aria-label="Screener filters"
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' && event.target.matches('input') && !event.target.closest('.sf-save')) { event.preventDefault(); apply(); }
+      }}
+    >
       <Chip id="preset" label="Preset" value={savedName || PRESETS.find((item) => item.id === preset)?.label || 'Custom'} {...chip}>
         {templatesReady
-          ? <OptionList options={PRESETS.map((item) => ({ value: item.id, label: item.label, hint: item.hint }))} value={savedName ? '' : preset} onSelect={(id) => set(applyPreset(slots, templates, id))} />
+          ? <OptionList options={PRESETS.map((item) => ({ value: item.id, label: item.label, hint: item.hint }))} value={savedName ? '' : preset} onSelect={(id) => applyScreen(applyPreset(slots, templates, id))} />
           : <p className="sf-note">Presets are unavailable right now.</p>}
         <p className="sf-heading">My screens</p>
         {saved.length === 0 && <p className="sf-note">Nothing saved yet. Set the filters, then name and save them here.</p>}
         <div className="sf-options">
           {saved.map((item) => (
             <div key={item.name} className="sf-saved">
-              <button type="button" aria-pressed={item.name === savedName} onClick={() => set({ ...item.slots })}><strong>{item.name}</strong></button>
+              <button type="button" aria-pressed={item.name === savedName} onClick={() => applyScreen({ ...slots, ...item.slots })}><strong>{item.name}</strong></button>
               <button type="button" className="sf-remove" aria-label={`Delete ${item.name}`} onClick={() => remove(item.name)}>×</button>
             </div>
           ))}
@@ -266,24 +290,24 @@ export default function ScreenerFilters({ slots, onChange, templates, templatesR
         {!savedName && <SaveScreenForm onSave={(name) => { save(name, slots); setOpenId(null); }} />}
       </Chip>
       <span className="sf-sep" aria-hidden="true" />
-      <Chip id="price" label="Price" value={priceLabel(slots)} active={slots.minPrice !== '' || slots.maxPrice !== ''} {...chip}>
+      <Chip id="price" changed={changed('price')} label="Price" value={priceLabel(slots)} active={slots.minPrice !== '' || slots.maxPrice !== ''} {...chip}>
         <div className="sf-fields">
           <PriceInput label="Min price" value={slots.minPrice} onCommit={(minPrice) => set({ minPrice }, true)} />
           <PriceInput label="Max price" value={slots.maxPrice} onCommit={(maxPrice) => set({ maxPrice }, true)} />
         </div>
       </Chip>
-      <Chip id="liquidity" label="Liquidity" value={slots.minValue ? `≥ ${rupiah(slots.minValue)}` : 'Any'} active={slots.minValue > 0} {...chip}>
+      <Chip id="liquidity" changed={changed('liquidity')} label="Liquidity" value={slots.minValue ? `≥ ${rupiah(slots.minValue)}` : 'Any'} active={slots.minValue > 0} {...chip}>
         <p className="sf-note">Average value traded per day</p>
         <OptionList options={LIQUIDITY.map((value) => ({ value, label: value ? `≥ ${rupiah(value)}` : 'Any' }))} value={slots.minValue} onSelect={(minValue) => set({ minValue })} />
       </Chip>
-      <Chip id="board" label="Board" value={BOARDS.find((item) => item.value === slots.board).label} active={slots.board !== 'all'} {...chip}>
+      <Chip id="board" changed={changed('board')} label="Board" value={BOARDS.find((item) => item.value === slots.board).label} active={slots.board !== 'all'} {...chip}>
         <OptionList options={BOARDS} value={slots.board} onSelect={(board) => set({ board })} />
       </Chip>
       <span className="sf-sep" aria-hidden="true" />
-      <Chip id="setup" label="Setup" value={SETUPS.find((item) => item.value === slots.setup).label} active={slots.setup !== 'any'} {...chip}>
+      <Chip id="setup" changed={changed('setup')} label="Setup" value={SETUPS.find((item) => item.value === slots.setup).label} active={slots.setup !== 'any'} {...chip}>
         <OptionList options={SETUPS} value={slots.setup} onSelect={(setup) => set({ setup })} />
       </Chip>
-      <Chip id="broker" label="Broker" value={brokerLabel(slots)} active={slots.broker !== 'off'} {...chip}>
+      <Chip id="broker" changed={changed('broker')} label="Broker" value={brokerLabel(slots)} active={slots.broker !== 'off'} {...chip}>
         <div className="sf-fields">
           <label>Who
             <select value={slots.broker} onChange={(event) => set({ broker: event.target.value }, true)}>
@@ -319,15 +343,15 @@ export default function ScreenerFilters({ slots, onChange, templates, templatesR
           </>}
         </div>
       </Chip>
-      <Chip id="volume" label="Volume" value={slots.volume ? `≥ 1.5× ${slots.volume}` : 'Off'} active={Boolean(slots.volume)} {...chip}>
+      <Chip id="volume" changed={changed('volume')} label="Volume" value={slots.volume ? `≥ 1.5× ${slots.volume}` : 'Off'} active={Boolean(slots.volume)} {...chip}>
         <p className="sf-note">Latest volume at least 1.5× its average</p>
         <OptionList options={VOLUME} value={slots.volume} onSelect={(volume) => set({ volume })} />
       </Chip>
-      <button type="button" className={`sf-chip${slots.beatsIhsg ? '' : ' is-off'}`} aria-pressed={slots.beatsIhsg} onClick={() => set({ beatsIhsg: !slots.beatsIhsg })}>
+      <button type="button" className={`sf-chip${slots.beatsIhsg ? '' : ' is-off'}${changed('beatsIhsg') ? ' is-changed' : ''}`} aria-pressed={slots.beatsIhsg} onClick={() => set({ beatsIhsg: !slots.beatsIhsg })}>
         <strong>Beats IHSG</strong>
+        {changed('beatsIhsg') && <b className="sf-dot" aria-label="not applied yet" />}
       </button>
-      <span className="sf-grow" aria-hidden="true" />
-      <Chip id="asof" label="As of" value={slots.asOf || 'Latest'} {...chip}>
+      <Chip id="asof" changed={changed('asof')} label="As of" value={slots.asOf || 'Latest'} {...chip}>
         <div className="sf-fields">
           <label>Analysis date
             <input type="date" value={slots.asOf} onChange={(event) => set({ asOf: event.target.value }, true)} />
@@ -335,6 +359,13 @@ export default function ScreenerFilters({ slots, onChange, templates, templatesR
           {slots.asOf && <button type="button" className="sf-link" onClick={() => set({ asOf: '' })}>Use latest data</button>}
         </div>
       </Chip>
+      <div className="sf-apply">
+        {dirty && <button type="button" className="sf-link" onClick={onDiscard}>Reset</button>}
+        <button type="button" className="ui-btn ui-btn--primary" disabled={!dirty || Boolean(applyBlocked)} title={dirty ? applyBlocked || '' : 'No changes to apply'} onClick={apply}>
+          Apply filters{changedChips ? ` (${changedChips})` : ''}
+        </button>
+      </div>
+      {dirty && applyBlocked && <p className="sf-blocked" role="status">{applyBlocked}</p>}
     </div>
   );
 }
