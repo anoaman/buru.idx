@@ -156,9 +156,9 @@ describe('Workbench', () => {
       setup: { id: 'accumulation_support', label: 'Accumulation at support', why: 'NI bought on 5 of 5 days.' },
       summary: 'NI keeps buying: 5 of the last 5 days, average 4,420. Price is just above support 4,300.',
       plan: {
-        available: true, entryLow: 4300, entryHigh: 4500, stop: 4250, target: 4700, netRR: 0.71,
-        warning: 'Reward is smaller than risk from here.', invalidIf: 'Close below 4,250.',
-        alt: { trigger: 4550, stop: 4500, target: 4700, text: 'Close above 4,550 on strong volume.' },
+        available: true, entryLow: 4300, entryHigh: 4500, skipAbove: 4550, stop: 4250, target: 4900, netRR: 1.42,
+        targetSource: 'resistance', warning: null, invalidIf: 'Sell if it trades at 4.250.',
+        alt: null,
       },
       checks: [
         { status: 'ok', label: 'Uptrend', detail: 'above MA20, MA50 and MA200' },
@@ -239,9 +239,9 @@ describe('Workbench', () => {
     const plan = screen.getByLabelText('Trade plan');
     expect(within(plan).getByText('4.300–4.500')).toBeInTheDocument();
     expect(within(plan).getByText('4.250')).toHaveClass('is-negative');
-    expect(within(plan).getByText('4.700')).toHaveClass('is-positive');
-    expect(within(plan).getByText('0.7')).toBeInTheDocument();
-    expect(within(plan).getByText('Reward is smaller than risk from here.')).toBeInTheDocument();
+    expect(within(plan).getByText('4.900')).toHaveClass('is-positive');
+    expect(within(plan).getByText('1.4')).toBeInTheDocument();
+    expect(within(plan).getByText(/Buy next session/).textContent).toBe('Buy next session, skip if it opens above 4.550. Sell if it trades at 4.250.');
     expect(screen.getByText('ARA 5.625 · ARB 3.830')).toBeInTheDocument();
     for (const gone of ['Grade', 'Regime', 'Pattern', 'Bias', 'Scorecard', 'Contradictions', 'B+']) {
       expect(screen.queryByText(gone)).not.toBeInTheDocument();
@@ -505,8 +505,8 @@ describe('Workbench', () => {
     const { unmount } = render(<RiskSimulator ticker={mockData.ticker} plan={mockData.read.plan} />);
     expect(screen.getByLabelText('Entry')).toHaveValue(4500);
     expect(screen.getByLabelText('Invalidation')).toHaveValue(4250);
-    expect(screen.getByLabelText('Target')).toHaveValue(4700);
-    expect(within(screen.getByLabelText('Trade plan levels')).getByText('0.71')).toBeInTheDocument();
+    expect(screen.getByLabelText('Target')).toHaveValue(4900);
+    expect(within(screen.getByLabelText('Trade plan levels')).getByText('1.42')).toBeInTheDocument();
     unmount();
 
     const waiting = { available: false, reason: 'Wait for the range to break.', alt: { trigger: 4550, stop: 4500, target: 4700 } };

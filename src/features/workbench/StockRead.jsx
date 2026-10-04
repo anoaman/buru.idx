@@ -39,9 +39,13 @@ function PlanBlock({ plan }) {
       <dl>
         <div><dt>Buy</dt><dd>{formatPrice(plan.entryLow)}{plan.entryHigh !== plan.entryLow ? `–${formatPrice(plan.entryHigh)}` : ''}</dd></div>
         <div><dt>Stop</dt><dd className="is-negative">{formatPrice(plan.stop)}</dd></div>
-        <div><dt>Target</dt><dd className="is-positive">{formatPrice(plan.target)}</dd></div>
+        <div><dt>{plan.targetSource === 'measured' ? 'Target (range projection)' : 'Target'}</dt><dd className="is-positive">{formatPrice(plan.target)}</dd></div>
         <div><dt>R:R</dt><dd>{Number.isFinite(plan.netRR) ? plan.netRR.toFixed(1) : '—'}</dd></div>
       </dl>
+      <small>
+        Buy next session{Number.isFinite(plan.skipAbove) ? <>, skip if it opens above <b>{formatPrice(plan.skipAbove)}</b></> : ''}.
+        {plan.invalidIf ? ` ${plan.invalidIf}` : ''}
+      </small>
       {plan.warning && <small className="is-warning">{plan.warning}</small>}
       {plan.alt && <small>Or: close above <b>{formatPrice(plan.alt.trigger)}</b> → {formatPrice(plan.alt.target)}</small>}
     </div>
