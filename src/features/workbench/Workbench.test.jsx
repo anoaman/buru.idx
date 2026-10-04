@@ -479,12 +479,12 @@ describe('Workbench', () => {
     simulateRisk.mockImplementation(() => new Promise((resolve) => { resolveSimulation = resolve; }));
 
     const { rerender } = render(
-      <RiskSimulator ticker={mockData.ticker} geometry={mockData.riskGeometry} />
+      <RiskSimulator ticker={mockData.ticker} plan={mockData.read.plan} />
     );
     fireEvent.click(screen.getByRole('button', { name: /CALCULATE SIZE/i }));
 
     rerender(
-      <RiskSimulator ticker={{ ...mockData.ticker, close: 4600 }} geometry={mockData.riskGeometry} />
+      <RiskSimulator ticker={{ ...mockData.ticker, close: 4600 }} plan={mockData.read.plan} />
     );
 
     await act(async () => {
@@ -501,9 +501,30 @@ describe('Workbench', () => {
     expect(screen.queryByText(/111 lots/)).not.toBeInTheDocument();
   });
 
+  it('sizes from the page trade plan, or the breakout to watch when there is none', () => {
+    const { unmount } = render(<RiskSimulator ticker={mockData.ticker} plan={mockData.read.plan} />);
+    expect(screen.getByLabelText('Entry')).toHaveValue(4500);
+    expect(screen.getByLabelText('Invalidation')).toHaveValue(4250);
+    expect(screen.getByLabelText('Target')).toHaveValue(4700);
+    expect(within(screen.getByLabelText('Trade plan levels')).getByText('0.71')).toBeInTheDocument();
+    unmount();
+
+    const waiting = { available: false, reason: 'Wait for the range to break.', alt: { trigger: 4550, stop: 4500, target: 4700 } };
+    const second = render(<RiskSimulator ticker={mockData.ticker} plan={waiting} />);
+    expect(screen.getByLabelText('Entry')).toHaveValue(4550);
+    expect(screen.getByLabelText('Invalidation')).toHaveValue(4500);
+    expect(screen.getByText(/breakout to watch/)).toBeInTheDocument();
+    second.unmount();
+
+    render(<RiskSimulator ticker={mockData.ticker} plan={{ available: false, reason: 'Distribution: no long entry.', alt: null }} />);
+    expect(screen.getByLabelText('Entry')).toHaveValue(mockData.ticker.close);
+    expect(screen.getByLabelText('Invalidation')).toHaveValue(null);
+    expect(screen.getByText(/Enter your own stop and target/)).toBeInTheDocument();
+  });
+
   it('recovers when the risk simulation request rejects', async () => {
     simulateRisk.mockRejectedValue(new Error('risk service unavailable'));
-    render(<RiskSimulator ticker={mockData.ticker} geometry={mockData.riskGeometry} />);
+    render(<RiskSimulator ticker={mockData.ticker} plan={mockData.read.plan} />);
 
     fireEvent.click(screen.getByRole('button', { name: /CALCULATE SIZE/i }));
 

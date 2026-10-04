@@ -506,6 +506,11 @@
   color: var(--color-negative);
 }
 
+.inv-simulator__note {
+  margin: var(--space-3) 0;
+  color: var(--text-secondary);
+}
+
 .inv-simulator__result {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

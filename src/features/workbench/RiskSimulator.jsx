@@ -3,12 +3,23 @@ import { simulateRisk } from '../../lib/api/client.js';
 import { guardRiskSimulation } from '../../lib/api/contracts.js';
 import { formatIDR, formatNumber, formatPct, formatPrice } from '../../lib/format/market.js';
 
-export default function RiskSimulator({ ticker, geometry }) {
-  const best = geometry?.bestSetup;
+/**
+ * Sizing starts from the page's one trade plan, so the calculator can never
+ * argue with it. With no long entry it starts from the breakout to watch, and
+ * otherwise from the close with blank levels for a manual setup.
+ */
+export function planLevels(plan, close) {
+  if (plan?.available) return { entry: plan.entryHigh, stop: plan.stop, target: plan.target, source: 'plan' };
+  if (plan?.alt) return { entry: plan.alt.trigger, stop: plan.alt.stop, target: plan.alt.target, source: 'alt' };
+  return { entry: close, stop: null, target: null, source: 'none' };
+}
+
+export default function RiskSimulator({ ticker, plan }) {
+  const levels = planLevels(plan, ticker?.close);
   const [form, setForm] = useState({
-    entry: best?.entry || ticker?.close || '',
-    stop: best?.stop || '',
-    target: best?.target || '',
+    entry: levels.entry || '',
+    stop: levels.stop || '',
+    target: levels.target || '',
     capital: 100_000_000,
     maxRiskPct: 1,
   });
@@ -22,15 +33,15 @@ export default function RiskSimulator({ ticker, geometry }) {
     requestRef.current += 1;
     setForm((current) => ({
       ...current,
-      entry: best?.entry || ticker?.close || '',
-      stop: best?.stop || '',
-      target: best?.target || '',
+      entry: levels.entry || '',
+      stop: levels.stop || '',
+      target: levels.target || '',
     }));
     setState({ loading: false, data: null, error: null });
     return () => { requestRef.current += 1; };
-  }, [ticker?.symbol, ticker?.close, best?.entry, best?.stop, best?.target]);
+  }, [ticker?.symbol, ticker?.close, levels.entry, levels.stop, levels.target]);
 
-  if (!ticker || !best) return null;
+  if (!ticker) return null;
 
   const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
   const submit = async (event) => {
@@ -58,13 +69,16 @@ export default function RiskSimulator({ ticker, geometry }) {
           <p>Server-calculated position size using IDX ticks, fees, capital, and maximum risk.</p>
         </div>
       </div>
-      <div className="inv-simulator__levels" aria-label="Current risk geometry">
-        <div><span>Support</span><strong>{formatPrice(geometry.nearestSupport)}</strong></div>
-        <div><span>Resistance</span><strong>{formatPrice(geometry.nearestResistance)}</strong></div>
-        <div><span>Downside</span><strong>{formatPct(geometry.downsidePct)}</strong></div>
-        <div><span>Upside</span><strong>{formatPct(geometry.upsidePct)}</strong></div>
-        <div><span>Current net R:R</span><strong>{(best.netRR ?? best.rr)?.toFixed(2) || '—'}</strong></div>
-      </div>
+      {levels.source === 'plan' && (
+        <div className="inv-simulator__levels" aria-label="Trade plan levels">
+          <div><span>Buy</span><strong>{formatPrice(plan.entryLow)}{plan.entryHigh !== plan.entryLow ? `–${formatPrice(plan.entryHigh)}` : ''}</strong></div>
+          <div><span>Stop</span><strong>{formatPrice(plan.stop)}</strong></div>
+          <div><span>Target</span><strong>{formatPrice(plan.target)}</strong></div>
+          <div><span>Plan net R:R</span><strong>{Number.isFinite(plan.netRR) ? plan.netRR.toFixed(2) : '—'}</strong></div>
+        </div>
+      )}
+      {levels.source === 'alt' && <p className="inv-simulator__note">{plan.reason} Levels below are the breakout to watch.</p>}
+      {levels.source === 'none' && <p className="inv-simulator__note">{plan?.reason || 'No trade plan.'} Enter your own stop and target.</p>}
       <form onSubmit={submit}>
         {[
           ['entry', 'Entry'], ['stop', 'Invalidation'], ['target', 'Target'],

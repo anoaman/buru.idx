@@ -110,7 +110,7 @@ export default function Workbench() {
     const data = displayed.data;
     if (!data) return null;
     if (active === 'indicators') return <TechnicalEvidence priceHistory={data.priceHistory} ticker={data.ticker} />;
-    if (active === 'risk') return <RiskSimulator ticker={data.ticker} geometry={data.setupGeometry || data.riskGeometry} />;
+    if (active === 'risk') return <RiskSimulator ticker={data.ticker} plan={data.read?.plan} />;
     return null;
   };
 
