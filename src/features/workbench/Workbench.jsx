@@ -45,10 +45,16 @@ export default function Workbench() {
   // displayed.data always belongs to displayed.ticker — never relabel mid-flight.
   const [displayed, setDisplayed] = useState({ ticker: '', data: null });
   const [loading, setLoading] = useState(false);
+  const [outlookSessions, setOutlookSessions] = useState(10);
   const [analyzing, setAnalyzing] = useState('');
   const [error, setError] = useState(null);
   const [failedTicker, setFailedTicker] = useState('');
   const requestRef = useRef(0);
+
+  const read = displayed.data?.read;
+  const outlooks = read?.outlooks && Object.keys(read.outlooks).length
+    ? read.outlooks : read?.outlook ? { [read.outlook.sessions]: read.outlook } : {};
+  const outlook = outlooks[outlookSessions] || read?.outlook || Object.values(outlooks)[0] || null;
 
   const fetchAnalysis = useCallback((raw) => {
     const ticker = String(raw || '').trim().toUpperCase();
@@ -137,12 +143,14 @@ export default function Workbench() {
           <div className="wb-result sa-page" data-displayed-ticker={displayed.ticker}>
             <TickerHeader ticker={displayed.data.ticker} read={displayed.data.read} asOf={displayed.data.chart?.source?.lastDate} />
             {displayed.data.read
-              ? <ReadCard read={displayed.data.read} price={displayed.data.ticker?.close} />
+              ? <ReadCard read={read} price={displayed.data.ticker?.close} outlook={outlook} outlooks={outlooks} onHorizonChange={setOutlookSessions} />
               : <p className="sa-muted">The read for this stock is unavailable right now; the chart and indicators below still apply.</p>}
             <div className="wb-chart-panel">
               <MarketChart
                 chart={displayed.data.chart}
-                outlook={displayed.data.read?.outlook}
+                outlook={outlook}
+                outlooks={outlooks}
+                onHorizonChange={setOutlookSessions}
                 buyerCost={displayed.data.read?.leadBuyer}
                 ticker={displayed.data.ticker}
               />

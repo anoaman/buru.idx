@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createChart, CandlestickSeries, HistogramSeries, LineSeries } from 'lightweight-charts';
 import { formatDate, formatPrice, formatVolume } from '../../lib/format/market.js';
+import { OutlookHorizon } from './StockRead.jsx';
 import { applyCandleOnlyScale, computeCandleOnlyScale, isPriceInCandleWindow } from './chartScale.js';
 
 export { computeCandleOnlyScale, isPriceInCandleWindow } from './chartScale.js';
@@ -12,7 +13,7 @@ const RANGES = [[20, '20D'], [60, '60D'], [120, '120D'], ['all', 'All']];
 export const OVERLAYS = [
   { key: 'support', label: 'Support', on: true },
   { key: 'resistance', label: 'Resistance', on: true },
-  { key: 'range', label: '10D range', on: true },
+  { key: 'range', label: 'Outlook range', on: true },
   { key: 'cost', label: 'Buyer cost', on: true },
   { key: 'ma', label: 'MA', on: false },
   { key: 'volume', label: 'Volume', on: true },
@@ -43,8 +44,8 @@ function readChartTheme(element) {
     down: token('--chart-down', '#d9564d'),
     volumeUp: token('--chart-volume-up', 'rgba(52,211,153,.3)'),
     volumeDown: token('--chart-volume-down', 'rgba(248,113,113,.3)'),
-    support: token('--chart-support', '#77828a'),
-    resistance: token('--chart-resistance', '#77828a'),
+    support: token('--chart-support', '#2dd4bf'),
+    resistance: token('--chart-resistance', '#fb923c'),
     range: token('--color-accent', '#a8c93a'),
     cost: token('--chart-cost', '#c084fc'),
     foreignBuy: token('--chart-volume-up', 'rgba(52,211,153,.3)'),
@@ -53,7 +54,7 @@ function readChartTheme(element) {
   };
 }
 
-export default function MarketChart({ chart, outlook, buyerCost, ticker }) {
+export default function MarketChart({ chart, outlook, outlooks, onHorizonChange, buyerCost, ticker }) {
   const containerRef = useRef(null);
   const sectionRef = useRef(null);
   const controlsRef = useRef(null);
@@ -142,17 +143,16 @@ export default function MarketChart({ chart, outlook, buyerCost, ticker }) {
     const addLevel = (group, price, colorKey, title, { width = 1, style = 2 } = {}) => {
       if (!Number.isFinite(price)) return;
       const line = overlays.createPriceLine({ price, color: colors[colorKey], title, lineWidth: width, lineStyle: style, lineVisible: false, axisLabelVisible: false });
-      priceLines.push({ group, price, colorKey, line });
+      const item = { group, price, colorKey, line };
+      priceLines.push(item);
+      return item;
     };
     (chart.levels?.supports || []).slice(0, 3).forEach((level) => addLevel('support', level.price, 'support', 'S'));
     (chart.levels?.resistances || []).slice(0, 3).forEach((level) => addLevel('resistance', level.price, 'resistance', 'R'));
-    if (outlook?.range) {
-      addLevel('range', outlook.range.high, 'range', '10D high', { width: 1, style: 1 });
-      addLevel('range', outlook.range.low, 'range', '10D low', { width: 1, style: 1 });
-    }
+    const rangeLines = ['high', 'low'].map((key) => ({ key, item: addLevel('range', 0, 'range', '', { width: 1, style: 1 }) }));
     if (buyerCost?.avg) addLevel('cost', buyerCost.avg, 'cost', `${buyerCost.code} cost`, { width: 2, style: 1 });
     const updateLevels = () => priceLines.forEach(({ group, price, colorKey, line }) => {
-      const visible = shown[group] && isPriceInCandleWindow(price, currentScale);
+      const visible = Number.isFinite(price) && shown[group] && isPriceInCandleWindow(price, currentScale);
       line?.applyOptions({ color: colors[colorKey], lineVisible: visible, axisLabelVisible: visible });
     });
     const chooseRange = (value) => {
@@ -207,6 +207,13 @@ export default function MarketChart({ chart, outlook, buyerCost, ticker }) {
     themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     controlsRef.current = {
       chooseRange,
+      setOutlook: (next) => {
+        rangeLines.forEach(({ key, item }) => {
+          item.price = next?.range?.[key] ?? null;
+          if (Number.isFinite(item.price)) item.line?.applyOptions({ price: item.price, title: `${next.sessions ?? 10}S ${key}` });
+        });
+        updateLevels();
+      },
       setOverlays: (next) => {
         shown = next;
         averages.forEach((line) => line.applyOptions({ visible: next.ma }));
@@ -226,7 +233,11 @@ export default function MarketChart({ chart, outlook, buyerCost, ticker }) {
       controlsRef.current = null;
       instance.remove();
     };
-  }, [chart, outlook, buyerCost, ticker]);
+  }, [chart, buyerCost, ticker]);
+
+  useEffect(() => {
+    controlsRef.current?.setOutlook(outlook);
+  }, [chart, buyerCost, ticker, outlook]);
 
   useEffect(() => {
     controlsRef.current?.setOverlays(overlays);
@@ -290,6 +301,7 @@ export default function MarketChart({ chart, outlook, buyerCost, ticker }) {
               <i aria-hidden="true" />{key === 'cost' && buyerCost?.code ? `${buyerCost.code} cost` : label}
             </button>
           ))}
+          <OutlookHorizon outlooks={outlooks} sessions={outlook?.sessions} onChange={onHorizonChange} label="Chart outlook horizon" />
         </div>
       </div>
       <div className="wb-chart-readout" aria-label="Selected candle values">

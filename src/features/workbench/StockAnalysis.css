@@ -39,9 +39,9 @@
 .sa-outlook__label { font-size: 12px; color: var(--text-tertiary); }
 .sa-outlook__track { color: var(--text-tertiary); }
 
-.sa-row { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(300px, 1fr); gap: 12px; align-items: start; }
-.sa-box { padding: 14px 16px; background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: 10px; }
-.sa-box header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.sa-row { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(300px, 1fr); gap: 12px; align-items: stretch; }
+.sa-box { min-width: 0; padding: 14px 16px; background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: 10px; }
+.sa-box header { min-height: 32px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .sa-box h3 { margin: 0; font-size: 14px; font-weight: 700; }
 .sa-link { margin-left: 12px; font-size: 12px; font-weight: 400; color: var(--text-tertiary); text-decoration: none; }
 .sa-link:hover { color: var(--color-accent); }
@@ -73,7 +73,8 @@
 
 /* Chart overlay toggles: a coloured swatch per line kind. */
 .wb-overlay i { display: inline-block; width: 12px; height: 0; margin-right: 6px; vertical-align: middle; border-top: 2px solid var(--text-tertiary); }
-.wb-overlay--support i, .wb-overlay--resistance i { border-top-style: dashed; border-color: var(--chart-support, #77828a); }
+.wb-overlay--support i { border-top-style: dashed; border-color: var(--chart-support, #2dd4bf); }
+.wb-overlay--resistance i { border-top-style: dashed; border-color: var(--chart-resistance, #fb923c); }
 .wb-overlay--range i { border-color: var(--color-accent); }
 .wb-overlay--cost i { border-top-style: dotted; border-color: var(--chart-cost, #c084fc); }
 .wb-overlay--ma i { border-color: var(--chart-ma-20, #fbbf24); }
@@ -87,3 +88,13 @@
   .sa-row, .sa-brokers { grid-template-columns: 1fr; }
   .sa-tags { margin-left: 0; }
 }
+
+.sa-watch { margin-top: 14px; border-top: 1px solid var(--border-subtle); padding-top: 10px; }
+.sa-watch h3 { margin: 0 0 7px; font-size: 13px; color: var(--text-primary); }
+.sa-watch ul { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.sa-watch li { font-size: 12px; line-height: 1.5; color: var(--text-secondary); }
+.sa-watch li b { color: var(--text-primary); margin-right: 6px; }
+.sa-watch small { display: block; margin-top: 8px; font-size: 11px; color: var(--text-tertiary); }
+.sa-outlook__header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; justify-content: space-between; }
+.sa-horizon { max-width: 100%; padding: 5px 7px; border: 1px solid var(--border-default); border-radius: 5px; background: var(--bg-surface); color: var(--text-secondary); font: 500 12px var(--font-ui); }
+.sa-checks__context { display: block; font-size: 11px; color: var(--text-tertiary); }

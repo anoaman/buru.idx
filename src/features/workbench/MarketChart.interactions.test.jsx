@@ -80,6 +80,22 @@ describe('chart interaction continuity', () => {
     expect(series[VOLUME].applyOptions).toHaveBeenCalledWith({ visible: false });
   });
 
+  it('updates horizon lines without recreating the chart or resetting a custom view', () => {
+    const view = mount();
+    act(() => rangeChange({ from: 10, to: 40 }));
+    timeScale.setVisibleLogicalRange.mockClear();
+    const next = { sessions: 20, range: { low: 180, mid: 220, high: 260 } };
+    view.rerender(<MarketChart chart={chart} ticker={ticker} outlook={next} buyerCost={buyerCost} />);
+    expect(createChart).toHaveBeenCalledTimes(1);
+    expect(timeScale.setVisibleLogicalRange).not.toHaveBeenCalled();
+    expect(screen.getByText('Custom view')).toBeInTheDocument();
+    const lines = series[4].createPriceLine.mock.results.map(item => item.value);
+    expect(lines.some(line => line.applyOptions.mock.calls.some(([args]) => args.price === 180 && args.title === '20S low'))).toBe(true);
+    view.rerender(<MarketChart chart={chart} ticker={ticker} outlook={null} buyerCost={buyerCost} />);
+    const rangeLine = lines.find(line => line.applyOptions.mock.calls.some(([args]) => args.title === '20S low'));
+    expect(rangeLine.applyOptions).toHaveBeenLastCalledWith(expect.objectContaining({ lineVisible: false }));
+  });
+
   it('fits only candle prices for each preset and can reset a custom view', () => {
     mount();
     fireEvent.click(screen.getByRole('button', { name: '20D' }));
@@ -136,8 +152,8 @@ describe('chart interaction continuity', () => {
     mount({ outlook: null, buyerCost: null });
     const overlays = screen.getByRole('group', { name: 'Chart overlays' });
     expect(within(overlays).getAllByRole('button').map((button) => button.textContent))
-      .toEqual(['Support', 'Resistance', '10D range', 'Buyer cost', 'MA', 'Volume', 'Foreign']);
-    expect(within(overlays).getByRole('button', { name: '10D range' })).toBeDisabled();
+      .toEqual(['Support', 'Resistance', 'Outlook range', 'Buyer cost', 'MA', 'Volume', 'Foreign']);
+    expect(within(overlays).getByRole('button', { name: 'Outlook range' })).toBeDisabled();
     expect(within(overlays).getByRole('button', { name: 'Buyer cost' })).toBeDisabled();
     expect(within(overlays).getByRole('button', { name: 'Foreign' })).toBeDisabled();
     expect(within(overlays).getByRole('button', { name: 'Support' })).toHaveAttribute('aria-pressed', 'true');
@@ -155,12 +171,13 @@ describe('chart interaction continuity', () => {
     mount({ chart: { ...chart, levels: { supports: [], resistances: [{ price: 200 }] } } });
     const lines = series[4].createPriceLine.mock.results.map((result, index) => ({ args: series[4].createPriceLine.mock.calls[index][0], line: result.value }));
     expect(lines.map((item) => item.args.title)).not.toEqual(expect.arrayContaining(['Stop', 'Target', 'Breakout']));
-    const low = lines.find((item) => item.args.title === '10D low');
-    expect(low.args).toEqual(expect.objectContaining({ price: 200, lineStyle: 1 }));
+    const low = lines.find((item) => item.line.applyOptions.mock.calls.some(([options]) => options.title === '10S low'));
+    expect(low.args).toEqual(expect.objectContaining({ lineStyle: 1 }));
+    expect(low.line.applyOptions).toHaveBeenCalledWith({ price: 200, title: '10S low' });
     expect(low.line.applyOptions).toHaveBeenLastCalledWith(expect.objectContaining({ lineVisible: true }));
     const resistance = lines.find((item) => item.args.title === 'R');
     expect(resistance.line.applyOptions).toHaveBeenLastCalledWith(expect.objectContaining({ lineVisible: true }));
-    fireEvent.click(screen.getByRole('button', { name: '10D range' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Outlook range' }));
     expect(low.line.applyOptions).toHaveBeenLastCalledWith(expect.objectContaining({ lineVisible: false }));
   });
 

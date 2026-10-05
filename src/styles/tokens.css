@@ -21,8 +21,8 @@
   --chart-down: #b43f38;
   --chart-volume-up: rgba(24, 120, 74, 0.28);
   --chart-volume-down: rgba(180, 63, 56, 0.28);
-  --chart-support: #5d6a73;
-  --chart-resistance: #5d6a73;
+  --chart-support: #087f8c;
+  --chart-resistance: #b45309;
   --chart-target: #18784a;
   --chart-stop: #a96808;
   --chart-cost: #7c3aed;
@@ -135,8 +135,8 @@
   --chart-down: #d9564d;
   --chart-volume-up: rgba(52, 211, 153, 0.30);
   --chart-volume-down: rgba(248, 113, 113, 0.30);
-  --chart-support: #77828a;
-  --chart-resistance: #77828a;
+  --chart-support: #2dd4bf;
+  --chart-resistance: #fb923c;
   --chart-target: #3fae6f;
   --chart-stop: #d99a34;
   --chart-cost: #c084fc;

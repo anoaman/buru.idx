@@ -10,8 +10,8 @@ const signed = (value) => `${value > 0 ? '+' : value < 0 ? '−' : ''}${Math.abs
 const away = (level, price) => (price > 0 ? ` (${signed(((level - price) / price) * 100)})` : '');
 
 /** Setup label, the plain read, what changed today, and the outlook. */
-export function ReadCard({ read, price }) {
-  const { setup, summary, changes, outlook, track } = read;
+export function ReadCard({ read, price, outlook = read.outlook, outlooks = {}, onHorizonChange }) {
+  const { setup, summary, changes, track, watch = [] } = read;
   return (
     <section className="sa-read" aria-label="Read and outlook">
       <div className="sa-read__text">
@@ -22,9 +22,27 @@ export function ReadCard({ read, price }) {
             {changes.map((item) => <li key={item}>{item}</li>)}
           </ul>
         )}
+        {watch.length > 0 && (
+          <div className="sa-watch" aria-label="What would change this read">
+            <h3>What would change this read?</h3>
+            <ul>{watch.map((item) => <li key={item.label}><b>{item.label}</b><span>{item.detail}</span></li>)}</ul>
+            <small>Based on current levels and broker evidence; reassessed after each close.</small>
+          </div>
+        )}
       </div>
-      <Outlook outlook={outlook} track={track} setupLabel={setup.label} price={price} />
+      <Outlook outlook={outlook} outlooks={outlooks} onHorizonChange={onHorizonChange} track={track} setupLabel={setup.label} price={price} />
     </section>
+  );
+}
+
+/** Both controls share Workbench state; no simulation or scoring lives in the UI. */
+export function OutlookHorizon({ outlooks = {}, sessions, onChange, label = 'Outlook horizon' }) {
+  const available = Object.values(outlooks).filter(Boolean).sort((a, b) => a.sessions - b.sessions);
+  if (available.length < 2 || !onChange) return null;
+  return (
+    <select className="sa-horizon" aria-label={label} value={sessions} onChange={(event) => onChange(Number(event.target.value))}>
+      {available.map((item) => <option key={item.sessions} value={item.sessions}>{item.sessions} sessions ahead</option>)}
+    </select>
   );
 }
 
@@ -33,15 +51,18 @@ export function ReadCard({ read, price }) {
  * The odds come from the stock's own recent sessions; the track record is how
  * the same label played out across the market.
  */
-export function Outlook({ outlook, track, setupLabel, price }) {
+export function Outlook({ outlook, outlooks, onHorizonChange, track, setupLabel, price }) {
   if (!outlook && !track) return null;
   const sessions = outlook?.sessions ?? track?.sessions ?? 10;
   return (
     <div className="sa-outlook" aria-label={`Next ${sessions} sessions`}>
-      <span className="sa-outlook__label">Next {sessions} sessions · odds, not a call</span>
+      <div className="sa-outlook__header">
+        <span className="sa-outlook__label">Next {sessions} sessions · odds, not a call</span>
+        <OutlookHorizon outlooks={outlooks} sessions={sessions} onChange={onHorizonChange} />
+      </div>
       {outlook && (
         <dl>
-          <div><dt>Likely range</dt><dd>{formatPrice(outlook.range.low)}–{formatPrice(outlook.range.high)}</dd></div>
+          <div><dt>Closing range</dt><dd>{formatPrice(outlook.range.low)}–{formatPrice(outlook.range.high)}</dd></div>
           {outlook.resistanceFirstPct != null && (
             <div><dt>Reaches {formatPrice(outlook.resistance)} first</dt><dd className="is-positive">{outlook.resistanceFirstPct}%</dd></div>
           )}
@@ -52,7 +73,7 @@ export function Outlook({ outlook, track, setupLabel, price }) {
       )}
       {outlook && (
         <small>
-          8 in 10 simulated paths close between those prices, middle {formatPrice(outlook.range.mid)}.
+          8 in 10 simulated paths close between those prices after {sessions} trading sessions (not calendar days), middle {formatPrice(outlook.range.mid)}.
           {outlook.resistance != null ? ` Resistance${away(outlook.resistance, price)}` : ''}
           {outlook.support != null ? `${outlook.resistance != null ? ',' : ''} support${away(outlook.support, price)}` : ''}
           {outlook.resistance != null || outlook.support != null ? '.' : ''}
@@ -129,7 +150,7 @@ export function Checks({ checks }) {
         {checks.map((item) => (
           <li key={item.label} className={`is-${item.status}`}>
             <i aria-hidden="true" />
-            <span><b>{item.label}</b> · {item.detail}</span>
+            <span><b>{item.label}</b> · {item.detail}{item.secondary && <small className="sa-checks__context">Secondary context · third-liner</small>}</span>
           </li>
         ))}
       </ul>

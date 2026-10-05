@@ -231,6 +231,26 @@ describe('Workbench', () => {
     );
   };
 
+  it('keeps both horizon selectors synchronized and historical stats on their measured horizon', async () => {
+    const original = mockData.read.outlook;
+    const outlooks = {
+      5: { ...original, sessions: 5, range: { low: 4300, mid: 4500, high: 4600 } },
+      10: original,
+      20: { ...original, sessions: 20, range: { low: 4100, mid: 4500, high: 5000 } },
+    };
+    renderBBRI({ ...mockData, read: { ...mockData.read, outlooks, watch: [{ label: 'Loses support', detail: 'A close below 4.300 weakens the price structure.' }] } });
+    const cardSelect = await screen.findByRole('combobox', { name: 'Outlook horizon', exact: true });
+    const chartSelect = screen.getByRole('combobox', { name: 'Chart outlook horizon' });
+    expect(cardSelect).toHaveValue('10');
+    fireEvent.change(chartSelect, { target: { value: '20' } });
+    expect(cardSelect).toHaveValue('20');
+    expect(within(screen.getByLabelText('Next 20 sessions')).getByText('4.100–5.000')).toBeInTheDocument();
+    expect(screen.getByText(/Past “Accumulation at support” reads/)).toHaveTextContent('up after 10 sessions');
+    fireEvent.change(cardSelect, { target: { value: '5' } });
+    expect(chartSelect).toHaveValue('5');
+    expect(screen.getByLabelText('What would change this read')).toHaveTextContent('A close below 4.300');
+  });
+
   it('leads with one setup, a plain read and an outlook, never a trade plan', async () => {
     renderBBRI();
     expect(await screen.findByText('Accumulation at support')).toBeInTheDocument();

@@ -203,9 +203,15 @@ export function normalizeRead(raw) {
     setup: { id: String(raw.setup.id || 'none'), label: String(raw.setup.label), why: raw.setup.why || '' },
     summary: typeof raw.summary === 'string' ? raw.summary : '',
     outlook: normalizeOutlook(raw.outlook),
+    outlooks: Object.fromEntries([5, 10, 20].map((sessions) => {
+      const outlook = normalizeOutlook(raw.outlooks?.[sessions]);
+      return [sessions, outlook?.sessions === sessions ? outlook : null];
+    }).filter(([, value]) => value)),
+    watch: Array.isArray(raw.watch) ? raw.watch.filter((item) => typeof item?.label === 'string' && typeof item?.detail === 'string')
+      .slice(0, 3).map(({ label, detail }) => ({ label, detail })) : [],
     track: normalizeTrack(raw.track),
     checks: Array.isArray(raw.checks)
-      ? raw.checks.filter((item) => item?.label && CHECK_STATUSES.has(item.status)).map((item) => ({ status: item.status, label: String(item.label), detail: String(item.detail || '') }))
+      ? raw.checks.filter((item) => item?.label && CHECK_STATUSES.has(item.status)).map((item) => ({ status: item.status, label: String(item.label), detail: String(item.detail || ''), secondary: item.secondary === true }))
       : [],
     changes: Array.isArray(raw.changes) ? raw.changes.filter((item) => typeof item === 'string').slice(0, 2) : [],
     leadBuyer: raw.leadBuyer?.code ? { code: String(raw.leadBuyer.code), avg: finiteOrNull(raw.leadBuyer.avg), days: raw.leadBuyer.days ?? 0, of: raw.leadBuyer.of ?? 0 } : null,

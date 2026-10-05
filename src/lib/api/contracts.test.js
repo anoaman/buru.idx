@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   guardAnalyze,
+  normalizeRead,
   guardBrokerArchiveHealth,
   guardBrokerStockIntelligence,
   guardCases,
@@ -776,4 +777,17 @@ describe('data health contract', () => {
     expect(guardDataHealth({ success: false, error: 'db locked' }).ok).toBe(false);
     expect(guardDataHealth({ success: true }).ok).toBe(false);
   });
+});
+
+it('rejects mismatched outlook horizons and malformed reassessment conditions', () => {
+  const outlook = { sessions: 10, range: { low: 90, mid: 100, high: 110 } };
+  const read = normalizeRead({ setup: { id: 'none', label: 'No clear setup' }, outlook,
+    outlooks: { 5: outlook, 10: outlook, 20: { sessions: 20, range: { low: null, high: 120 } } },
+    watch: [null, { label: 'bad' }, { label: 'Loses support', detail: 'Below 90' }],
+    checks: [{ status: 'warn', label: 'Foreign buying', detail: 'Rp1B', secondary: true }],
+  });
+  expect(Object.keys(read.outlooks)).toEqual(['10']);
+  expect(read.watch).toEqual([{ label: 'Loses support', detail: 'Below 90' }]);
+  expect(read.checks[0].secondary).toBe(true);
+  expect(normalizeRead({ setup: { label: 'Old API' } }).watch).toEqual([]);
 });
