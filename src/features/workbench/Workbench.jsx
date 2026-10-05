@@ -110,7 +110,7 @@ export default function Workbench() {
     const data = displayed.data;
     if (!data) return null;
     if (active === 'indicators') return <TechnicalEvidence priceHistory={data.priceHistory} ticker={data.ticker} />;
-    if (active === 'risk') return <RiskSimulator ticker={data.ticker} plan={data.read?.plan} />;
+    if (active === 'risk') return <RiskSimulator ticker={data.ticker} />;
     return null;
   };
 
@@ -137,12 +137,12 @@ export default function Workbench() {
           <div className="wb-result sa-page" data-displayed-ticker={displayed.ticker}>
             <TickerHeader ticker={displayed.data.ticker} read={displayed.data.read} asOf={displayed.data.chart?.source?.lastDate} />
             {displayed.data.read
-              ? <ReadCard read={displayed.data.read} />
+              ? <ReadCard read={displayed.data.read} price={displayed.data.ticker?.close} />
               : <p className="sa-muted">The read for this stock is unavailable right now; the chart and indicators below still apply.</p>}
             <div className="wb-chart-panel">
               <MarketChart
                 chart={displayed.data.chart}
-                plan={displayed.data.read?.plan}
+                outlook={displayed.data.read?.outlook}
                 buyerCost={displayed.data.read?.leadBuyer}
                 ticker={displayed.data.ticker}
               />

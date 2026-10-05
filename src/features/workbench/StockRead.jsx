@@ -3,11 +3,17 @@ import { formatIDR, formatPrice } from '../../lib/format/market.js';
 
 const shortDate = (value) => (value ? new Date(`${value}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—');
 
-/** Setup label, the plain read, what changed today, and the one trade plan. */
-export function ReadCard({ read }) {
-  const { setup, summary, changes, plan } = read;
+// Spelled out because en-GB writes September as "Sept".
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const monthYear = (value) => (value ? `${MONTHS[Number(value.slice(5, 7)) - 1]} ${value.slice(0, 4)}` : '');
+const signed = (value) => `${value > 0 ? '+' : value < 0 ? '−' : ''}${Math.abs(value).toFixed(1)}%`;
+const away = (level, price) => (price > 0 ? ` (${signed(((level - price) / price) * 100)})` : '');
+
+/** Setup label, the plain read, what changed today, and the outlook. */
+export function ReadCard({ read, price }) {
+  const { setup, summary, changes, outlook, track } = read;
   return (
-    <section className="sa-read" aria-label="Read and trade plan">
+    <section className="sa-read" aria-label="Read and outlook">
       <div className="sa-read__text">
         <span className={`sa-setup sa-setup--${setup.id}`}>{setup.label}</span>
         <p>{summary || setup.why}</p>
@@ -17,37 +23,48 @@ export function ReadCard({ read }) {
           </ul>
         )}
       </div>
-      <PlanBlock plan={plan} />
+      <Outlook outlook={outlook} track={track} setupLabel={setup.label} price={price} />
     </section>
   );
 }
 
-function PlanBlock({ plan }) {
-  if (!plan.available) {
-    return (
-      <div className="sa-plan sa-plan--none" aria-label="Trade plan">
-        <span className="sa-plan__label">Plan</span>
-        <strong>{plan.reason || 'No plan yet.'}</strong>
-        {plan.alt && (
-          <small>Watch: close above <b>{formatPrice(plan.alt.trigger)}</b> → target {formatPrice(plan.alt.target)}, stop {formatPrice(plan.alt.stop)}</small>
-        )}
-      </div>
-    );
-  }
+/**
+ * What the next sessions could look like, as odds: a read, never an entry.
+ * The odds come from the stock's own recent sessions; the track record is how
+ * the same label played out across the market.
+ */
+export function Outlook({ outlook, track, setupLabel, price }) {
+  if (!outlook && !track) return null;
+  const sessions = outlook?.sessions ?? track?.sessions ?? 10;
   return (
-    <div className="sa-plan" aria-label="Trade plan">
-      <dl>
-        <div><dt>Buy</dt><dd>{formatPrice(plan.entryLow)}{plan.entryHigh !== plan.entryLow ? `–${formatPrice(plan.entryHigh)}` : ''}</dd></div>
-        <div><dt>Stop</dt><dd className="is-negative">{formatPrice(plan.stop)}</dd></div>
-        <div><dt>{plan.targetSource === 'measured' ? 'Target (range projection)' : 'Target'}</dt><dd className="is-positive">{formatPrice(plan.target)}</dd></div>
-        <div><dt>R:R</dt><dd>{Number.isFinite(plan.netRR) ? plan.netRR.toFixed(1) : '—'}</dd></div>
-      </dl>
-      <small>
-        Buy next session{Number.isFinite(plan.skipAbove) ? <>, skip if it opens above <b>{formatPrice(plan.skipAbove)}</b></> : ''}.
-        {plan.invalidIf ? ` ${plan.invalidIf}` : ''}
-      </small>
-      {plan.warning && <small className="is-warning">{plan.warning}</small>}
-      {plan.alt && <small>Or: close above <b>{formatPrice(plan.alt.trigger)}</b> → {formatPrice(plan.alt.target)}</small>}
+    <div className="sa-outlook" aria-label={`Next ${sessions} sessions`}>
+      <span className="sa-outlook__label">Next {sessions} sessions · odds, not a call</span>
+      {outlook && (
+        <dl>
+          <div><dt>Likely range</dt><dd>{formatPrice(outlook.range.low)}–{formatPrice(outlook.range.high)}</dd></div>
+          {outlook.resistanceFirstPct != null && (
+            <div><dt>Reaches {formatPrice(outlook.resistance)} first</dt><dd className="is-positive">{outlook.resistanceFirstPct}%</dd></div>
+          )}
+          {outlook.supportFirstPct != null && (
+            <div><dt>Drops to {formatPrice(outlook.support)} first</dt><dd className="is-negative">{outlook.supportFirstPct}%</dd></div>
+          )}
+        </dl>
+      )}
+      {outlook && (
+        <small>
+          8 in 10 simulated paths close between those prices, middle {formatPrice(outlook.range.mid)}.
+          {outlook.resistance != null ? ` Resistance${away(outlook.resistance, price)}` : ''}
+          {outlook.support != null ? `${outlook.resistance != null ? ',' : ''} support${away(outlook.support, price)}` : ''}
+          {outlook.resistance != null || outlook.support != null ? '.' : ''}
+          {outlook.closeBelowSupportPct != null ? ` Ends below support in ${outlook.closeBelowSupportPct}%.` : ''}
+        </small>
+      )}
+      {track && (
+        <small className="sa-outlook__track">
+          Past “{setupLabel}” reads: up after {track.sessions} sessions in {track.upPct}% of {track.cases.toLocaleString('en-US')} cases,
+          median {signed(track.medianPct)}, {signed(track.vsIhsgPct)} vs IHSG ({monthYear(track.from)} – {monthYear(track.to)}).
+        </small>
+      )}
     </div>
   );
 }

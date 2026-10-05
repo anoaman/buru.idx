@@ -12,7 +12,7 @@ const RANGES = [[20, '20D'], [60, '60D'], [120, '120D'], ['all', 'All']];
 export const OVERLAYS = [
   { key: 'support', label: 'Support', on: true },
   { key: 'resistance', label: 'Resistance', on: true },
-  { key: 'plan', label: 'Plan', on: true },
+  { key: 'range', label: '10D range', on: true },
   { key: 'cost', label: 'Buyer cost', on: true },
   { key: 'ma', label: 'MA', on: false },
   { key: 'volume', label: 'Volume', on: true },
@@ -45,10 +45,7 @@ function readChartTheme(element) {
     volumeDown: token('--chart-volume-down', 'rgba(248,113,113,.3)'),
     support: token('--chart-support', '#77828a'),
     resistance: token('--chart-resistance', '#77828a'),
-    target: token('--chart-target', '#3fae6f'),
-    entry: token('--color-accent', '#a8c93a'),
-    stop: token('--chart-down', '#d9564d'),
-    trigger: token('--color-accent', '#a8c93a'),
+    range: token('--color-accent', '#a8c93a'),
     cost: token('--chart-cost', '#c084fc'),
     foreignBuy: token('--chart-volume-up', 'rgba(52,211,153,.3)'),
     foreignSell: token('--chart-volume-down', 'rgba(248,113,113,.3)'),
@@ -56,7 +53,7 @@ function readChartTheme(element) {
   };
 }
 
-export default function MarketChart({ chart, plan, buyerCost, ticker }) {
+export default function MarketChart({ chart, outlook, buyerCost, ticker }) {
   const containerRef = useRef(null);
   const sectionRef = useRef(null);
   const controlsRef = useRef(null);
@@ -149,17 +146,13 @@ export default function MarketChart({ chart, plan, buyerCost, ticker }) {
     };
     (chart.levels?.supports || []).slice(0, 3).forEach((level) => addLevel('support', level.price, 'support', 'S'));
     (chart.levels?.resistances || []).slice(0, 3).forEach((level) => addLevel('resistance', level.price, 'resistance', 'R'));
-    if (plan?.available) {
-      addLevel('plan', plan.stop, 'stop', 'Stop', { width: 2, style: 0 });
-      addLevel('plan', plan.target, 'target', 'Target', { width: 2, style: 0 });
+    if (outlook?.range) {
+      addLevel('range', outlook.range.high, 'range', '10D high', { width: 1, style: 1 });
+      addLevel('range', outlook.range.low, 'range', '10D low', { width: 1, style: 1 });
     }
-    if (plan?.alt) addLevel('plan', plan.alt.trigger, 'trigger', 'Breakout', { width: 1, style: 2 });
     if (buyerCost?.avg) addLevel('cost', buyerCost.avg, 'cost', `${buyerCost.code} cost`, { width: 2, style: 1 });
-    // A support or resistance that is also a plan level is drawn once, as the plan level.
-    const planPrices = new Set(priceLines.filter((item) => item.group === 'plan').map((item) => item.price));
     const updateLevels = () => priceLines.forEach(({ group, price, colorKey, line }) => {
-      const duplicate = (group === 'support' || group === 'resistance') && shown.plan && planPrices.has(price);
-      const visible = shown[group] && !duplicate && isPriceInCandleWindow(price, currentScale);
+      const visible = shown[group] && isPriceInCandleWindow(price, currentScale);
       line?.applyOptions({ color: colors[colorKey], lineVisible: visible, axisLabelVisible: visible });
     });
     const chooseRange = (value) => {
@@ -233,12 +226,12 @@ export default function MarketChart({ chart, plan, buyerCost, ticker }) {
       controlsRef.current = null;
       instance.remove();
     };
-  }, [chart, plan, buyerCost, ticker]);
+  }, [chart, outlook, buyerCost, ticker]);
 
   useEffect(() => {
     controlsRef.current?.setOverlays(overlays);
     try { localStorage.setItem(OVERLAY_STORAGE_KEY, JSON.stringify(overlays)); } catch { /* storage blocked */ }
-  }, [chart, plan, buyerCost, ticker, overlays]);
+  }, [chart, outlook, buyerCost, ticker, overlays]);
 
   useEffect(() => {
     const sync = () => setFullscreen(document.fullscreenElement === sectionRef.current);
@@ -266,7 +259,7 @@ export default function MarketChart({ chart, plan, buyerCost, ticker }) {
   const candle = rows[inspectedIndex ?? rows.length - 1] || rows[rows.length - 1];
   const available = {
     cost: Boolean(buyerCost?.avg),
-    plan: Boolean(plan?.available || plan?.alt),
+    range: Boolean(outlook?.range),
     foreign: rows.some((row) => Number.isFinite(row.foreignNet)),
   };
 

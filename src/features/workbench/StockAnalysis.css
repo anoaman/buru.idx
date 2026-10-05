@@ -30,15 +30,14 @@
 .sa-changes li { font-size: 13px; color: var(--text-secondary); }
 .sa-changes li::before { content: '● '; color: var(--color-accent); }
 
-.sa-plan { display: grid; gap: 6px; padding-left: 20px; border-left: 1px solid var(--border-default); }
-.sa-plan dl { display: flex; gap: 22px; margin: 0; }
-.sa-plan dl div { display: grid; }
-.sa-plan dt { font-size: 12px; color: var(--text-tertiary); }
-.sa-plan dd { margin: 0; font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.sa-plan small { font-size: 12px; color: var(--text-secondary); }
-.sa-plan--none { max-width: 340px; }
-.sa-plan__label { font-size: 12px; color: var(--text-tertiary); }
-.sa-plan--none strong { font-size: 15px; }
+.sa-outlook { display: grid; gap: 6px; padding-left: 20px; border-left: 1px solid var(--border-default); max-width: 460px; }
+.sa-outlook dl { display: flex; gap: 22px; margin: 0; flex-wrap: wrap; }
+.sa-outlook dl div { display: grid; }
+.sa-outlook dt { font-size: 12px; color: var(--text-tertiary); }
+.sa-outlook dd { margin: 0; font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.sa-outlook small { font-size: 12px; color: var(--text-secondary); }
+.sa-outlook__label { font-size: 12px; color: var(--text-tertiary); }
+.sa-outlook__track { color: var(--text-tertiary); }
 
 .sa-row { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(300px, 1fr); gap: 12px; align-items: start; }
 .sa-box { padding: 14px 16px; background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: 10px; }
@@ -73,7 +72,7 @@
 /* Chart overlay toggles: a coloured swatch per line kind. */
 .wb-overlay i { display: inline-block; width: 12px; height: 0; margin-right: 6px; vertical-align: middle; border-top: 2px solid var(--text-tertiary); }
 .wb-overlay--support i, .wb-overlay--resistance i { border-top-style: dashed; border-color: var(--chart-support, #77828a); }
-.wb-overlay--plan i { border-color: var(--color-accent); }
+.wb-overlay--range i { border-color: var(--color-accent); }
 .wb-overlay--cost i { border-top-style: dotted; border-color: var(--chart-cost, #c084fc); }
 .wb-overlay--ma i { border-color: var(--chart-ma-20, #fbbf24); }
 .wb-overlay--volume i, .wb-overlay--foreign i { height: 8px; border: 0; background: var(--text-tertiary); opacity: .6; }
@@ -82,7 +81,7 @@
 
 @media (max-width: 1000px) {
   .sa-read { grid-template-columns: 1fr; }
-  .sa-plan { padding: 12px 0 0; border-left: 0; border-top: 1px solid var(--border-default); }
+  .sa-outlook { padding: 12px 0 0; border-left: 0; border-top: 1px solid var(--border-default); max-width: none; }
   .sa-row, .sa-brokers { grid-template-columns: 1fr; }
   .sa-tags { margin-left: 0; }
 }

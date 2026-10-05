@@ -4,18 +4,11 @@ import { guardRiskSimulation } from '../../lib/api/contracts.js';
 import { formatIDR, formatNumber, formatPct, formatPrice } from '../../lib/format/market.js';
 
 /**
- * Sizing starts from the page's one trade plan, so the calculator can never
- * argue with it. With no long entry it starts from the breakout to watch, and
- * otherwise from the close with blank levels for a manual setup.
+ * A manual sizing tool: the page doesn't suggest trades, so it starts from the
+ * last close with stop and target left for the user to fill in.
  */
-export function planLevels(plan, close) {
-  if (plan?.available) return { entry: plan.entryHigh, stop: plan.stop, target: plan.target, source: 'plan' };
-  if (plan?.alt) return { entry: plan.alt.trigger, stop: plan.alt.stop, target: plan.alt.target, source: 'alt' };
-  return { entry: close, stop: null, target: null, source: 'none' };
-}
-
-export default function RiskSimulator({ ticker, plan }) {
-  const levels = planLevels(plan, ticker?.close);
+export default function RiskSimulator({ ticker }) {
+  const levels = { entry: ticker?.close, stop: null, target: null };
   const [form, setForm] = useState({
     entry: levels.entry || '',
     stop: levels.stop || '',
@@ -69,16 +62,7 @@ export default function RiskSimulator({ ticker, plan }) {
           <p>Server-calculated position size using IDX ticks, fees, capital, and maximum risk.</p>
         </div>
       </div>
-      {levels.source === 'plan' && (
-        <div className="inv-simulator__levels" aria-label="Trade plan levels">
-          <div><span>Buy</span><strong>{formatPrice(plan.entryLow)}{plan.entryHigh !== plan.entryLow ? `–${formatPrice(plan.entryHigh)}` : ''}</strong></div>
-          <div><span>Stop</span><strong>{formatPrice(plan.stop)}</strong></div>
-          <div><span>Target</span><strong>{formatPrice(plan.target)}</strong></div>
-          <div><span>Plan net R:R</span><strong>{Number.isFinite(plan.netRR) ? plan.netRR.toFixed(2) : '—'}</strong></div>
-        </div>
-      )}
-      {levels.source === 'alt' && <p className="inv-simulator__note">{plan.reason} Levels below are the breakout to watch.</p>}
-      {levels.source === 'none' && <p className="inv-simulator__note">{plan?.reason || 'No trade plan.'} Enter your own stop and target.</p>}
+      <p className="inv-simulator__note">Enter your own stop and target to size a position.</p>
       <form onSubmit={submit}>
         {[
           ['entry', 'Entry'], ['stop', 'Invalidation'], ['target', 'Target'],

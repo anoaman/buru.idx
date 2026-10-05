@@ -155,11 +155,11 @@ describe('Workbench', () => {
     read: {
       setup: { id: 'accumulation_support', label: 'Accumulation at support', why: 'NI bought on 5 of 5 days.' },
       summary: 'NI keeps buying: 5 of the last 5 days, average 4,420. Price is just above support 4,300.',
-      plan: {
-        available: true, entryLow: 4300, entryHigh: 4500, skipAbove: 4550, stop: 4250, target: 4900, netRR: 1.42,
-        targetSource: 'resistance', warning: null, invalidIf: 'Sell if it trades at 4.250.',
-        alt: null,
+      outlook: {
+        sessions: 10, range: { low: 4250, mid: 4500, high: 4800 }, support: 4300, resistance: 4900,
+        resistanceFirstPct: 31, supportFirstPct: 58, neitherPct: 11, closeBelowSupportPct: 27,
       },
+      track: { cases: 3530, sessions: 10, upPct: 41, medianPct: -1.2, vsIhsgPct: 0.8, from: '2025-12-29', to: '2026-09-18' },
       checks: [
         { status: 'ok', label: 'Uptrend', detail: 'above MA20, MA50 and MA200' },
         { status: 'warn', label: 'Weak market', detail: 'IHSG -9.0% in 20 days' },
@@ -231,28 +231,31 @@ describe('Workbench', () => {
     );
   };
 
-  it('leads with one setup, a plain read and one trade plan instead of grades and regimes', async () => {
+  it('leads with one setup, a plain read and an outlook, never a trade plan', async () => {
     renderBBRI();
     expect(await screen.findByText('Accumulation at support')).toBeInTheDocument();
     expect(screen.getByText(/NI keeps buying: 5 of the last 5 days/)).toBeInTheDocument();
     expect(screen.getByText('New buyer: PD bought Rp2.5B today at ~4,500.')).toBeInTheDocument();
-    const plan = screen.getByLabelText('Trade plan');
-    expect(within(plan).getByText('4.300–4.500')).toBeInTheDocument();
-    expect(within(plan).getByText('4.250')).toHaveClass('is-negative');
-    expect(within(plan).getByText('4.900')).toHaveClass('is-positive');
-    expect(within(plan).getByText('1.4')).toBeInTheDocument();
-    expect(within(plan).getByText(/Buy next session/).textContent).toBe('Buy next session, skip if it opens above 4.550. Sell if it trades at 4.250.');
+    const outlook = screen.getByLabelText('Next 10 sessions');
+    expect(within(outlook).getByText('4.250–4.800')).toBeInTheDocument();
+    expect(within(outlook).getByText('Reaches 4.900 first')).toBeInTheDocument();
+    expect(within(outlook).getByText('31%')).toHaveClass('is-positive');
+    expect(within(outlook).getByText('58%')).toHaveClass('is-negative');
+    expect(within(outlook).getByText(/Ends below support in 27%/)).toBeInTheDocument();
+    expect(within(outlook).getByText(/Past “Accumulation at support” reads/).textContent)
+      .toBe('Past “Accumulation at support” reads: up after 10 sessions in 41% of 3,530 cases, median −1.2%, +0.8% vs IHSG (Dec 2025 – Sep 2026).');
     expect(screen.getByText('ARA 5.625 · ARB 3.830')).toBeInTheDocument();
-    for (const gone of ['Grade', 'Regime', 'Pattern', 'Bias', 'Scorecard', 'Contradictions', 'B+']) {
+    for (const gone of ['Grade', 'Regime', 'Pattern', 'Bias', 'Scorecard', 'Contradictions', 'B+', 'Buy', 'Stop', 'Target', 'R:R']) {
       expect(screen.queryByText(gone)).not.toBeInTheDocument();
     }
+    expect(screen.queryByLabelText('Trade plan')).not.toBeInTheDocument();
   });
 
-  it('shows the reason and the breakout to watch when there is no plan', async () => {
-    renderBBRI({ ...mockData, read: { ...mockData.read, setup: { id: 'tight_range', label: 'Tight range', why: '' }, plan: { available: false, reason: 'Wait for the range to break.', alt: { trigger: 4550, stop: 4500, target: 4700 } } } });
-    const plan = await screen.findByLabelText('Trade plan');
-    expect(within(plan).getByText('Wait for the range to break.')).toBeInTheDocument();
-    expect(within(plan).getByText(/close above/).textContent).toBe('Watch: close above 4.550 → target 4.700, stop 4.500');
+  it('shows only the track record when the outlook cannot be simulated', async () => {
+    renderBBRI({ ...mockData, read: { ...mockData.read, outlook: null } });
+    const outlook = await screen.findByLabelText('Next 10 sessions');
+    expect(within(outlook).queryByText(/Likely range/)).not.toBeInTheDocument();
+    expect(within(outlook).getByText(/up after 10 sessions in 41%/)).toBeInTheDocument();
   });
 
   it('lists checks with their numbers, ordered as the read sends them', async () => {
@@ -479,12 +482,12 @@ describe('Workbench', () => {
     simulateRisk.mockImplementation(() => new Promise((resolve) => { resolveSimulation = resolve; }));
 
     const { rerender } = render(
-      <RiskSimulator ticker={mockData.ticker} plan={mockData.read.plan} />
+      <RiskSimulator ticker={mockData.ticker} />
     );
     fireEvent.click(screen.getByRole('button', { name: /CALCULATE SIZE/i }));
 
     rerender(
-      <RiskSimulator ticker={{ ...mockData.ticker, close: 4600 }} plan={mockData.read.plan} />
+      <RiskSimulator ticker={{ ...mockData.ticker, close: 4600 }} />
     );
 
     await act(async () => {
@@ -501,30 +504,17 @@ describe('Workbench', () => {
     expect(screen.queryByText(/111 lots/)).not.toBeInTheDocument();
   });
 
-  it('sizes from the page trade plan, or the breakout to watch when there is none', () => {
-    const { unmount } = render(<RiskSimulator ticker={mockData.ticker} plan={mockData.read.plan} />);
-    expect(screen.getByLabelText('Entry')).toHaveValue(4500);
-    expect(screen.getByLabelText('Invalidation')).toHaveValue(4250);
-    expect(screen.getByLabelText('Target')).toHaveValue(4900);
-    expect(within(screen.getByLabelText('Trade plan levels')).getByText('1.42')).toBeInTheDocument();
-    unmount();
-
-    const waiting = { available: false, reason: 'Wait for the range to break.', alt: { trigger: 4550, stop: 4500, target: 4700 } };
-    const second = render(<RiskSimulator ticker={mockData.ticker} plan={waiting} />);
-    expect(screen.getByLabelText('Entry')).toHaveValue(4550);
-    expect(screen.getByLabelText('Invalidation')).toHaveValue(4500);
-    expect(screen.getByText(/breakout to watch/)).toBeInTheDocument();
-    second.unmount();
-
-    render(<RiskSimulator ticker={mockData.ticker} plan={{ available: false, reason: 'Distribution: no long entry.', alt: null }} />);
+  it('starts sizing from the close with stop and target left to the user', () => {
+    render(<RiskSimulator ticker={mockData.ticker} />);
     expect(screen.getByLabelText('Entry')).toHaveValue(mockData.ticker.close);
     expect(screen.getByLabelText('Invalidation')).toHaveValue(null);
+    expect(screen.getByLabelText('Target')).toHaveValue(null);
     expect(screen.getByText(/Enter your own stop and target/)).toBeInTheDocument();
   });
 
   it('recovers when the risk simulation request rejects', async () => {
     simulateRisk.mockRejectedValue(new Error('risk service unavailable'));
-    render(<RiskSimulator ticker={mockData.ticker} plan={mockData.read.plan} />);
+    render(<RiskSimulator ticker={mockData.ticker} />);
 
     fireEvent.click(screen.getByRole('button', { name: /CALCULATE SIZE/i }));
 

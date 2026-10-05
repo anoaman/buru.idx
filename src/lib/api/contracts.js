@@ -164,37 +164,45 @@ function normalizeBrokerWindow(raw) {
   };
 }
 
-function normalizePlanLevels(raw) {
-  if (!raw || typeof raw !== 'object') return null;
+const pctOrNull = (value) => (Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : null);
+
+function normalizeOutlook(raw) {
+  if (!raw || typeof raw !== 'object' || !raw.range) return null;
+  const range = { low: finiteOrNull(raw.range.low), mid: finiteOrNull(raw.range.mid), high: finiteOrNull(raw.range.high) };
+  if (range.low == null || range.high == null) return null;
   return {
-    trigger: finiteOrNull(raw.trigger),
-    stop: finiteOrNull(raw.stop),
-    target: finiteOrNull(raw.target),
-    text: typeof raw.text === 'string' ? raw.text : '',
+    sessions: Number.isFinite(raw.sessions) ? raw.sessions : 10,
+    range,
+    support: finiteOrNull(raw.support),
+    resistance: finiteOrNull(raw.resistance),
+    resistanceFirstPct: pctOrNull(raw.resistanceFirstPct),
+    supportFirstPct: pctOrNull(raw.supportFirstPct),
+    neitherPct: pctOrNull(raw.neitherPct),
+    closeBelowSupportPct: pctOrNull(raw.closeBelowSupportPct),
+  };
+}
+
+function normalizeTrack(raw) {
+  if (!raw || typeof raw !== 'object' || !Number.isFinite(raw.cases) || raw.cases <= 0) return null;
+  return {
+    cases: raw.cases,
+    sessions: Number.isFinite(raw.sessions) ? raw.sessions : 10,
+    upPct: pctOrNull(raw.upPct),
+    medianPct: finiteOrNull(raw.medianPct),
+    vsIhsgPct: finiteOrNull(raw.vsIhsgPct),
+    from: typeof raw.from === 'string' ? raw.from : null,
+    to: typeof raw.to === 'string' ? raw.to : null,
   };
 }
 
 /** The Stock Analysis decision layer; null when the API predates it or sends junk. */
 export function normalizeRead(raw) {
   if (!raw || typeof raw !== 'object' || !raw.setup?.label) return null;
-  const plan = raw.plan && typeof raw.plan === 'object' ? raw.plan : {};
   return {
     setup: { id: String(raw.setup.id || 'none'), label: String(raw.setup.label), why: raw.setup.why || '' },
     summary: typeof raw.summary === 'string' ? raw.summary : '',
-    plan: {
-      available: plan.available === true,
-      reason: plan.reason || null,
-      entryLow: finiteOrNull(plan.entryLow),
-      entryHigh: finiteOrNull(plan.entryHigh),
-      skipAbove: finiteOrNull(plan.skipAbove),
-      stop: finiteOrNull(plan.stop),
-      target: finiteOrNull(plan.target),
-      targetSource: plan.targetSource === 'measured' ? 'measured' : 'resistance',
-      netRR: finiteOrNull(plan.netRR),
-      warning: plan.warning || null,
-      invalidIf: plan.invalidIf || null,
-      alt: normalizePlanLevels(plan.alt),
-    },
+    outlook: normalizeOutlook(raw.outlook),
+    track: normalizeTrack(raw.track),
     checks: Array.isArray(raw.checks)
       ? raw.checks.filter((item) => item?.label && CHECK_STATUSES.has(item.status)).map((item) => ({ status: item.status, label: String(item.label), detail: String(item.detail || '') }))
       : [],

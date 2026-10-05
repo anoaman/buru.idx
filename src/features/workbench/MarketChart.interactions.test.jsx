@@ -14,7 +14,7 @@ const chart = {
   levels: { supports: [{ price: 50 }], resistances: [{ price: 10000 }] },
 };
 const ticker = { symbol: 'BBCA', close: 244 };
-const plan = { available: true, stop: 190, target: 260, alt: null };
+const outlook = { range: { low: 200, mid: 220, high: 240 } };
 const buyerCost = { code: 'DR', avg: 230 };
 let instance;
 let series;
@@ -57,7 +57,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   delete document.documentElement.dataset.theme;
 });
-const mount = (props = {}) => render(<MarketChart chart={chart} ticker={ticker} plan={plan} buyerCost={buyerCost} {...props} />);
+const mount = (props = {}) => render(<MarketChart chart={chart} ticker={ticker} outlook={outlook} buyerCost={buyerCost} {...props} />);
 // Series order: candles, volume, foreign, MA lines (ma20 only here), level overlay.
 const VOLUME = 1;
 const MA20 = 3;
@@ -118,7 +118,7 @@ describe('chart interaction continuity', () => {
     const oldRange = rangeChange;
     act(() => crosshair({ seriesData: new Map([[series[0], { time: chart.candles[3].date }]]) }));
     const next = { ...chart, candles: chart.candles.slice(-2) };
-    view.rerender(<MarketChart chart={next} ticker={ticker} plan={plan} buyerCost={buyerCost} />);
+    view.rerender(<MarketChart chart={next} ticker={ticker} outlook={outlook} buyerCost={buyerCost} />);
     expect(instance.unsubscribeCrosshairMove).toHaveBeenCalledWith(oldHandler);
     expect(timeScale.unsubscribeVisibleLogicalRangeChange).toHaveBeenCalledWith(oldRange);
     expect(screen.getByLabelText('Selected candle values').querySelector('time')).toHaveAttribute('dateTime', next.candles.at(-1).date);
@@ -133,11 +133,11 @@ describe('chart interaction continuity', () => {
   });
 
   it('splits support and resistance, names the buyer, and disables overlays without data', () => {
-    mount({ plan: { available: false, alt: null }, buyerCost: null });
+    mount({ outlook: null, buyerCost: null });
     const overlays = screen.getByRole('group', { name: 'Chart overlays' });
     expect(within(overlays).getAllByRole('button').map((button) => button.textContent))
-      .toEqual(['Support', 'Resistance', 'Plan', 'Buyer cost', 'MA', 'Volume', 'Foreign']);
-    expect(within(overlays).getByRole('button', { name: 'Plan' })).toBeDisabled();
+      .toEqual(['Support', 'Resistance', '10D range', 'Buyer cost', 'MA', 'Volume', 'Foreign']);
+    expect(within(overlays).getByRole('button', { name: '10D range' })).toBeDisabled();
     expect(within(overlays).getByRole('button', { name: 'Buyer cost' })).toBeDisabled();
     expect(within(overlays).getByRole('button', { name: 'Foreign' })).toBeDisabled();
     expect(within(overlays).getByRole('button', { name: 'Support' })).toHaveAttribute('aria-pressed', 'true');
@@ -151,15 +151,17 @@ describe('chart interaction continuity', () => {
     expect(JSON.parse(localStorage.getItem('nalar.chart.overlays'))).toEqual(expect.objectContaining({ support: true, resistance: false }));
   });
 
-  it('draws a level shared by the plan and a resistance only once', () => {
-    mount({ chart: { ...chart, levels: { supports: [], resistances: [{ price: 200 }] } }, plan: { available: true, stop: 150, target: 200, alt: null } });
+  it('draws the 10-session range as two dotted lines and never a stop or target', () => {
+    mount({ chart: { ...chart, levels: { supports: [], resistances: [{ price: 200 }] } } });
     const lines = series[4].createPriceLine.mock.results.map((result, index) => ({ args: series[4].createPriceLine.mock.calls[index][0], line: result.value }));
+    expect(lines.map((item) => item.args.title)).not.toEqual(expect.arrayContaining(['Stop', 'Target', 'Breakout']));
+    const low = lines.find((item) => item.args.title === '10D low');
+    expect(low.args).toEqual(expect.objectContaining({ price: 200, lineStyle: 1 }));
+    expect(low.line.applyOptions).toHaveBeenLastCalledWith(expect.objectContaining({ lineVisible: true }));
     const resistance = lines.find((item) => item.args.title === 'R');
-    const target = lines.find((item) => item.args.title === 'Target');
-    expect(resistance.line.applyOptions).toHaveBeenLastCalledWith(expect.objectContaining({ lineVisible: false }));
-    expect(target.line.applyOptions).toHaveBeenLastCalledWith(expect.objectContaining({ lineVisible: true }));
-    fireEvent.click(screen.getByRole('button', { name: 'Plan' }));
     expect(resistance.line.applyOptions).toHaveBeenLastCalledWith(expect.objectContaining({ lineVisible: true }));
+    fireEvent.click(screen.getByRole('button', { name: '10D range' }));
+    expect(low.line.applyOptions).toHaveBeenLastCalledWith(expect.objectContaining({ lineVisible: false }));
   });
 
   it('draws daily foreign net when the history carries it', () => {
