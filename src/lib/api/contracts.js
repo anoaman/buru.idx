@@ -153,6 +153,7 @@ function normalizeBrokerWindow(raw) {
     avg: finiteOrNull(item.avg),
     days: Number.isFinite(item.days) ? item.days : 0,
     of: Number.isFinite(item.of) ? item.of : 0,
+    lot: finiteOrNull(item.lot),
   });
   const rows = (list) => (Array.isArray(list) ? list.filter((item) => item?.code).slice(0, 6).map(row) : []);
   return {

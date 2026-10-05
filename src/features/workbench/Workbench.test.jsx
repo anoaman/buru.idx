@@ -176,7 +176,7 @@ describe('Workbench', () => {
         },
         d5: {
           sessions: 5, from: '2026-07-11', to: '2026-07-17',
-          buyers: [{ code: 'NI', type: 'D', net: 23e9, avg: 4420, days: 5, of: 5 }],
+          buyers: [{ code: 'NI', type: 'D', net: 23e9, avg: 4420, days: 5, of: 5, lot: 2.34 }, { code: 'XL', type: 'D', net: 2e9, avg: 4400, days: 3, of: 5, lot: 0.52 }],
           sellers: [{ code: 'YU', type: 'F', net: -20e9, avg: 4450, days: 4, of: 5 }],
         },
         m1: null,
@@ -273,7 +273,8 @@ describe('Workbench', () => {
     const brokers = await screen.findByRole('region', { name: 'Brokers' });
     expect(within(brokers).getByRole('button', { name: '5D' })).toHaveAttribute('aria-pressed', 'true');
     expect(within(brokers).getByText('NI')).toBeInTheDocument();
-    expect(within(brokers).getByText('5/5d')).toBeInTheDocument();
+    expect(within(brokers).getByText('2.3× lot')).not.toHaveClass('is-warning');
+    expect(within(brokers).getByText('0.5× lot')).toHaveClass('is-warning');
     expect(within(brokers).getByText(/11 Jul – 17 Jul · 5 sessions/)).toBeInTheDocument();
     expect(within(brokers).getByRole('button', { name: '1M' })).toBeDisabled();
     expect(within(brokers).getByRole('link', { name: /Full broker flow/ }).getAttribute('href')).toBe('/broker-intelligence?lens=stock&ticker=BBRI&days=7');

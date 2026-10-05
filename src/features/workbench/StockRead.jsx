@@ -78,7 +78,10 @@ function BrokerRow({ row, side, showDays }) {
       <span className={side === 'buy' ? 'is-positive' : 'is-negative'}>
         {formatIDR(row.net, true)}{row.avg ? <small> @ {formatPrice(row.avg)}</small> : null}
       </span>
-      <em>{showDays ? `${row.days}/${row.of}d` : ''}</em>
+      <em title={Number.isFinite(row.lot) ? 'Average trade size vs this stock\'s average: under 0.8× is retail-size, 2× and up is a big-lot desk' : undefined}>
+        {showDays ? `${row.days}/${row.of}d` : ''}
+        {Number.isFinite(row.lot) && <small className={row.lot < 0.8 ? 'is-warning' : undefined}>{row.lot.toFixed(1)}× lot</small>}
+      </em>
     </li>
   );
 }
