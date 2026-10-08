@@ -9,14 +9,8 @@ import Skeleton from '../../components/Skeleton.jsx';
 import MarketChart from './MarketChart.jsx';
 import TechnicalEvidence from './TechnicalEvidence.jsx';
 import RiskSimulator from './RiskSimulator.jsx';
-import DetailDrawer from './DetailDrawer.jsx';
 import { BrokerWindows, Checks, ReadCard } from './StockRead.jsx';
 import './StockAnalysis.css';
-
-const MORE_TABS = [
-  { id: 'indicators', label: 'Indicators' },
-  { id: 'risk', label: 'Risk calculator' },
-];
 
 function TickerHeader({ ticker, read, asOf }) {
   if (!ticker) return null;
@@ -112,14 +106,6 @@ export default function Workbench() {
   const warmLoading = loading && hasDisplayed && analyzing && analyzing !== displayed.ticker;
   const coldLoading = loading && !hasDisplayed;
 
-  const renderMore = (active) => {
-    const data = displayed.data;
-    if (!data) return null;
-    if (active === 'indicators') return <TechnicalEvidence priceHistory={data.priceHistory} ticker={data.ticker} />;
-    if (active === 'risk') return <RiskSimulator ticker={data.ticker} />;
-    return null;
-  };
-
   return (
     <div className="workbench">
       {coldLoading && <Skeleton label={`Loading ${analyzing}…`} chart />}
@@ -157,19 +143,14 @@ export default function Workbench() {
             </div>
             {displayed.data.read && (
               <div className="sa-row">
-                <BrokerWindows key={displayed.ticker} brokers={displayed.data.read.brokers} symbol={displayed.data.ticker?.symbol} />
+                <BrokerWindows key={displayed.ticker} brokers={displayed.data.read.brokers} summary={displayed.data.read.brokerSummary} symbol={displayed.data.ticker?.symbol} />
                 <Checks checks={displayed.data.read.checks} />
               </div>
             )}
-            <details className="sa-more">
-              <summary>More: indicators and risk calculator</summary>
-              <DetailDrawer
-                key={displayed.ticker || 'empty'}
-                tabs={MORE_TABS}
-                storageKey={displayed.ticker ? `nalar-more:${displayed.ticker}` : null}
-              >
-                {renderMore}
-              </DetailDrawer>
+            <TechnicalEvidence priceHistory={displayed.data.priceHistory} ticker={displayed.data.ticker} macro={displayed.data.macro} />
+            <details className="sa-more sa-risk">
+              <summary><b>Risk calculator</b><span>Size a position from entry, stop and capital</span></summary>
+              <RiskSimulator ticker={displayed.data.ticker} />
             </details>
           </div>
         </div>

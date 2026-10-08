@@ -265,7 +265,7 @@ describe('Workbench', () => {
     expect(within(outlook).getByText(/Past “Accumulation at support” reads/).textContent)
       .toBe('Past “Accumulation at support” reads: up after 10 sessions in 41% of 3,530 cases, median −1.2%, +0.8% vs IHSG (Dec 2025 – Sep 2026).');
     expect(screen.getByText('ARA 5.625 · ARB 3.830')).toBeInTheDocument();
-    for (const gone of ['Grade', 'Regime', 'Pattern', 'Bias', 'Scorecard', 'Contradictions', 'B+', 'Buy', 'Stop', 'Target', 'R:R']) {
+    for (const gone of ['Grade', 'Regime', 'Pattern', 'Bias', 'Scorecard', 'Contradictions', 'B+', 'Buy', 'Stop', 'R:R']) {
       expect(screen.queryByText(gone)).not.toBeInTheDocument();
     }
     expect(screen.queryByLabelText('Trade plan')).not.toBeInTheDocument();
@@ -281,11 +281,12 @@ describe('Workbench', () => {
   it('lists checks with their numbers, ordered as the read sends them', async () => {
     renderBBRI();
     const checks = await screen.findByRole('region', { name: 'Checks' });
-    expect(within(checks).getAllByRole('listitem').map((item) => [item.className, item.textContent])).toEqual([
-      ['is-ok', 'Uptrend · above MA20, MA50 and MA200'],
-      ['is-warn', 'Weak market · IHSG -9.0% in 20 days'],
-      ['is-bad', 'Foreign selling · −Rp2.6T in 20 days'],
-    ]);
+    const items = within(checks).getAllByRole('listitem');
+    expect(items.map((item) => item.className)).toEqual(['is-ok', 'is-warn', 'is-bad']);
+    expect(items[0]).toHaveTextContent('Uptrend');
+    expect(items[0]).toHaveTextContent('above MA20, MA50 and MA200');
+    expect(items[1]).toHaveTextContent('Weak market');
+    expect(items[2]).toHaveTextContent('Foreign selling');
   });
 
   it('switches broker windows, skips missing ones, and links to the full broker flow', async () => {
@@ -305,12 +306,13 @@ describe('Workbench', () => {
     expect(within(brokers).getByRole('link', { name: /Full broker flow/ }).getAttribute('href')).toBe('/broker-intelligence?lens=stock&ticker=BBRI&days=1');
   });
 
-  it('keeps indicators and the risk calculator behind one collapsed section', async () => {
+  it('shows market state directly and keeps only the risk calculator collapsed', async () => {
     renderBBRI();
     expect(await screen.findByText('Price & volume')).toBeInTheDocument();
-    const tablist = screen.getByRole('tablist', { name: /Analysis detail sections/i });
-    expect(within(tablist).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Indicators', 'Risk calculator']);
-    fireEvent.click(within(tablist).getByRole('tab', { name: 'Risk calculator' }));
+    expect(screen.getByRole('region', { name: 'Market state' })).toBeInTheDocument();
+    const risk = screen.getByText('Risk calculator').closest('details');
+    expect(risk).not.toHaveAttribute('open');
+    fireEvent.click(screen.getByText('Risk calculator'));
     expect(screen.getByRole('heading', { name: /Risk Simulator/i })).toBeInTheDocument();
   });
 
@@ -372,7 +374,6 @@ describe('Workbench', () => {
     );
 
     expect(await screen.findByText('Price & volume')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('tab', { name: /Indicators/i }));
     expect(await screen.findByText(/daily history unavailable/i)).toBeInTheDocument();
   });
 

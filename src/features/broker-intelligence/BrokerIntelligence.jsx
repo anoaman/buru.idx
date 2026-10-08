@@ -20,7 +20,7 @@ import InventoryCurve from './InventoryCurve.jsx';
 const ALLOWED_DAYS = [1, 7, 14, 30, 60];
 const RANGE_PRESETS = [['latest', 'Latest'], ['previous', 'Previous'], ['7d', '7D'], ['14d', '14D'], ['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['1y', '1Y'], ['2y', '2Y'], ['ytd', 'YTD'], ['custom', 'Custom']];
 const DEFAULT_TICKER = 'BBCA';
-const DEFAULT_DAYS = 1;
+const DEFAULT_DAYS = 30;
 const DEFAULT_MARKET_FILTERS = Object.freeze({
   maxPrice: '', minAverageValue: '', minBrokerNetValue: '',
   foreignDirection: 'any', minForeignValue: '', excludeFca: false,
@@ -309,7 +309,7 @@ export default function BrokerIntelligence() {
   return `${formatDate(from)}–${formatDate(to)}`;
 }
 
-const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
+const preset = presetParam || (date ? '' : ({ 1: 'latest', 7: '7d', 14: '14d', 30: '1m' }[days] || '1m'));
   const from = /^\d{4}-\d{2}-\d{2}$/.test(searchParams.get('from') || '') ? searchParams.get('from') : '';
   const to = /^\d{4}-\d{2}-\d{2}$/.test(searchParams.get('to') || '') ? searchParams.get('to') : '';
   const ticker = (searchParams.get('ticker') || DEFAULT_TICKER).toUpperCase();
@@ -707,6 +707,18 @@ const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
                 )}
               </div>
               <div className="bi-summary__metrics">
+                {buyers[0] && (
+                  <div>
+                    <span className="text-tertiary">Lead accumulation</span>
+                    <span className="text-positive">{buyers[0].code} · {signedValue(buyers[0].netValue)}</span>
+                  </div>
+                )}
+                {sellers[0] && (
+                  <div>
+                    <span className="text-tertiary">Lead distribution</span>
+                    <span className="text-negative">{sellers[0].code} · {signedValue(sellers[0].netValue)}</span>
+                  </div>
+                )}
                 {(stockData.preferredBroker.observedCodes || []).length > 0 && stockData.preferredBroker.share > 0 && (
                   <div className="bi-summary__primary">
                     <span className="text-tertiary">Preferred-broker share</span>
@@ -815,10 +827,19 @@ const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
               </section>
 
               <div className="bi-inspect">
-                <InventoryCurve
-                  points={selectedRow?.curve || []}
-                  identityLabel={identityLabel}
-                />
+                {preset === 'latest' ? (
+                  <div className="bi-session-tape" aria-label="Latest session flow">
+                    <div><span className="text-tertiary">Latest session</span><strong>{identityLabel || 'Selected row'}</strong></div>
+                    <dl>
+                      <div><dt>Net value</dt><dd className={selectedRow?.netValue > 0 ? 'text-positive' : selectedRow?.netValue < 0 ? 'text-negative' : ''}>{signedValue(selectedRow?.netValue)}</dd></div>
+                      <div><dt>Net lots</dt><dd className={selectedRow?.netLots > 0 ? 'text-positive' : selectedRow?.netLots < 0 ? 'text-negative' : ''}>{signedLots(selectedRow?.netLots)}</dd></div>
+                      <div><dt>Average price</dt><dd>{avgCostLabel(selectedRow?.estimatedAverageCost) || '—'}</dd></div>
+                    </dl>
+                    <p className="text-tertiary">A single session has no inventory trend. Select 7D, 1M, or longer to see persistence and the estimated inventory curve.</p>
+                  </div>
+                ) : (
+                  <InventoryCurve points={selectedRow?.curve || []} identityLabel={identityLabel} />
+                )}
                 <SelectedDetail
                   lens={lens}
                   row={selectedRow ? { ...selectedRow, _days: days } : null}

@@ -98,3 +98,46 @@
 .sa-outlook__header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; justify-content: space-between; }
 .sa-horizon { max-width: 100%; padding: 5px 7px; border: 1px solid var(--border-default); border-radius: 5px; background: var(--bg-surface); color: var(--text-secondary); font: 500 12px var(--font-ui); }
 .sa-checks__context { display: block; font-size: 11px; color: var(--text-tertiary); }
+
+.sa-broker-balance { margin: 2px 0 14px; padding: 12px; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--bg-surface); }
+.sa-broker-balance__headline { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; }
+.sa-broker-balance__headline span { color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+.sa-broker-balance__bar { height: 5px; margin: 9px 0; overflow: hidden; border-radius: 99px; background: var(--color-negative-dim); }
+.sa-broker-balance__bar i { display: block; height: 100%; background: var(--color-positive); }
+.sa-broker-balance__facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.sa-broker-balance__facts span { display: grid; gap: 2px; }
+.sa-broker-balance__facts small { font-size: 10px; color: var(--text-tertiary); }
+.sa-broker-balance__facts b { font-size: 12px; font-variant-numeric: tabular-nums; text-transform: capitalize; }
+
+.sa-checks__summary { font-size: 11px; color: var(--text-tertiary); }
+.sa-checks__summary b { color: var(--text-primary); }
+.sa-check-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 18px; }
+.sa-check-groups > section > h4 { margin: 0 0 2px; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-tertiary); }
+.sa-checks li > span { display: grid; min-width: 0; }
+.sa-checks li small { margin-top: 2px; font-size: 11px; line-height: 1.35; color: var(--text-secondary); }
+.sa-checks li em { font-size: 11px; font-style: normal; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+.sa-checks .sa-checks__change { color: var(--text-tertiary); }
+
+.sa-market-state { padding: 16px 18px; }
+.sa-market-state__header { display: grid; grid-template-columns: minmax(180px, .55fr) minmax(0, 1.45fr); gap: 24px; align-items: end; margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--border-subtle); }
+.sa-market-state__eyebrow { display: block; margin-bottom: 3px; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--color-accent); }
+.sa-market-state h3 { margin: 0; font-size: 20px; text-transform: capitalize; }
+.sa-market-state__header p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
+.sa-market-state__grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 22px; }
+.sa-market-state__group { display: grid; align-content: start; gap: 8px; }
+.sa-market-state__group h4 { margin: 0 0 2px; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-tertiary); }
+.sa-market-metric { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1px 8px; align-items: baseline; }
+.sa-market-metric > span { font-size: 11px; }
+.sa-market-metric > strong { font-size: 12px; }
+.sa-market-metric > small { grid-column: 1 / -1; font-size: 10px; }
+.sa-risk summary { display: flex; justify-content: space-between; gap: 12px; }
+.sa-risk summary span { color: var(--text-tertiary); }
+
+@media (max-width: 1000px) {
+  .sa-check-groups, .sa-market-state__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  .sa-broker-balance__headline, .sa-market-state__header { grid-template-columns: 1fr; display: grid; gap: 5px; }
+  .sa-broker-balance__facts, .sa-check-groups, .sa-market-state__grid { grid-template-columns: 1fr; }
+}

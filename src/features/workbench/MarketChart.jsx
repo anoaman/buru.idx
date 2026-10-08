@@ -8,7 +8,7 @@ export { computeCandleOnlyScale, isPriceInCandleWindow } from './chartScale.js';
 
 const DEFAULT_CHART_HEIGHT = 480;
 const MA_KEYS = ['ma5', 'ma10', 'ma20', 'ma50', 'ma200'];
-const RANGES = [[20, '20D'], [60, '60D'], [120, '120D'], ['all', 'All']];
+const RANGES = [[20, '20D'], [60, '60D'], [120, '120D'], [249, '1Y'], ['all', 'All']];
 // Each toggle owns one kind of line, so support and resistance switch separately.
 export const OVERLAYS = [
   { key: 'support', label: 'Support', on: true },

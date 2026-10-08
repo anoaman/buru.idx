@@ -211,10 +211,27 @@ export function normalizeRead(raw) {
       .slice(0, 3).map(({ label, detail }) => ({ label, detail })) : [],
     track: normalizeTrack(raw.track),
     checks: Array.isArray(raw.checks)
-      ? raw.checks.filter((item) => item?.label && CHECK_STATUSES.has(item.status)).map((item) => ({ status: item.status, label: String(item.label), detail: String(item.detail || ''), secondary: item.secondary === true }))
+      ? raw.checks.filter((item) => item?.label && CHECK_STATUSES.has(item.status)).map((item) => ({
+        status: item.status,
+        label: String(item.label),
+        detail: String(item.detail || ''),
+        category: ['price', 'participation', 'market', 'risk'].includes(item.category) ? item.category : 'risk',
+        explanation: String(item.explanation || item.detail || ''),
+        changesWhen: String(item.changesWhen || ''),
+        secondary: item.secondary === true,
+      }))
       : [],
     changes: Array.isArray(raw.changes) ? raw.changes.filter((item) => typeof item === 'string').slice(0, 2) : [],
     leadBuyer: raw.leadBuyer?.code ? { code: String(raw.leadBuyer.code), avg: finiteOrNull(raw.leadBuyer.avg), days: raw.leadBuyer.days ?? 0, of: raw.leadBuyer.of ?? 0 } : null,
+    brokerSummary: raw.brokerSummary && ['buyer', 'seller', 'split', 'unresolved'].includes(raw.brokerSummary.control) ? {
+      control: raw.brokerSummary.control,
+      buyNet: finiteOrNull(raw.brokerSummary.buyNet),
+      sellNet: finiteOrNull(raw.brokerSummary.sellNet),
+      buySharePct: pctOrNull(raw.brokerSummary.buySharePct),
+      costGapPct: finiteOrNull(raw.brokerSummary.costGapPct),
+      leadBuyer: raw.brokerSummary.leadBuyer || null,
+      leadSeller: raw.brokerSummary.leadSeller || null,
+    } : null,
     limits: raw.limits && Number.isFinite(raw.limits.ara) && Number.isFinite(raw.limits.arb) ? { ara: raw.limits.ara, arb: raw.limits.arb } : null,
     brokers: {
       today: normalizeBrokerWindow(raw.brokers?.today),

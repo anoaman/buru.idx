@@ -1692,6 +1692,24 @@
   min-width: 0;
 }
 
+.bi-session-tape {
+  min-height: 180px;
+  display: grid;
+  align-content: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+}
+
+.bi-session-tape > div { display: flex; justify-content: space-between; gap: var(--space-3); }
+.bi-session-tape dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3); margin: 0; }
+.bi-session-tape dl div { display: grid; gap: 3px; }
+.bi-session-tape dt { font-size: 10px; color: var(--text-tertiary); }
+.bi-session-tape dd { margin: 0; font-size: 14px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.bi-session-tape p { margin: 0; font-size: 11px; line-height: 1.5; }
+
 .bi-curve {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);

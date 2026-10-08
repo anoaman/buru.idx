@@ -108,7 +108,7 @@ function BrokerRow({ row, side, showDays }) {
 }
 
 /** Top buyers and sellers for today, 5 sessions and about a month. */
-export function BrokerWindows({ brokers, symbol }) {
+export function BrokerWindows({ brokers, summary, symbol }) {
   const firstAvailable = WINDOWS.find(([key]) => brokers[key])?.[0] || 'd5';
   const [active, setActive] = useState(brokers.d5 ? 'd5' : firstAvailable);
   const window = brokers[active];
@@ -124,6 +124,22 @@ export function BrokerWindows({ brokers, symbol }) {
       </header>
       {!window ? <p className="sa-muted">Broker data is unavailable for this window.</p> : (
         <>
+          {active === 'd5' && summary && (
+            <div className="sa-broker-balance">
+              <div className="sa-broker-balance__headline">
+                <b>{summary.control === 'buyer' ? 'Buyers control' : summary.control === 'seller' ? 'Sellers control' : summary.control === 'split' ? 'Flow is split' : 'Control unresolved'}</b>
+                <span>{formatIDR(summary.buyNet, true)} buying vs {formatIDR(summary.sellNet, true)} selling</span>
+              </div>
+              <div className="sa-broker-balance__bar" aria-label={`${summary.buySharePct ?? 50}% buyer share`}>
+                <i style={{ width: `${summary.buySharePct ?? 50}%` }} />
+              </div>
+              <div className="sa-broker-balance__facts">
+                <span><small>Control</small><b>{summary.control}</b></span>
+                <span><small>Persistence</small><b>{summary.leadBuyer ? `${summary.leadBuyer.code} ${summary.leadBuyer.days}/${summary.leadBuyer.of}d` : '—'}</b></span>
+                <span><small>Price vs buyer cost</small><b className={summary.costGapPct < 0 ? 'is-warning' : 'is-positive'}>{summary.costGapPct == null ? '—' : signed(summary.costGapPct)}</b></span>
+              </div>
+            </div>
+          )}
           <div className="sa-brokers">
             <div>
               <h4>Buying</h4>
@@ -142,18 +158,25 @@ export function BrokerWindows({ brokers, symbol }) {
 }
 
 /** Pass / watch / fail facts, each with its number. */
+const CHECK_GROUPS = [['price', 'Price'], ['participation', 'Participation'], ['market', 'Market'], ['risk', 'Risk']];
+
 export function Checks({ checks }) {
+  const counts = checks.reduce((acc, item) => ({ ...acc, [item.status]: (acc[item.status] || 0) + 1 }), {});
   return (
     <section className="sa-box" aria-label="Checks">
-      <header><h3>Checks</h3></header>
-      <ul className="sa-checks">
-        {checks.map((item) => (
-          <li key={item.label} className={`is-${item.status}`}>
-            <i aria-hidden="true" />
-            <span><b>{item.label}</b> · {item.detail}{item.secondary && <small className="sa-checks__context">Secondary context · third-liner</small>}</span>
-          </li>
-        ))}
-      </ul>
+      <header><h3>Decision checklist</h3><span className="sa-checks__summary"><b>{counts.bad || 0}</b> risks · <b>{counts.warn || 0}</b> watch · <b>{counts.ok || 0}</b> supportive</span></header>
+      <div className="sa-check-groups">
+        {CHECK_GROUPS.map(([id, label]) => {
+          const items = checks.filter((item) => item.category === id);
+          if (!items.length) return null;
+          return <section key={id}><h4>{label}</h4><ul className="sa-checks">{items.map((item) => (
+            <li key={item.label} className={`is-${item.status}`}>
+              <i aria-hidden="true" />
+              <span><b>{item.label}</b><small>{item.explanation || item.detail}</small><em>{item.detail}</em>{item.changesWhen && <small className="sa-checks__change">Changes when: {item.changesWhen}</small>}{item.secondary && <small className="sa-checks__context">Secondary context · third-liner</small>}</span>
+            </li>
+          ))}</ul></section>;
+        })}
+      </div>
     </section>
   );
 }

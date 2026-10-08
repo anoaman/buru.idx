@@ -1,124 +1,83 @@
 import { formatPrice, formatPct, formatVolume } from '../../lib/format/market.js';
 
-/**
- * TechnicalEvidence — returns, RSI, ATR, MA posture, and volume evidence.
- *
- * Reads from the existing analysis contract (priceHistory and ticker).
- * No analysis logic is duplicated — this is a read-only presentation of
- * server-computed values.
- *
- * @param {object} props
- * @param {object} props.priceHistory - The priceHistory block from analyze.
- * @param {object} props.ticker - The ticker block (for volume vs baseline).
- */
-export default function TechnicalEvidence({ priceHistory, ticker }) {
+function tone(value) {
+  return value > 0 ? 'text-positive' : value < 0 ? 'text-negative' : 'text-secondary';
+}
+
+function Metric({ label, value, className = 'text-secondary', detail }) {
+  return (
+    <div className="sa-market-metric">
+      <span className="text-tertiary">{label}</span>
+      <strong className={`tabular ${className}`}>{value}</strong>
+      {detail && <small className="text-tertiary">{detail}</small>}
+    </div>
+  );
+}
+
+/** Compact market-state summary using server-computed analysis fields only. */
+export default function TechnicalEvidence({ priceHistory, ticker, macro }) {
   if (!priceHistory || priceHistory.note) {
     return (
-      <div className="wb-tech-evidence">
-        <h3 className="wb-section__title text-tertiary">Technical indicators</h3>
+      <section className="wb-tech-evidence sa-market-state">
+        <h3>Market state</h3>
         <div className="text-tertiary">{priceHistory?.note || 'Daily history unavailable'}</div>
-      </div>
+      </section>
     );
   }
 
   const ma = priceHistory.movingAverages || {};
-  const maPosture = ma.stack || 'unavailable';
-  const volBaseline = ticker?.volumeVsBaseline;
-
-  const returns = [
-    { label: '5-day', value: priceHistory.ret5d },
-    { label: '20-day', value: priceHistory.ret20d },
-    { label: '60-day', value: priceHistory.ret60d },
-  ];
-
-  const maRows = [
-    { key: 'ma5', label: 'MA5' },
-    { key: 'ma10', label: 'MA10' },
-    { key: 'ma20', label: 'MA20' },
-    { key: 'ma50', label: 'MA50' },
-    { key: 'ma200', label: 'MA200' },
-  ].filter((row) => ma[row.key]);
+  const volume = ticker?.volumeVsBaseline || {};
+  const rs20 = macro?.relativeStrength?.periods?.['20'];
+  const rs60 = macro?.relativeStrength?.periods?.['60'];
+  const atrMove = Number.isFinite(ticker?.close) && Number.isFinite(priceHistory.atr14Pct)
+    ? ticker.close * priceHistory.atr14Pct / 100
+    : null;
+  const posture = String(ma.stack || 'unavailable').replaceAll('_', ' ');
 
   return (
-    <div className="wb-tech-evidence">
-      <h3 className="wb-section__title text-tertiary">Technical indicators</h3>
-      <div className="wb-tech-evidence__grid">
-        <div className="wb-tech-evidence__section">
-          <span className="wb-tech-evidence__label text-tertiary">Returns</span>
-          <div className="wb-tech-evidence__rows">
-            {returns.map((r) => (
-              <div key={r.label} className="wb-tech-evidence__row">
-                <span className="text-secondary">{r.label}</span>
-                <span className={`tabular ${r.value > 0 ? 'text-positive' : r.value < 0 ? 'text-negative' : 'text-secondary'}`}>
-                  {formatPct(r.value)}
-                </span>
-              </div>
-            ))}
-          </div>
+    <section className="wb-tech-evidence sa-market-state" aria-label="Market state">
+      <header className="sa-market-state__header">
+        <div>
+          <span className="sa-market-state__eyebrow">Market state</span>
+          <h3>{posture}</h3>
+        </div>
+        <p>
+          MA posture {posture}; volume {Number.isFinite(volume.ratio) ? `${volume.ratio.toFixed(2)}× baseline` : 'baseline unavailable'}
+          {Number.isFinite(rs20?.excessReturnPct) ? `; 20-day relative return ${formatPct(rs20.excessReturnPct)} vs IHSG.` : '.'}
+        </p>
+      </header>
+
+      <div className="sa-market-state__grid">
+        <div className="sa-market-state__group">
+          <h4>Momentum</h4>
+          <Metric label="RSI14" value={Number.isFinite(priceHistory.rsi14) ? priceHistory.rsi14.toFixed(1) : '—'} />
+          <Metric label="5-day return" value={formatPct(priceHistory.ret5d)} className={tone(priceHistory.ret5d)} />
+          <Metric label="20-day return" value={formatPct(priceHistory.ret20d)} className={tone(priceHistory.ret20d)} />
+          <Metric label="60-day return" value={formatPct(priceHistory.ret60d)} className={tone(priceHistory.ret60d)} />
         </div>
 
-        <div className="wb-tech-evidence__section">
-          <span className="wb-tech-evidence__label text-tertiary">Indicators</span>
-          <div className="wb-tech-evidence__rows">
-            <div className="wb-tech-evidence__row">
-              <span className="text-secondary">RSI14</span>
-              <span className="tabular text-secondary">
-                {priceHistory.rsi14 != null ? priceHistory.rsi14.toFixed(1) : '—'}
-              </span>
-            </div>
-            <div className="wb-tech-evidence__row">
-              <span className="text-secondary">ATR14</span>
-              <span className="tabular text-secondary">
-                {priceHistory.atr14Pct != null ? formatPct(priceHistory.atr14Pct) : '—'}
-              </span>
-            </div>
-            <div className="wb-tech-evidence__row">
-              <span className="text-secondary">Streak</span>
-              <span className="tabular text-secondary">
-                {priceHistory.streak > 0 ? '+' : ''}{priceHistory.streak ?? '—'}d
-              </span>
-            </div>
-          </div>
+        <div className="sa-market-state__group">
+          <h4>Trend</h4>
+          {['ma20', 'ma50', 'ma200'].map((key) => (
+            <Metric key={key} label={key.toUpperCase()} value={ma[key] ? formatPrice(ma[key].value) : '—'} className={tone(ma[key]?.vsPricePct)} detail={ma[key] ? `${formatPct(ma[key].vsPricePct)} vs price` : null} />
+          ))}
         </div>
 
-        <div className="wb-tech-evidence__section">
-          <span className="wb-tech-evidence__label text-tertiary">MA Posture</span>
-          <div className="wb-tech-evidence__rows">
-            {maRows.map((row) => {
-              const data = ma[row.key];
-              return (
-                <div key={row.key} className="wb-tech-evidence__row">
-                  <span className="text-secondary">{row.label}</span>
-                  <span className="tabular text-secondary">{formatPrice(data.value)}</span>
-                  <span className={`tabular ${data.vsPricePct > 0 ? 'text-positive' : 'text-negative'}`}>
-                    {formatPct(data.vsPricePct)}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-          <div className="wb-tech-evidence__stack text-secondary">{maPosture}</div>
+        <div className="sa-market-state__group">
+          <h4>Volatility & participation</h4>
+          <Metric label="ATR14" value={formatPct(priceHistory.atr14Pct)} detail={Number.isFinite(atrMove) ? `≈ ${formatPrice(atrMove)} daily range` : null} />
+          <Metric label="Volume ratio" value={Number.isFinite(volume.ratio) ? `${volume.ratio.toFixed(2)}×` : '—'} detail={volume.days ? `${volume.days}-day baseline` : null} />
+          <Metric label="Average volume" value={Number.isFinite(volume.avgVolume) ? formatVolume(volume.avgVolume) : '—'} />
+          <Metric label="Price streak" value={Number.isFinite(priceHistory.streak) ? `${priceHistory.streak > 0 ? '+' : ''}${priceHistory.streak} sessions` : '—'} className={tone(priceHistory.streak)} />
         </div>
 
-        <div className="wb-tech-evidence__section">
-          <span className="wb-tech-evidence__label text-tertiary">Volume</span>
-          <div className="wb-tech-evidence__rows">
-            <div className="wb-tech-evidence__row">
-              <span className="text-secondary">vs {volBaseline?.days || 0}d avg</span>
-              <span className="tabular text-secondary">
-                {volBaseline?.ratio != null ? `${volBaseline.ratio.toFixed(2)}x` : '—'}
-              </span>
-            </div>
-            <div className="wb-tech-evidence__row">
-              <span className="text-secondary">Avg Volume</span>
-              <span className="tabular text-secondary">
-                {volBaseline?.avgVolume != null ? formatVolume(volBaseline.avgVolume) : '—'}
-              </span>
-            </div>
-          </div>
+        <div className="sa-market-state__group">
+          <h4>Relative to IHSG</h4>
+          <Metric label="20-day excess" value={Number.isFinite(rs20?.excessReturnPct) ? formatPct(rs20.excessReturnPct) : '—'} className={tone(rs20?.excessReturnPct)} detail={Number.isFinite(rs20?.benchmarkReturnPct) ? `IHSG ${formatPct(rs20.benchmarkReturnPct)}` : null} />
+          <Metric label="60-day excess" value={Number.isFinite(rs60?.excessReturnPct) ? formatPct(rs60.excessReturnPct) : '—'} className={tone(rs60?.excessReturnPct)} detail={Number.isFinite(rs60?.benchmarkReturnPct) ? `IHSG ${formatPct(rs60.benchmarkReturnPct)}` : null} />
+          <Metric label="Market regime" value={String(macro?.regime?.state || '—').replaceAll('_', ' ')} />
         </div>
-
       </div>
-    </div>
+    </section>
   );
 }
