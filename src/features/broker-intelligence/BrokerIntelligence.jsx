@@ -3,12 +3,14 @@ import { Link, useSearchParams } from 'react-router';
 import {
   getStockBrokerIntelligence,
   getBrokerStockIntelligence,
+  getBrokerArchiveHealth,
   prefetchStockBrokerIntelligence,
   prefetchBrokerStockIntelligence,
 } from '../../lib/api/client.js';
 import {
   guardStockBrokerIntelligence,
   guardBrokerStockIntelligence,
+  guardBrokerArchiveHealth,
 } from '../../lib/api/contracts.js';
 import { formatDate, formatIDR, formatNumber, formatPrice } from '../../lib/format/market.js';
 import EmptyState from '../../components/EmptyState.jsx';
@@ -16,7 +18,7 @@ import ErrorState from '../../components/ErrorState.jsx';
 import InventoryCurve from './InventoryCurve.jsx';
 
 const ALLOWED_DAYS = [1, 7, 14, 30, 60];
-const RANGE_PRESETS = [['latest', 'Latest'], ['previous', 'Previous'], ['7d', '7D'], ['14d', '14D'], ['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['1y', '1Y'], ['ytd', 'YTD'], ['custom', 'Custom']];
+const RANGE_PRESETS = [['latest', 'Latest'], ['previous', 'Previous'], ['7d', '7D'], ['14d', '14D'], ['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['1y', '1Y'], ['2y', '2Y'], ['ytd', 'YTD'], ['custom', 'Custom']];
 const DEFAULT_TICKER = 'BBCA';
 const DEFAULT_DAYS = 1;
 const DEFAULT_MARKET_FILTERS = Object.freeze({
@@ -41,6 +43,22 @@ function normalizeLens(raw) {
 function normalizeDays(raw) {
   const n = Number(raw);
   return ALLOWED_DAYS.includes(n) ? n : DEFAULT_DAYS;
+}
+
+function shiftIsoDate(date, delta) {
+  const value = new Date(`${date}T00:00:00Z`);
+  value.setUTCDate(value.getUTCDate() + delta);
+  return value.toISOString().slice(0, 10);
+}
+
+function presetFitsCoverage(preset, minDate, maxDate) {
+  if (preset === 'custom') return Boolean(minDate && maxDate);
+  if (!minDate || !maxDate) return false;
+  if (preset === 'latest') return true;
+  if (preset === 'previous') return minDate < maxDate;
+  if (preset === 'ytd') return `${maxDate.slice(0, 4)}-01-01` >= minDate;
+  const days = { '7d': 7, '14d': 14, '1m': 30, '3m': 90, '6m': 180, '1y': 365, '2y': 730 }[preset];
+  return Number.isFinite(days) && shiftIsoDate(maxDate, -(days - 1)) >= minDate;
 }
 
 function signedValue(value, formatter = formatIDR) {
@@ -311,7 +329,26 @@ const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
   const [marketFilters, setMarketFilters] = useState(DEFAULT_MARKET_FILTERS);
   const [marketFilterDraft, setMarketFilterDraft] = useState(DEFAULT_MARKET_FILTERS);
   const [marketFilterError, setMarketFilterError] = useState('');
+  const [coverage, setCoverage] = useState({ min: null, max: null });
   const requestRef = useRef(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    getBrokerArchiveHealth()
+      .then((raw) => {
+        if (cancelled) return;
+        const result = guardBrokerArchiveHealth(raw);
+        const serving = result.ok ? result.data.serving : null;
+        setCoverage({
+          min: serving?.servingEarliest || null,
+          max: serving?.servingLatest || null,
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setCoverage({ min: null, max: null });
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     setSearchInput(lens === 'broker' ? code : ticker);
@@ -602,13 +639,14 @@ const preset = presetParam || (date ? '' : days === 1 ? 'latest' : `${days}d`);
                 type="button"
                 className={`bi-window__btn ${preset === value ? 'is-active' : ''}`}
                 aria-pressed={preset === value}
+                disabled={!presetFitsCoverage(value, coverage.min, coverage.max)}
                 onClick={() => handlePresetChange(value)}
               >
                 {label}
               </button>
             ))}
           </div>
-          {preset === 'custom' && <div className="wb-broker__custom"><label>From<input type="date" value={from} onChange={(event) => updateParams({ preset: 'custom', from: event.target.value })} /></label><label>To<input type="date" value={to} onChange={(event) => updateParams({ preset: 'custom', to: event.target.value })} /></label></div>}
+          {preset === 'custom' && <div className="wb-broker__custom"><label>From<input type="date" min={coverage.min || undefined} max={coverage.max || undefined} value={from} onChange={(event) => updateParams({ preset: 'custom', from: event.target.value })} /></label><label>To<input type="date" min={coverage.min || undefined} max={coverage.max || undefined} value={to} onChange={(event) => updateParams({ preset: 'custom', to: event.target.value })} /></label></div>}
           {preset === 'custom' && (!from || !to) && <p className="bi-window__note text-warning">Select both dates.</p>}
         </div>
       </div>

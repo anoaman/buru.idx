@@ -118,6 +118,9 @@ case tracking from the retiring cockpit without duplicating backend engines.
   Across-market Broker Flow filters use draft state and only request new data
   after the trader presses Apply filters; typing in a numeric field never
   triggers a network request.
+  Broker Flow includes a 2Y preset, reads actual normalized serving coverage
+  from archive health, applies it to custom-date bounds, and disables named
+  presets whose full calendar range is unavailable.
 - `src/styles/tokens.css` owns the Paper Ledger (light) and Graphite Ledger
   (dark) semantic theme contract plus motion tokens. Feature styles consume
   semantic tokens rather than theme-specific color literals.

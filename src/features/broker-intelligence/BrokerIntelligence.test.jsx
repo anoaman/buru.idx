@@ -77,7 +77,7 @@ const HEALTH_OK = {
       servingStatus: 'ready',
       servingReason: null,
       servingRows: 8800,
-      servingEarliest: '2026-05-23',
+      servingEarliest: '2024-07-22',
       servingLatest: '2026-07-21',
       materializedAt: '2026-07-21T09:15:00Z',
       sourceThroughDate: '2026-07-21',
@@ -344,7 +344,7 @@ describe('BrokerIntelligence', () => {
   it('supports practical broker date presets', async () => {
     renderAt('/broker-intelligence?lens=stock&ticker=BBCA&days=30');
     await screen.findByText('Bank Central Asia');
-    for (const [label, preset] of [['Latest', 'latest'], ['7D', '7d'], ['14D', '14d'], ['1M', '1m'], ['3M', '3m']]) {
+    for (const [label, preset] of [['Latest', 'latest'], ['7D', '7d'], ['14D', '14d'], ['1M', '1m'], ['3M', '3m'], ['2Y', '2y']]) {
       fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${label}$`) }));
       await waitFor(() => {
         expect(getStockBrokerIntelligence).toHaveBeenCalledWith({ ticker: 'BBCA', days: 30, preset });
@@ -467,6 +467,10 @@ describe('BrokerIntelligence', () => {
     await screen.findByText('Bank Central Asia');
     fireEvent.click(screen.getByRole('button', { name: /^Custom$/i }));
     expect(screen.getByText(/Select both dates/i)).toBeInTheDocument();
+    expect(screen.getByLabelText('From')).toHaveAttribute('min', '2024-07-22');
+    expect(screen.getByLabelText('From')).toHaveAttribute('max', '2026-07-21');
+    expect(screen.getByLabelText('To')).toHaveAttribute('min', '2024-07-22');
+    expect(screen.getByLabelText('To')).toHaveAttribute('max', '2026-07-21');
 
     fireEvent.change(screen.getByLabelText('From'), { target: { value: '2026-06-01' } });
     fireEvent.change(screen.getByLabelText('To'), { target: { value: '2026-06-30' } });
@@ -480,6 +484,25 @@ describe('BrokerIntelligence', () => {
       });
     });
     expect(screen.getByRole('button', { name: /^Custom$/i })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('disables presets that exceed actual serving coverage', async () => {
+    getBrokerArchiveHealth.mockResolvedValue({
+      ...HEALTH_OK,
+      data: {
+        ...HEALTH_OK.data,
+        serving: {
+          ...HEALTH_OK.data.serving,
+          servingEarliest: '2026-06-01',
+          servingLatest: '2026-07-21',
+        },
+      },
+    });
+    renderAt('/broker-intelligence?lens=stock&ticker=BBCA&days=30');
+    await waitFor(() => expect(screen.getByRole('button', { name: /^1M$/i })).toBeEnabled());
+    expect(screen.getByRole('button', { name: /^3M$/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /^1Y$/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /^2Y$/i })).toBeDisabled();
   });
 
   it('deep-links selected broker into broker lens', async () => {
@@ -570,6 +593,7 @@ describe('BrokerIntelligence', () => {
       .mockImplementationOnce(() => new Promise((resolve) => { resolveSecond = resolve; }));
 
     renderAt('/broker-intelligence?lens=stock&ticker=BBCA&days=30');
+    await waitFor(() => expect(screen.getByRole('button', { name: /^7D$/i })).toBeEnabled());
     fireEvent.click(screen.getByRole('button', { name: /^7D$/i }));
 
     const stale = {
