@@ -50,6 +50,9 @@ describe('public Worker API boundary', () => {
       success: false,
       error: 'Analysis service is temporarily unavailable.',
     });
+    expect(unavailable.headers.get('server-timing')).toMatch(/^analysis-origin;dur=\d+$/);
+    expect(unavailable.headers.get('x-analysis-origin-ms')).toMatch(/^\d+$/);
+    expect(unavailable.headers.get('x-analysis-failure')).toBe('origin_unavailable');
   });
 
   it('fails closed when origin configuration or JSON is invalid', async () => {
@@ -92,6 +95,8 @@ describe('public Worker API boundary', () => {
     await worker.fetch(new Request(`https://analysis.example.test/api/radar/scout?conditions=${encodeURIComponent(conditions)}`), env);
     expect(new URL(upstream[0].url).pathname).toBe('/api/radar/scout/conditions');
     expect(new URL(upstream[1].url).searchParams.get('conditions')).toBe(conditions);
+    expect((await worker.fetch(new Request('https://analysis.example.test/api/radar/scout/conditions'), env))
+      .headers.get('server-timing')).toMatch(/^analysis-origin;dur=\d+$/);
   });
 
   it('blocks every parked product route before reaching the origin', async () => {

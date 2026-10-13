@@ -62,6 +62,26 @@ function json(status, error) {
   });
 }
 
+function elapsedMs(startedAt) {
+  return Math.max(0, Math.round(performance.now() - startedAt));
+}
+
+function originTimingHeaders(startedAt, failure = null) {
+  const duration = elapsedMs(startedAt);
+  const headers = {
+    'server-timing': `analysis-origin;dur=${duration}`,
+    'x-analysis-origin-ms': String(duration),
+  };
+  if (failure) headers['x-analysis-failure'] = failure;
+  return headers;
+}
+
+function withHeaders(response, headers) {
+  const next = new Response(response.body, response);
+  for (const [name, value] of Object.entries(headers)) next.headers.set(name, value);
+  return next;
+}
+
 const SECURITY_HEADERS = {
   'content-security-policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests",
   'cross-origin-opener-policy': 'same-origin',
@@ -123,14 +143,20 @@ export default {
     }
 
     if (url.pathname === '/readyz') {
+      const startedAt = performance.now();
       try {
         const response = await fetch(originRequest(request, env, new URL('/readyz', url)));
-        return secure(Response.json({ status: response.ok ? 'ready' : 'unavailable' }, {
+        return secure(withHeaders(Response.json({ status: response.ok ? 'ready' : 'unavailable' }, {
           status: response.status,
           headers: { 'cache-control': 'no-store' },
-        }));
-      } catch {
-        return secure(json(502, 'Analysis service is temporarily unavailable.'));
+        }), originTimingHeaders(startedAt)));
+      } catch (error) {
+        const failure = error?.name === 'TimeoutError' ? 'origin_timeout' : 'origin_unavailable';
+        console.error(`[analysis-worker] /readyz ${failure} after ${elapsedMs(startedAt)}ms`);
+        return secure(withHeaders(
+          json(502, 'Analysis service is temporarily unavailable.'),
+          originTimingHeaders(startedAt, failure),
+        ));
       }
     }
 
@@ -140,28 +166,42 @@ export default {
       if (!(route.methods || ['GET', 'HEAD']).includes(request.method)) {
         return secure(json(405, 'This method is not allowed.'));
       }
+      const startedAt = performance.now();
       let response;
       try {
         response = await fetch(originRequest(request, env, url));
       } catch (error) {
         const status = error instanceof RangeError ? 414 : 502;
         const message = status === 414 ? error.message : 'Analysis service is temporarily unavailable.';
-        return secure(json(status, message));
+        const failure = status === 414
+          ? 'invalid_request'
+          : error?.name === 'TimeoutError' ? 'origin_timeout' : 'origin_unavailable';
+        if (status === 502) {
+          console.error(`[analysis-worker] ${url.pathname} ${failure} after ${elapsedMs(startedAt)}ms`);
+        }
+        return secure(withHeaders(json(status, message), originTimingHeaders(startedAt, failure)));
       }
       const contentType = response.headers.get('content-type') || '';
       if (!contentType.includes('application/json')) {
-        return secure(json(response.ok ? 502 : response.status, 'Analysis service returned an invalid response.'));
+        return secure(withHeaders(
+          json(response.ok ? 502 : response.status, 'Analysis service returned an invalid response.'),
+          originTimingHeaders(startedAt, 'invalid_origin_response'),
+        ));
       }
       let payload;
       try {
         payload = sanitize(await response.json());
       } catch {
-        return secure(json(502, 'Analysis service returned an invalid response.'));
+        return secure(withHeaders(
+          json(502, 'Analysis service returned an invalid response.'),
+          originTimingHeaders(startedAt, 'invalid_origin_response'),
+        ));
       }
       return secure(Response.json(payload, {
         status: response.status,
         headers: {
           'cache-control': 'no-store',
+          ...originTimingHeaders(startedAt),
           'x-content-type-options': 'nosniff',
         },
       }));
