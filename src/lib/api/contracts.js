@@ -344,6 +344,7 @@ function normalizeStockBrokerRow(row) {
     estimatedInventoryLots: preserveFiniteOrZero(row.estimatedInventoryLots),
     estimatedAverageCost: preserveFiniteOrNull(row.estimatedAverageCost),
     curve: normalizeCurve(row.curve),
+    curveDeferred: row.curveDeferred === true,
   };
 }
 
@@ -374,7 +375,16 @@ function normalizeBrokerStockRow(row) {
     foreignNetValue: preserveFiniteOrNull(row.foreignNetValue),
     isFca: Boolean(row.isFca),
     curve: normalizeCurve(row.curve),
+    curveDeferred: row.curveDeferred === true,
   };
+}
+
+/** One row's inventory curve, requested with curveFor when its row deferred it. */
+export function guardBrokerCurve(raw) {
+  if (!raw || raw.success === false || !Array.isArray(raw.data?.curve)) {
+    return { ok: false, error: raw?.error || 'Inventory curve is unavailable', curve: [] };
+  }
+  return { ok: true, error: null, curve: normalizeCurve(raw.data.curve) };
 }
 
 function normalizeBrokerRows(rows, mapper) {

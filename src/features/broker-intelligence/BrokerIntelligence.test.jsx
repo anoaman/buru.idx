@@ -428,6 +428,34 @@ describe('BrokerIntelligence', () => {
     expect(await screen.findByText(/Estimated inventory changed from/i)).toBeInTheDocument();
   });
 
+  it('fetches a deferred row\'s curve for the window on screen when it is selected', async () => {
+    const deferred = {
+      ...STOCK_OK,
+      data: {
+        ...STOCK_OK.data,
+        distribution: STOCK_OK.data.distribution.map((row) => {
+          const { curve, ...rest } = row;
+          return { ...rest, curveDeferred: true };
+        }),
+      },
+    };
+    let resolveCurve;
+    getStockBrokerIntelligence.mockImplementation(({ curveFor }) => (curveFor
+      ? new Promise((resolve) => { resolveCurve = resolve; })
+      : Promise.resolve(deferred)));
+    renderAt('/broker-intelligence?lens=stock&ticker=BBCA&days=30');
+    await screen.findByText('Bank Central Asia');
+    expect(getStockBrokerIntelligence).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole('row', { name: /AK/i }));
+    expect(await screen.findByText(/Loading estimated inventory curve/i)).toBeInTheDocument();
+    expect(getStockBrokerIntelligence).toHaveBeenLastCalledWith({
+      ticker: 'BBCA', days: 30, from: '2026-06-22', to: '2026-07-21', curveFor: 'AK',
+    });
+    await act(async () => { resolveCurve({ success: true, data: { code: 'AK', curve: CURVE } }); });
+    expect(await screen.findByText(/Estimated inventory changed from/i)).toBeInTheDocument();
+  });
+
   it('renders the merged ranking with explicit sides for the broker lens too', async () => {
     renderAt('/broker-intelligence?lens=broker&code=YP&days=30');
     await screen.findByText(/Observed stocks 12/i);

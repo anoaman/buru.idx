@@ -4,6 +4,7 @@ import {
   getDisclosures,
   getRadarScout,
   getRadarScoutConditions,
+  getBrokerStockIntelligence,
   getStockBrokerIntelligence,
   invalidateBrokerCache,
 } from './client.js';
@@ -194,5 +195,18 @@ describe('Stock Analysis API client', () => {
     expect(url).toContain('limit=25');
     expect(url).not.toContain('passwd');
     expect(url).not.toContain('sql=');
+  });
+  it('asks broker rankings for leading-row curves only, and one row with curveFor', async () => {
+    global.fetch = vi.fn().mockResolvedValue(response({ success: true, data: {} }));
+    await getStockBrokerIntelligence({ ticker: 'BBCA', days: 30 });
+    await getStockBrokerIntelligence({ ticker: 'BBCA', days: 30, from: '2026-06-22', to: '2026-07-21', curveFor: 'ak' });
+    await getBrokerStockIntelligence({ code: 'YP', days: 30 });
+    const [list, one, broker] = global.fetch.mock.calls.map(([url]) => new URL(url, 'http://local').searchParams);
+    expect(list.get('curves')).toBe('top');
+    expect(list.has('curveFor')).toBe(false);
+    expect(one.get('curveFor')).toBe('AK');
+    expect(one.has('curves')).toBe(false);
+    expect(one.get('from')).toBe('2026-06-22');
+    expect(broker.get('curves')).toBe('top');
   });
 });

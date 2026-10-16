@@ -20,6 +20,7 @@ import {
   guardDataHealth,
   guardRadarScout,
   guardStockBrokerIntelligence,
+  guardBrokerCurve,
   officialIdxUrl,
   normalizeSetupGeometry,
   normalizeServing,
@@ -243,6 +244,27 @@ describe('public Stock Analysis contracts', () => {
       current: null,
     });
     expect(result.data.staleCount).toBe(0);
+  });
+});
+
+describe('deferred inventory curves', () => {
+  it('marks rows whose curve was deferred and reads a single requested curve', () => {
+    const result = guardStockBrokerIntelligence({
+      success: true,
+      data: {
+        ticker: 'BBCA',
+        accumulation: [{ code: 'YP', netValue: 10, curve: [{ date: '2026-07-21', netLots: 1 }] }],
+        distribution: [{ code: 'AK', netValue: -5, curveDeferred: true }],
+      },
+    });
+    expect(result.data.accumulation[0].curveDeferred).toBe(false);
+    expect(result.data.accumulation[0].curve).toHaveLength(1);
+    expect(result.data.distribution[0]).toMatchObject({ curveDeferred: true, curve: [] });
+
+    const curve = guardBrokerCurve({ success: true, data: { code: 'AK', curve: [{ date: '2026-07-21', netLots: -3 }] } });
+    expect(curve.ok).toBe(true);
+    expect(curve.curve[0]).toMatchObject({ date: '2026-07-21', netLots: -3, estimatedAverageCost: null });
+    expect(guardBrokerCurve({ success: false, error: 'gone' })).toMatchObject({ ok: false, curve: [] });
   });
 });
 

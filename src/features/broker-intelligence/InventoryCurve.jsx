@@ -8,16 +8,17 @@ import { formatNumber } from '../../lib/format/market.js';
  * @param {object} props
  * @param {Array} props.points - Curve points from the broker-intelligence contract
  * @param {string} props.identityLabel - Selected row identity (broker code or ticker)
+ * @param {boolean} [props.loading] - The selected row's curve is still being fetched
  */
-export default function InventoryCurve({ points = [], identityLabel = '' }) {
+export default function InventoryCurve({ points = [], identityLabel = '', loading = false }) {
   const series = Array.isArray(points) ? points : [];
 
-  if (!series.length) {
+  if (loading || !series.length) {
     return (
-      <div className="bi-curve bi-curve--empty">
+      <div className="bi-curve bi-curve--empty" aria-busy={loading || undefined}>
         <div className="bi-curve__identity text-secondary">{identityLabel || 'Selected row'}</div>
         <div className="bi-curve__empty text-tertiary">
-          No estimated inventory curve for this selection.
+          {loading ? 'Loading estimated inventory curve…' : 'No estimated inventory curve for this selection.'}
         </div>
       </div>
     );

@@ -9,6 +9,7 @@ import {
   guardStockBrokerIntelligence,
   guardBrokerStockIntelligence,
   guardBrokerArchiveHealth,
+  guardBrokerCurve,
 } from '../../lib/api/contracts.js';
 import { formatDate, formatIDR, formatNumber, formatPrice } from '../../lib/format/market.js';
 import EmptyState from '../../components/EmptyState.jsx';
@@ -533,6 +534,51 @@ const preset = presetParam || (date ? '' : ({ 1: 'latest', 7: '7d', 14: '14d', 3
     ? (lens === 'stock' ? selectedRow.code : selectedRow.ticker)
     : '';
 
+  // Rankings ship curves only for their leading rows. Selecting any other row
+  // fetches that one curve for the window currently on screen.
+  const [deferredCurve, setDeferredCurve] = useState({ key: null, points: null });
+  const shownWindow = viewData?.window || null;
+  const curveRequest = selectedRow?.curveDeferred && shownWindow
+    ? {
+      key: [lens, lens === 'stock' ? viewData.ticker : viewData.broker?.code, identityLabel,
+        shownWindow.days, shownWindow.from, shownWindow.to, JSON.stringify(marketFilters)].join('|'),
+      lens,
+      identity: identityLabel,
+      owner: lens === 'stock' ? viewData.ticker : viewData.broker?.code,
+      window: shownWindow,
+      // The broker ranking is filtered and limited; ask with the same filters
+      // so the selected ticker is in the set the curve is read from.
+      filters: marketFilters,
+    }
+    : null;
+  const curveRequestKey = curveRequest?.key || null;
+  const curveRequestRef = useRef(null);
+  curveRequestRef.current = curveRequest;
+  useEffect(() => {
+    const current = curveRequestRef.current;
+    if (!current) return undefined;
+    let cancelled = false;
+    setDeferredCurve({ key: current.key, points: null });
+    // The exact window shown (from/to), so the curve always matches its row.
+    const range = { days: current.window.days, from: current.window.from, to: current.window.to };
+    const request = current.lens === 'stock'
+      ? getStockBrokerIntelligence({ ticker: current.owner, ...range, curveFor: current.identity })
+      : getBrokerStockIntelligence({
+        code: current.owner, ...range, limit: 50, filters: current.filters, curveFor: current.identity,
+      });
+    request
+      .then((raw) => {
+        if (!cancelled) setDeferredCurve({ key: current.key, points: guardBrokerCurve(raw).curve });
+      })
+      .catch(() => {
+        if (!cancelled) setDeferredCurve({ key: current.key, points: [] });
+      });
+    return () => { cancelled = true; };
+  }, [curveRequestKey]);
+  const curvePoints = curveRequest
+    ? (deferredCurve.key === curveRequestKey ? deferredCurve.points : null)
+    : selectedRow?.curve || [];
+
   const searchValid = lens === 'stock'
     ? /^[A-Z]{4}$/i.test(searchInput.trim())
     : /^[A-Z]{2}$/i.test(searchInput.trim());
@@ -817,7 +863,7 @@ const preset = presetParam || (date ? '' : ({ 1: 'latest', 7: '7d', 14: '14d', 3
                     <p className="text-tertiary">A single session has no inventory trend. Select 7D, 1M, or longer to see persistence and the estimated inventory curve.</p>
                   </div>
                 ) : (
-                  <InventoryCurve points={selectedRow?.curve || []} identityLabel={identityLabel} />
+                  <InventoryCurve points={curvePoints || []} loading={curvePoints === null} identityLabel={identityLabel} />
                 )}
                 <SelectedDetail
                   lens={lens}

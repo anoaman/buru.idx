@@ -136,7 +136,14 @@ export function getBrokerArchiveHealth() {
   return request('/api/broker-intelligence/health');
 }
 
-export function getStockBrokerIntelligence({ ticker, days = 1, date = null, preset = null, from = null, to = null }) {
+// Rankings carry inventory curves only for their leading rows (curves=top);
+// pass curveFor to fetch one row's curve when a deferred row is selected.
+function setCurveParams(params, curveFor) {
+  if (curveFor) params.set('curveFor', String(curveFor).toUpperCase());
+  else params.set('curves', 'top');
+}
+
+export function getStockBrokerIntelligence({ ticker, days = 1, date = null, preset = null, from = null, to = null, curveFor = null }) {
   const params = new URLSearchParams();
   params.set('ticker', String(ticker || '').toUpperCase());
   params.set('days', String(days));
@@ -144,10 +151,11 @@ export function getStockBrokerIntelligence({ ticker, days = 1, date = null, pres
   if (preset) params.set('preset', preset);
   if (from) params.set('from', from);
   if (to) params.set('to', to);
+  setCurveParams(params, curveFor);
   return request(`/api/broker-intelligence/stock?${params.toString()}`);
 }
 
-export function getBrokerStockIntelligence({ code, days = 1, date = null, preset = null, from = null, to = null, limit = 25, filters = {} }) {
+export function getBrokerStockIntelligence({ code, days = 1, date = null, preset = null, from = null, to = null, limit = 25, filters = {}, curveFor = null }) {
   const params = new URLSearchParams();
   params.set('code', String(code || '').toUpperCase());
   params.set('days', String(days));
@@ -159,6 +167,7 @@ export function getBrokerStockIntelligence({ code, days = 1, date = null, preset
   for (const [key, value] of Object.entries(filters)) {
     if (value !== '' && value !== false && value != null) params.set(key, String(value));
   }
+  setCurveParams(params, curveFor);
   return request(`/api/broker-intelligence/broker?${params.toString()}`);
 }
 
