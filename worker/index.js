@@ -197,10 +197,26 @@ export default {
           originTimingHeaders(startedAt, 'invalid_origin_response'),
         ));
       }
+      // Only bounded public provenance crosses the origin boundary. Never
+      // forward arbitrary headers (cookies, Access credentials or internals).
+      const provenance = {};
+      const rules = {
+        'retry-after': /^\d{1,4}$/,
+        age: /^\d{1,10}$/,
+        'x-cache': /^(HIT|MISS|SHARED|STALE)$/,
+        'x-computed-at': /^\d{4}-\d{2}-\d{2}T[0-9:.]+Z$/,
+        'x-data-as-of': /^\d{4}-\d{2}-\d{2}$/,
+        'x-data-generation': /^[a-zA-Z0-9_-]{1,64}$/,
+      };
+      for (const [name, pattern] of Object.entries(rules)) {
+        const value = response.headers.get(name);
+        if (value && pattern.test(value)) provenance[name] = value;
+      }
       return secure(Response.json(payload, {
         status: response.status,
         headers: {
           'cache-control': 'no-store',
+          ...provenance,
           ...originTimingHeaders(startedAt),
           'x-content-type-options': 'nosniff',
         },

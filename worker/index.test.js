@@ -10,6 +10,24 @@ const env = {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('public Worker API boundary', () => {
+  it('preserves retry and cache provenance but drops private origin headers', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ success: false, error: 'Busy' }, {
+      status: 503,
+      headers: { 'Retry-After': '2', 'X-Cache': 'STALE', Age: '62',
+        'X-Computed-At': '2026-10-16T03:00:00.000Z', 'X-Data-As-Of': '2026-10-15',
+        'X-Data-Generation': 'abc123', 'Set-Cookie': 'private=secret', 'X-Internal': 'secret' },
+    })));
+    const response = await worker.fetch(new Request('https://analysis.example.test/api/analyze?ticker=BBCA'), env);
+    expect(response.status).toBe(503);
+    expect(response.headers.get('retry-after')).toBe('2');
+    expect(response.headers.get('age')).toBe('62');
+    expect(response.headers.get('x-cache')).toBe('STALE');
+    expect(response.headers.get('x-data-generation')).toBe('abc123');
+    expect(response.headers.get('x-data-as-of')).toBe('2026-10-15');
+    expect(response.headers.get('set-cookie')).toBeNull();
+    expect(response.headers.get('x-internal')).toBeNull();
+  });
+
   it('forces delayed analysis and drops unapproved query parameters', async () => {
     let upstream;
     vi.stubGlobal('fetch', vi.fn(async (request) => {

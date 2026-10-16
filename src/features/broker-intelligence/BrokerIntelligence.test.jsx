@@ -8,8 +8,6 @@ vi.mock('../../lib/api/client.js', () => ({
   getStockBrokerIntelligence: vi.fn(),
   getBrokerStockIntelligence: vi.fn(),
   invalidateBrokerCache: vi.fn(),
-  prefetchStockBrokerIntelligence: vi.fn(),
-  prefetchBrokerStockIntelligence: vi.fn(),
 }));
 
 import {
@@ -282,6 +280,15 @@ describe('BrokerIntelligence', () => {
     expect(getStockBrokerIntelligence).toHaveBeenCalledWith({ ticker: 'BBCA', days: 30 });
     expect(screen.getByRole('button', { name: /By stock/i })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: /^1M$/i })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('requests only the selected view, with no speculative window or lens prefetch', async () => {
+    renderAt('/broker-intelligence?lens=stock&ticker=BBCA&days=1');
+    await screen.findByText('Bank Central Asia');
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 400)); });
+    expect(getStockBrokerIntelligence).toHaveBeenCalledTimes(1);
+    expect(getStockBrokerIntelligence).toHaveBeenCalledWith({ ticker: 'BBCA', days: 1 });
+    expect(getBrokerStockIntelligence).not.toHaveBeenCalled();
   });
 
   it('loads health and lens independently', async () => {

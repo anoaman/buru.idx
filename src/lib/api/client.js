@@ -162,14 +162,6 @@ export function getBrokerStockIntelligence({ code, days = 1, date = null, preset
   return request(`/api/broker-intelligence/broker?${params.toString()}`);
 }
 
-export function prefetchStockBrokerIntelligence({ ticker, days, date = null }) {
-  return getStockBrokerIntelligence({ ticker, days, date });
-}
-
-export function prefetchBrokerStockIntelligence({ code, days, date = null, limit = 25 }) {
-  return getBrokerStockIntelligence({ code, days, date, limit });
-}
-
 function withQuery(path, params = {}) {
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {

@@ -4,8 +4,6 @@ import {
   getStockBrokerIntelligence,
   getBrokerStockIntelligence,
   getBrokerArchiveHealth,
-  prefetchStockBrokerIntelligence,
-  prefetchBrokerStockIntelligence,
 } from '../../lib/api/client.js';
 import {
   guardStockBrokerIntelligence,
@@ -424,28 +422,9 @@ const preset = presetParam || (date ? '' : ({ 1: 'latest', 7: '7d', 14: '14d', 3
     return () => { cancelled = true; };
   }, [lens, ticker, code, days, date, preset, presetParam, from, to, lensRetry, marketFilters]);
 
-  // Prefetch other windows after first successful identity load
-  useEffect(() => {
-    if (lensState.loading || lensState.error || !lensState.result || preset !== 'latest') return;
-    const timer = setTimeout(() => {
-      const others = ALLOWED_DAYS.filter((d) => d !== days);
-      for (const d of others) {
-        if (lens === 'stock') {
-          prefetchStockBrokerIntelligence({ ticker, days: d });
-        } else {
-          prefetchBrokerStockIntelligence({ code, days: d, limit: 25 });
-        }
-      }
-      // Warm the counterpart lens for the same window so Stock/Broker switches
-      // resolve from the client cache instead of presenting a blank transition.
-      if (lens === 'stock') {
-        prefetchBrokerStockIntelligence({ code: code || 'YP', days, limit: 25 });
-      } else {
-        prefetchStockBrokerIntelligence({ ticker: ticker || DEFAULT_TICKER, days });
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [lensState.loading, lensState.error, lensState.result, lens, ticker, code, days, preset]);
+  // No speculative prefetch: other windows and the counterpart lens load only
+  // when the trader selects them. Every view used to fan out up to five extra
+  // multi-megabyte requests against the shared stock read lane.
 
   const updateParams = useCallback((next) => {
     const params = new URLSearchParams();

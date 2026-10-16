@@ -51,7 +51,9 @@ case tracking from the retiring cockpit without duplicating backend engines.
   across-market filters for price, liquidity, broker net value, foreign flow,
   and FCA status, the merged
   signed ranking table (frontend display merge of accumulation + distribution
-  arrays only), and inventory curve presentation.
+  arrays only), and inventory curve presentation. It requests only the view
+  the trader selected: no speculative prefetch of other windows or the
+  counterpart lens (each was a multi-megabyte origin read).
 - `src/lib/api/client.js` is the only first-party network boundary and prefixes
   every API path with `VITE_API_BASE`. Successful GET responses for
   `/api/broker-intelligence/*` and `/api/analyze` are cached ~45s with
@@ -179,6 +181,9 @@ secrets; neither credential nor the origin hostname enters the browser bundle.
 The Worker forwards a newly constructed minimal header set, applies a 30-second
 origin deadline, bounds request targets and allowlisted parameter values, and
 returns sanitized failures with the same security headers as static responses.
+It forwards only validated public Retry-After and cache age/as-of/generation
+headers. This is provenance forwarding, not an edge cache; cookies and other
+private origin headers remain blocked.
 
 Production is deployed only from `main` to `analysis.tombaklepas.app`. Staging
 is deployed only from `develop` to `staging.analysis.tombaklepas.app`; normal
