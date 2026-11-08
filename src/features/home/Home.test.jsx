@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
-import Home from './Home.jsx';
+import Home, { sessionShape } from './Home.jsx';
 
 vi.mock('../../lib/api/client.js', () => ({
   getMarketOverview: vi.fn(),
@@ -28,7 +28,7 @@ const overview = {
       limits: { araCount: 2, arbCount: 1, ara: [{ code: 'AIMS', name: 'Artha Mahiya', price: 1175, changePct: 25, value: 6.5e9 }], arb: [], excludedFca: 6 },
       foreign: { net: 108e9, inflowNames: 300, outflowNames: 280, topInflowSharePct: 68.7, topOutflowSharePct: 40,
         inflow: [{ code: 'BBCA', net: 219e9, changePct: 1.46 }], outflow: [{ code: 'GOTO', net: -127e9, changePct: 0 }] },
-      valueBreadth: { total: 7.8e12, advancingValue: 3.6e12, decliningValue: 3.2e12, unchangedValue: 1e12 },
+      valueBreadth: { total: 7.8e12, advancingValue: 3.6e12, decliningValue: 3.2e12, unchangedValue: 1e12, unchangedTradedCount: 158, untradedCount: 133 },
       trends: {
         ihsg: { d1: 0.4, d5: -0.13, d20: -17.1 },
         sectors: [
@@ -77,21 +77,45 @@ describe('Home', () => {
     expect(getRadarScout).toHaveBeenCalledWith(expect.objectContaining({ brokerPreset: 'latest', minBrokerAccumulation: 1_000_000_000 }));
   });
 
-  it('shows foreign leaders, sector rotation ranked by 5D lead, and ARA movers', async () => {
+  it('shows foreign leaders, sector rotation ranked by 5D lead, and limit hits inside Breadth', async () => {
     renderHome();
     const flow = await screen.findByRole('region', { name: 'Foreign flow' });
     expect(within(flow).getByRole('link', { name: 'GOTO' })).toHaveAttribute('href', '/workbench?ticker=GOTO');
     const sectors = screen.getByRole('region', { name: 'Sector rotation' });
     expect(within(sectors).getAllByRole('row')[1]).toHaveTextContent('Financials');
+    const breadth = screen.getByRole('region', { name: 'Breadth' });
+    expect(within(breadth).getByRole('link', { name: 'AIMS' })).toHaveAttribute('href', '/workbench?ticker=AIMS');
+    expect(within(breadth).getByText(/229 up · 437 down · 158 unchanged/)).toBeInTheDocument();
+    expect(within(breadth).getByText(/133 stocks did not trade/)).toBeInTheDocument();
+    expect(within(breadth).getByText(/excludes 6 FCA counters/)).toBeInTheDocument();
     const movers = screen.getByRole('region', { name: 'Movers' });
-    fireEvent.click(within(movers).getByRole('tab', { name: /At ARA/ }));
+    expect(within(movers).queryByRole('tab', { name: /ARA/ })).not.toBeInTheDocument();
+    fireEvent.click(within(movers).getByRole('tab', { name: 'Gainers' }));
     expect(within(movers).getByRole('link', { name: 'AIMS' })).toBeInTheDocument();
-    expect(screen.getByText(/excludes 6 FCA counters/)).toBeInTheDocument();
   });
 
-  it('shows a retryable error when the overview fails', async () => {
-    getMarketOverview.mockRejectedValueOnce(new Error('down'));
+  it('retries a cold-start failure quietly before rendering', async () => {
+    getMarketOverview.mockRejectedValueOnce(new Error('busy'));
     renderHome();
-    expect(await screen.findByText('Market overview is unavailable')).toBeInTheDocument();
+    expect(await screen.findByTestId('market-read', {}, { timeout: 4_000 })).toBeInTheDocument();
+    expect(getMarketOverview).toHaveBeenCalledTimes(2);
+  });
+
+  it('shows a retryable error once every attempt has failed', async () => {
+    getMarketOverview.mockRejectedValue(new Error('down'));
+    renderHome();
+    expect(await screen.findByText('Market overview is unavailable', {}, { timeout: 8_000 })).toBeInTheDocument();
+    expect(getMarketOverview).toHaveBeenCalledTimes(3);
+  }, 10_000);
+
+  it('measures how concentrated the session was', () => {
+    const shape = sessionShape({
+      breadth: { received: 957 },
+      home: { valueBreadth: { total: 1000, untradedCount: 133 } },
+      ihsg: { value: 1000 },
+      foreignFlow: { buy: 300, sell: 500 },
+      movers: { mostActive: [{ value: 300 }, { value: 100 }] },
+    });
+    expect(shape).toEqual({ top10SharePct: 40, foreignParticipationPct: 40, traded: 824, listed: 957 });
   });
 });

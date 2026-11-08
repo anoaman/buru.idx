@@ -6,7 +6,8 @@
 export function idr(value) {
   const number = Math.abs(Number(value));
   if (!Number.isFinite(number)) return '';
-  if (number >= 1e12) return `Rp${Number((number / 1e12).toFixed(2))}T`;
+  // Trillions keep two decimals so neighbouring values line up (3.65T, 3.20T).
+  if (number >= 1e12) return `Rp${(number / 1e12).toFixed(2)}T`;
   if (number >= 1e9) return `Rp${Number((number / 1e9).toFixed(1))}B`;
   if (number >= 1e6) return `Rp${Number((number / 1e6).toFixed(0))}M`;
   return `Rp${number.toLocaleString('en-US')}`;

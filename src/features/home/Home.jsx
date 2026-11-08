@@ -5,6 +5,7 @@ import { formatDate } from '../../lib/format/number.js';
 import ErrorState from '../../components/ErrorState.jsx';
 import Skeleton from '../../components/Skeleton.jsx';
 import IndexChart from './IndexChart.jsx';
+import Panel from './Panel.jsx';
 import { composeMarketRead, idr, pct } from './marketRead.js';
 import './Home.css';
 
@@ -15,10 +16,11 @@ const BANDAR_REQUEST = {
   useBroker: true, useSupport: false, useSideways: false,
   brokerPreset: 'latest', minBrokerAccumulation: 1_000_000_000, limit: 60,
 };
-const BANDAR_ROWS = 8;
-const MOVER_TABS = [
-  ['mostActive', 'Most active'], ['gainers', 'Gainers'], ['losers', 'Losers'], ['ara', 'At ARA'], ['arb', 'At ARB'],
-];
+// Paired panels show the same number of equal-height rows so they line up.
+const LIST_ROWS = 8;
+const MOVER_ROWS = 12;
+const OVERVIEW_RETRY_MS = [1_500, 3_000];
+const MOVER_TABS = [['mostActive', 'Most active'], ['gainers', 'Gainers'], ['losers', 'Losers']];
 
 const tone = (value) => (value > 0 ? 'is-up' : value < 0 ? 'is-down' : '');
 const stockLink = (code) => `/workbench?ticker=${encodeURIComponent(code)}`;
@@ -28,15 +30,6 @@ function Change({ value, digits = 2 }) {
   return <span className={`home-num ${tone(value)}`}>{Number.isFinite(value) ? pct(value, digits) : '—'}</span>;
 }
 
-function Panel({ title, note, children, className = '' }) {
-  return (
-    <section className={`home-panel ${className}`} aria-label={title}>
-      <header className="home-panel__head"><h3>{title}</h3>{note && <span>{note}</span>}</header>
-      {children}
-    </section>
-  );
-}
-
 function Tape({ ihsg, indices }) {
   return (
     <div className="home-tape" aria-label="Indices">
@@ -44,7 +37,7 @@ function Tape({ ihsg, indices }) {
         <div className="home-tape__lead">
           <span>IHSG</span>
           <strong>{ihsg.close.toLocaleString('en-US', { maximumFractionDigits: 2 })}</strong>
-          <Change value={ihsg.changePct} />
+          <span className="home-tape__meta"><Change value={ihsg.changePct} /> · {idr(ihsg.value)} · {(ihsg.frequency / 1e6).toFixed(2)}M trades</span>
         </div>
       )}
       {indices.map((item) => (
@@ -58,11 +51,11 @@ function Tape({ ihsg, indices }) {
   );
 }
 
-function SplitBar({ label, up, down, flat, format = (value) => value }) {
+function SplitBar({ label, up, down, flat, format = (value) => value, flatLabel = 'flat' }) {
   const total = up + down + flat || 1;
   return (
     <div className="home-split">
-      <div className="home-split__label"><span>{label}</span><span>{format(up)} up · {format(down)} down · {format(flat)} flat</span></div>
+      <div className="home-split__label"><span>{label}</span><span>{format(up)} up · {format(down)} down · {format(flat)} {flatLabel}</span></div>
       <div className="home-split__bar" role="img" aria-label={`${label}: ${Math.round(up / total * 100)}% up, ${Math.round(down / total * 100)}% down`}>
         <i className="is-up" style={{ width: `${up / total * 100}%` }} />
         <i className="is-flat" style={{ width: `${flat / total * 100}%` }} />
@@ -72,24 +65,67 @@ function SplitBar({ label, up, down, flat, format = (value) => value }) {
   );
 }
 
-function Breadth({ breadth, home, ihsg }) {
+function LimitList({ title, items, count, sign }) {
+  return (
+    <div className="home-limit">
+      <div className="home-limit__head"><span>{title}</span><strong className={sign}>{count}</strong></div>
+      <ol>
+        {items.slice(0, 3).map((item) => (
+          <li key={item.code}><Link to={stockLink(item.code)}>{item.code}</Link><Change value={item.changePct} /></li>
+        ))}
+        {!items.length && <li className="home-empty">None</li>}
+        {count > 3 && <li className="home-empty">+{count - 3} more</li>}
+      </ol>
+    </div>
+  );
+}
+
+// How concentrated the session was, from numbers already on the page.
+export function sessionShape({ breadth, home, ihsg, foreignFlow, movers }) {
+  const total = home?.valueBreadth?.total;
+  const top10 = (movers?.mostActive || []).slice(0, 10).reduce((sum, row) => sum + (row.value || 0), 0);
+  const listed = breadth?.received;
+  const untraded = home?.valueBreadth?.untradedCount;
+  return {
+    top10SharePct: total > 0 && top10 > 0 ? top10 / total * 100 : null,
+    foreignParticipationPct: ihsg?.value > 0 && foreignFlow?.buy >= 0 && foreignFlow?.sell >= 0
+      ? (foreignFlow.buy + foreignFlow.sell) / (2 * ihsg.value) * 100 : null,
+    traded: Number.isFinite(listed) && Number.isFinite(untraded) ? listed - untraded : null,
+    listed: Number.isFinite(listed) ? listed : null,
+  };
+}
+
+function Breadth({ breadth, home, shape }) {
   const value = home?.valueBreadth;
   const limits = home?.limits;
+  // Untraded stocks (suspended, or no matched orders) are not "unchanged".
+  const untraded = value?.untradedCount;
+  const unchanged = Number.isFinite(value?.unchangedTradedCount) ? value.unchangedTradedCount : breadth?.unchanged;
   return (
     <Panel title="Breadth" note="all listed stocks">
       {breadth?.available
-        ? <SplitBar label="By count" up={breadth.advanced} down={breadth.declined} flat={breadth.unchanged} />
+        ? <SplitBar label="By count" up={breadth.advanced} down={breadth.declined} flat={unchanged} flatLabel="unchanged" />
         : <p className="home-empty">Breadth is unavailable for this session.</p>}
       {value?.total > 0 && (
-        <SplitBar label="By value traded" up={value.advancingValue} down={value.decliningValue} flat={value.unchangedValue} format={idr} />
+        <SplitBar label="By value" up={value.advancingValue} down={value.decliningValue} flat={value.unchangedValue} format={idr} flatLabel="unch." />
       )}
-      <dl className="home-stats">
-        {limits && <div><dt>At ARA</dt><dd className="is-up">{limits.araCount}</dd></div>}
-        {limits && <div><dt>At ARB</dt><dd className="is-down">{limits.arbCount}</dd></div>}
-        {ihsg && <div><dt>Value</dt><dd>{idr(ihsg.value)}</dd></div>}
-        {ihsg && <div><dt>Frequency</dt><dd>{ihsg.frequency?.toLocaleString('en-US')}</dd></div>}
-      </dl>
-      {limits?.excludedFca > 0 && <p className="home-foot">ARA/ARB excludes {limits.excludedFca} FCA counter{limits.excludedFca === 1 ? '' : 's'}, which trade under different limits.</p>}
+      {shape && (
+        <dl className="home-shape">
+          <div><dt>Top 10 names</dt><dd>{Number.isFinite(shape.top10SharePct) ? `${Math.round(shape.top10SharePct)}%` : '—'}</dd><small>of value traded</small></div>
+          <div><dt>Foreign</dt><dd>{Number.isFinite(shape.foreignParticipationPct) ? `${Math.round(shape.foreignParticipationPct)}%` : '—'}</dd><small>of turnover</small></div>
+          <div><dt>Traded</dt><dd>{shape.traded ?? '—'}</dd><small>{shape.listed ? `of ${shape.listed} listed` : 'stocks'}</small></div>
+        </dl>
+      )}
+      {limits && (
+        <div className="home-limits">
+          <LimitList title="Closed at ARA" items={limits.ara} count={limits.araCount} sign="is-up" />
+          <LimitList title="Closed at ARB" items={limits.arb} count={limits.arbCount} sign="is-down" />
+        </div>
+      )}
+      <p className="home-foot">
+        {Number.isFinite(untraded) && untraded > 0 && <>{untraded} stocks did not trade and are left out of the counts. </>}
+        {limits?.excludedFca > 0 && <>ARA/ARB uses each stock&apos;s limit from its previous close and excludes {limits.excludedFca} FCA counter{limits.excludedFca === 1 ? '' : 's'}.</>}
+      </p>
     </Panel>
   );
 }
@@ -189,30 +225,28 @@ function SectorRotation({ trends }) {
   );
 }
 
-function Movers({ movers, limits }) {
+function Movers({ movers }) {
   const [tab, setTab] = useState('mostActive');
-  const rows = tab === 'ara' || tab === 'arb'
-    ? (limits?.[tab] || []).map((item) => ({ ...item, fnet: null }))
-    : (movers?.[tab] || []).slice(0, 10);
+  const rows = (movers?.[tab] || []).slice(0, MOVER_ROWS);
+  const tabs = (
+    <div className="home-tabs" role="tablist" aria-label="Movers">
+      {MOVER_TABS.map(([key, label]) => (
+        <button key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => setTab(key)}>{label}</button>
+      ))}
+    </div>
+  );
   return (
-    <Panel title="Movers" className="home-movers">
-      <div className="home-tabs" role="tablist" aria-label="Movers">
-        {MOVER_TABS.map(([key, label]) => (
-          <button key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => setTab(key)}>
-            {label}{key === 'ara' && limits ? ` ${limits.araCount}` : ''}{key === 'arb' && limits ? ` ${limits.arbCount}` : ''}
-          </button>
-        ))}
-      </div>
+    <Panel title="Movers" actions={tabs} className="home-movers">
       <table className="home-table" role="tabpanel">
         <thead><tr><th>Stock</th><th className="num">Price</th><th className="num">1D</th><th className="num">Value</th><th className="num">Foreign net</th></tr></thead>
         <tbody>
           {rows.map((row) => (
             <tr key={row.code}>
-              <td><Link to={stockLink(row.code)}>{row.code}</Link><small>{row.name}</small></td>
+              <td title={row.name}><Link to={stockLink(row.code)}>{row.code}</Link></td>
               <td className="num">{row.price?.toLocaleString('en-US')}</td>
               <td className="num"><Change value={row.changePct} /></td>
               <td className="num">{idr(row.value)}</td>
-              <td className={`num ${tone(row.fnet)}`}>{Number.isFinite(row.fnet) ? `${row.fnet < 0 ? '−' : ''}${idr(row.fnet)}` : '—'}</td>
+              <td className={`num ${tone(row.fnet)}`}>{Number.isFinite(row.fnet) && row.fnet !== 0 ? `${row.fnet < 0 ? '−' : '+'}${idr(row.fnet)}` : '—'}</td>
             </tr>
           ))}
           {!rows.length && <tr><td colSpan={5} className="home-empty">Nothing here this session.</td></tr>}
@@ -226,17 +260,28 @@ export default function Home() {
   const [overview, setOverview] = useState({ status: 'loading' });
   const [bandar, setBandar] = useState({ status: 'loading', rows: [] });
 
-  const load = useCallback(() => {
+  // Right after an API restart the overview is not cached yet and the health
+  // lane can briefly answer 503. Retry quietly before showing an error.
+  const load = useCallback((isCancelled = () => false) => {
     setOverview({ status: 'loading' });
-    getMarketOverview()
+    const attempt = (n) => getMarketOverview()
       .then((response) => {
         if (!response?.data) throw new Error('Market overview is unavailable right now.');
-        setOverview({ status: 'ready', data: response.data, meta: response.meta || {} });
+        if (!isCancelled()) setOverview({ status: 'ready', data: response.data, meta: response.meta || {} });
       })
-      .catch((error) => setOverview({ status: 'error', error: error.message }));
+      .catch((error) => {
+        if (isCancelled()) return;
+        if (n < OVERVIEW_RETRY_MS.length) setTimeout(() => { if (!isCancelled()) attempt(n + 1); }, OVERVIEW_RETRY_MS[n]);
+        else setOverview({ status: 'error', error: error.message });
+      });
+    attempt(0);
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    let cancelled = false;
+    load(() => cancelled);
+    return () => { cancelled = true; };
+  }, [load]);
 
   useEffect(() => {
     let cancelled = false;
@@ -246,7 +291,7 @@ export default function Home() {
         const rows = (response?.data?.candidates || [])
           .filter((row) => row.broker?.lead?.netValue > 0)
           .sort((a, b) => b.broker.lead.netValue - a.broker.lead.netValue)
-          .slice(0, BANDAR_ROWS);
+          .slice(0, LIST_ROWS);
         setBandar({ status: 'ready', rows });
       })
       .catch(() => { if (!cancelled) setBandar({ status: 'error', rows: [] }); });
@@ -265,7 +310,7 @@ export default function Home() {
       </header>
 
       {overview.status === 'loading' && <Skeleton label="Reading the market" chart />}
-      {overview.status === 'error' && <ErrorState title="Market overview is unavailable" error={overview.error} onRetry={load} />}
+      {overview.status === 'error' && <ErrorState title="Market overview is unavailable" error={overview.error} onRetry={() => load()} />}
 
       {overview.status === 'ready' && (
         <>
@@ -277,8 +322,8 @@ export default function Home() {
           </div>
           <Tape ihsg={data.ihsg} indices={data.indices || []} />
           <div className="home-grid home-grid--top">
-            <Panel title="IHSG" note="daily" className="home-panel--chart"><IndexChart bars={data.home?.ihsgChart} /></Panel>
-            <Breadth breadth={data.breadth} home={data.home} ihsg={data.ihsg} />
+            <IndexChart bars={data.home?.ihsgChart} />
+            <Breadth breadth={data.breadth} home={data.home} shape={sessionShape({ ...data })} />
           </div>
           <div className="home-grid">
             <ForeignFlow flow={data.home?.foreign} marketFlow={data.foreignFlow} />
@@ -286,7 +331,7 @@ export default function Home() {
           </div>
           <div className="home-grid">
             <SectorRotation trends={data.home?.trends} />
-            <Movers movers={data.movers} limits={data.home?.limits} />
+            <Movers movers={data.movers} />
           </div>
         </>
       )}

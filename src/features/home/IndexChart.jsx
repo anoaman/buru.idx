@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createChart, CandlestickSeries, HistogramSeries } from 'lightweight-charts';
 import { readChartTheme } from '../workbench/MarketChart.jsx';
+import Panel from './Panel.jsx';
 
 const RANGES = [['1M', 21], ['3M', 63], ['6M', 126], ['1Y', 250], ['All', Infinity]];
 
@@ -43,15 +44,18 @@ export default function IndexChart({ bars }) {
     else instance.timeScale().setVisibleLogicalRange({ from: bars.length - sessions, to: bars.length - 1 });
   }, [range, bars]);
 
-  if (!bars?.length) return <p className="home-empty">IHSG history is unavailable right now.</p>;
-  return (
-    <div className="home-chart">
-      <div className="home-chart__ranges" role="group" aria-label="Chart range">
-        {RANGES.map(([key]) => (
-          <button key={key} type="button" aria-pressed={range === key} onClick={() => setRange(key)}>{key}</button>
-        ))}
-      </div>
-      <div ref={containerRef} className="home-chart__canvas" data-testid="ihsg-chart" />
+  const ranges = (
+    <div className="home-tabs" role="group" aria-label="Chart range">
+      {RANGES.map(([key]) => (
+        <button key={key} type="button" aria-pressed={range === key} onClick={() => setRange(key)}>{key}</button>
+      ))}
     </div>
+  );
+  return (
+    <Panel title="IHSG" note="daily" actions={bars?.length ? ranges : null} className="home-panel--chart">
+      {bars?.length
+        ? <div ref={containerRef} className="home-chart__canvas" data-testid="ihsg-chart" />
+        : <p className="home-empty">IHSG history is unavailable right now.</p>}
+    </Panel>
   );
 }

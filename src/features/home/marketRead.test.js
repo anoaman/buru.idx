@@ -43,7 +43,7 @@ describe('composeMarketRead', () => {
 
 describe('formatters', () => {
   it('formats rupiah and percentages', () => {
-    expect(idr(7.8e12)).toBe('Rp7.8T');
+    expect(idr(7.8e12)).toBe('Rp7.80T');
     expect(idr(-218.99e9)).toBe('Rp219B');
     expect(pct(0.4)).toBe('+0.40%');
   });
