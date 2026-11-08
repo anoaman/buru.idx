@@ -67,9 +67,9 @@ describe('Home', () => {
     expect(screen.getByText(/Session November 6, 2026/)).toBeInTheDocument();
   });
 
-  it('ranks Bandar today by lead broker net buy and links into Broker Flow', async () => {
+  it('ranks Today\'s accumulation by lead broker net buy and links into Broker Flow', async () => {
     renderHome();
-    const panel = await screen.findByRole('region', { name: 'Bandar today' });
+    const panel = await screen.findByRole('region', { name: "Today's accumulation" });
     const rows = await within(panel).findAllByRole('row');
     expect(rows[1]).toHaveTextContent('ALII');
     expect(rows[1]).toHaveTextContent('ZP');

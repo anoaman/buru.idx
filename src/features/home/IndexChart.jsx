@@ -13,27 +13,49 @@ export default function IndexChart({ bars }) {
 
   useEffect(() => {
     if (!containerRef.current || !bars?.length) return undefined;
-    const colors = readChartTheme(containerRef.current);
     const instance = createChart(containerRef.current, {
       autoSize: true,
-      layout: { background: { color: colors.background }, textColor: colors.text, fontSize: 12, attributionLogo: false },
-      grid: { vertLines: { visible: false }, horzLines: { color: colors.grid } },
-      rightPriceScale: { borderColor: colors.border },
-      timeScale: { borderColor: colors.border, timeVisible: false },
-      crosshair: { vertLine: { color: colors.crosshair }, horzLine: { color: colors.crosshair } },
+      layout: { fontSize: 12, attributionLogo: false },
+      grid: { vertLines: { visible: false } },
+      timeScale: { timeVisible: false },
     });
-    const candles = instance.addSeries(CandlestickSeries, {
-      upColor: colors.up, downColor: colors.down, borderUpColor: colors.up, borderDownColor: colors.down,
-      wickUpColor: colors.up, wickDownColor: colors.down, priceLineVisible: false,
-    });
+    const candles = instance.addSeries(CandlestickSeries, { priceLineVisible: false });
     const volume = instance.addSeries(HistogramSeries, { priceFormat: { type: 'volume' }, priceScaleId: 'volume', lastValueVisible: false, priceLineVisible: false });
     instance.priceScale('volume').applyOptions({ scaleMargins: { top: 0.84, bottom: 0 } });
     candles.setData(bars.map(({ date, open, high, low, close }) => ({ time: date, open, high, low, close })));
-    volume.setData(bars.map(({ date, open, close, volume: value }) => ({
-      time: date, value: value || 0, color: close >= open ? colors.volumeUp : colors.volumeDown,
-    })));
+
+    // Colours come from CSS tokens, so they are re-read whenever the theme
+    // flips; otherwise the chart keeps the palette it was first drawn with.
+    const paint = () => {
+      const colors = readChartTheme(containerRef.current);
+      instance.applyOptions({
+        layout: { background: { color: colors.background }, textColor: colors.text },
+        grid: { horzLines: { color: colors.grid } },
+        rightPriceScale: { borderColor: colors.border },
+        timeScale: { borderColor: colors.border },
+        crosshair: {
+          vertLine: { color: colors.crosshair, labelBackgroundColor: colors.background },
+          horzLine: { color: colors.crosshair, labelBackgroundColor: colors.background },
+        },
+      });
+      candles.applyOptions({
+        upColor: colors.up, downColor: colors.down, borderUpColor: colors.up, borderDownColor: colors.down,
+        wickUpColor: colors.up, wickDownColor: colors.down,
+      });
+      volume.setData(bars.map(({ date, open, close, volume: value }) => ({
+        time: date, value: value || 0, color: close >= open ? colors.volumeUp : colors.volumeDown,
+      })));
+    };
+    paint();
+    const themeObserver = new MutationObserver(paint);
+    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
     chartRef.current = instance;
-    return () => { chartRef.current = null; instance.remove(); };
+    return () => {
+      themeObserver.disconnect();
+      chartRef.current = null;
+      instance.remove();
+    };
   }, [bars]);
 
   useEffect(() => {

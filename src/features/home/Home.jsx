@@ -9,8 +9,8 @@ import Panel from './Panel.jsx';
 import { composeMarketRead, idr, pct } from './marketRead.js';
 import './Home.css';
 
-// Bandar today: liquid names where a single broker bought at least Rp1B in the
-// latest session, no price cap, ranked by how much the lead broker bought.
+// Today's accumulation: liquid names where a single broker bought at least Rp1B
+// in the latest session, no price cap, ranked by how much the lead broker bought.
 const BANDAR_REQUEST = {
   conditions: [{ id: 'min_average_value', value: 500_000_000 }, { id: 'broker_accumulation', value: true }],
   useBroker: true, useSupport: false, useSideways: false,
@@ -164,9 +164,9 @@ function ForeignFlow({ flow, marketFlow }) {
   );
 }
 
-function BandarToday({ state }) {
+function TodaysAccumulation({ state }) {
   return (
-    <Panel title="Bandar today" note="lead broker net buy ≥ Rp1B · latest session">
+    <Panel title="Today's accumulation" note="lead broker net buy ≥ Rp1B · latest session">
       {state.status === 'loading' && <Skeleton label="Reading broker flow" />}
       {state.status === 'error' && <p className="home-empty">Broker flow is unavailable right now.</p>}
       {state.status === 'ready' && (
@@ -327,7 +327,7 @@ export default function Home() {
           </div>
           <div className="home-grid">
             <ForeignFlow flow={data.home?.foreign} marketFlow={data.foreignFlow} />
-            <BandarToday state={bandar} />
+            <TodaysAccumulation state={bandar} />
           </div>
           <div className="home-grid">
             <SectorRotation trends={data.home?.trends} />
