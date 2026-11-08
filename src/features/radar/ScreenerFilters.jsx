@@ -17,12 +17,16 @@ const BLANK_SLOTS = Object.freeze({
   broker: 'off', brokerCode: '', minBrokerAccumulation: 1_000_000_000, volume: '', beatsIhsg: false,
 });
 
-// Same filters as the backend's Quiet Accumulation template, so the page can run
-// before the template catalog has loaded.
+// The opening screen is not a preset: cheap, liquid names where any broker
+// bought at least Rp1B in the latest session, with no price setup required.
 export const DEFAULT_SLOTS = Object.freeze({
-  ...BLANK_SLOTS, maxPrice: 1000, minValue: 500_000_000, setup: 'near_support', broker: 'any',
-  brokerPreset: '7d', brokerFrom: '', asOf: '',
+  ...BLANK_SLOTS, maxPrice: 200, minValue: 500_000_000, setup: 'any', broker: 'any',
+  minBrokerAccumulation: 1_000_000_000, brokerPreset: 'latest', brokerFrom: '', asOf: '',
 });
+
+function isDefaultScreen(slots) {
+  return Object.entries(DEFAULT_SLOTS).every(([key, value]) => key === 'asOf' || slots[key] === value);
+}
 
 const SETUPS = [
   { value: 'any', label: 'Any', hint: 'No price setup required' },
@@ -273,7 +277,7 @@ export default function ScreenerFilters({ slots, applied, onChange, onApply, onA
         if (event.key === 'Enter' && event.target.matches('input') && !event.target.closest('.sf-save')) { event.preventDefault(); apply(); }
       }}
     >
-      <Chip id="preset" label="Preset" value={savedName || PRESETS.find((item) => item.id === preset)?.label || 'Custom'} {...chip}>
+      <Chip id="preset" label="Preset" value={savedName || PRESETS.find((item) => item.id === preset)?.label || (isDefaultScreen(slots) ? 'Off' : 'Custom')} {...chip}>
         {templatesReady
           ? <OptionList options={PRESETS.map((item) => ({ value: item.id, label: item.label, hint: item.hint }))} value={savedName ? '' : preset} onSelect={(id) => applyScreen(applyPreset(slots, templates, id))} />
           : <p className="sf-note">Presets are unavailable right now.</p>}

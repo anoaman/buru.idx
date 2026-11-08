@@ -127,25 +127,24 @@ describe('Radar', () => {
     analyzeTicker.mockResolvedValue({ data: { chart: { candles: [{ close: 98 }, { close: 100 }, { close: 101 }] } } });
   });
 
-  it('runs the default Quiet Accumulation filters on load and opens evidence in the side panel', async () => {
+  it('runs the default screen (no preset) on load and opens evidence in the side panel', async () => {
     getRadarScout.mockResolvedValue(scoutResponse({ candidates: [scoutCandidate()] }));
     renderRadar();
 
     expect(await screen.findByText('AHAP')).toBeInTheDocument();
     expect(screen.getByText('1 matched')).toBeInTheDocument();
     expect(screen.getByText('Ranked by broker + setup')).toBeInTheDocument();
-    await waitFor(() => expect(chip('Preset')).toHaveTextContent('Quiet accumulation'));
+    await waitFor(() => expect(chip('Preset')).toHaveTextContent('Off'));
     expect(lastRequest()).toEqual({
       conditions: [
-        { id: 'max_price', value: 1000 },
+        { id: 'max_price', value: 200 },
         { id: 'min_average_value', value: 500_000_000 },
-        { id: 'near_support', value: true },
         { id: 'broker_accumulation', value: true },
       ],
       useBroker: true,
-      useSupport: true,
+      useSupport: false,
       useSideways: false,
-      brokerPreset: '7d',
+      brokerPreset: 'latest',
       minBrokerAccumulation: 1_000_000_000,
       limit: 100,
     });
@@ -166,7 +165,7 @@ describe('Radar', () => {
   it('treats setup as a single choice and shows Custom once the slots leave a preset', async () => {
     renderRadar();
     await waitForRun();
-    await waitFor(() => expect(chip('Preset')).toHaveTextContent('Quiet accumulation'));
+    await waitFor(() => expect(chip('Preset')).toHaveTextContent('Off'));
 
     choose('Setup', 'Tight base');
     expect(chip('Preset')).toHaveTextContent('Custom');
@@ -282,7 +281,7 @@ describe('Radar', () => {
 
     choose('Setup', 'Tight base');
     fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
-    expect(chip('Setup')).toHaveTextContent('Near support');
+    expect(chip('Setup')).toHaveTextContent('Any');
     expect(screen.getByRole('button', { name: 'Apply filters' })).toBeDisabled();
   });
 
@@ -431,7 +430,7 @@ describe('Radar', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open AHAP broker flow' }));
     expect(openSpy.mock.calls.at(-1)[0]).toContain('/broker-intelligence?');
     expect(openSpy.mock.calls.at(-1)[0]).toContain('ticker=AHAP');
-    expect(openSpy.mock.calls.at(-1)[0]).toContain('preset=7d');
+    expect(openSpy.mock.calls.at(-1)[0]).toContain('preset=latest');
 
     const calls = openSpy.mock.calls.length;
     fireEvent.keyDown(document.body, { key: 'Enter' });
