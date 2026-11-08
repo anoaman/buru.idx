@@ -45,7 +45,9 @@ describe('AnalysisShell', () => {
 
   it('brands the shell and tab title as Bandarlab', () => {
     renderShell('/radar');
-    expect(screen.getAllByText('Bandarlab').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByRole('img', { name: 'Bandarlab' })).toBeInTheDocument();
+    expect(screen.getByText('Bandarlab')).toBeInTheDocument();
+    expect(screen.queryByText(/Let the bandar/)).not.toBeInTheDocument();
     expect(screen.queryByText('NALAR')).not.toBeInTheDocument();
     expect(screen.queryByText(/Private/)).not.toBeInTheDocument();
     expect(document.title).toBe('Screener · Bandarlab');

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { BrandCandle, BrandWordmark } from './BrandMark.jsx';
 import { NavLink, useLocation } from 'react-router';
 import { useAnalysisContext } from './AnalysisContext.jsx';
 import FreshnessBar from './FreshnessBar.jsx';
@@ -78,11 +79,8 @@ export default function AnalysisShell({ children }) {
     <div className={`app-shell ${mobileOpen ? 'app-shell--mobile-open' : ''}`}>
       <aside className="app-shell__sidebar">
         <div className="app-shell__brand">
-          <span className="app-shell__logo">B</span>
-          <div>
-            <span className="app-shell__name">Bandarlab</span>
-            <span className="app-shell__edition">Let the bandar cooks</span>
-          </div>
+          <span className="app-shell__logo"><BrandCandle /></span>
+          <div className="app-shell__name"><BrandWordmark /></div>
         </div>
         <nav className="app-shell__nav" aria-label="Primary">
           {NAV.map((item) => (
