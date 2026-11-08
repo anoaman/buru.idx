@@ -81,17 +81,13 @@ function LimitList({ title, items, count, sign }) {
 }
 
 // How concentrated the session was, from numbers already on the page.
-export function sessionShape({ breadth, home, ihsg, foreignFlow, movers }) {
+export function sessionShape({ home, ihsg, foreignFlow, movers }) {
   const total = home?.valueBreadth?.total;
   const top10 = (movers?.mostActive || []).slice(0, 10).reduce((sum, row) => sum + (row.value || 0), 0);
-  const listed = breadth?.received;
-  const untraded = home?.valueBreadth?.untradedCount;
   return {
     top10SharePct: total > 0 && top10 > 0 ? top10 / total * 100 : null,
     foreignParticipationPct: ihsg?.value > 0 && foreignFlow?.buy >= 0 && foreignFlow?.sell >= 0
       ? (foreignFlow.buy + foreignFlow.sell) / (2 * ihsg.value) * 100 : null,
-    traded: Number.isFinite(listed) && Number.isFinite(untraded) ? listed - untraded : null,
-    listed: Number.isFinite(listed) ? listed : null,
   };
 }
 
@@ -113,7 +109,6 @@ function Breadth({ breadth, home, shape }) {
         <dl className="home-shape">
           <div><dt>Top 10 names</dt><dd>{Number.isFinite(shape.top10SharePct) ? `${Math.round(shape.top10SharePct)}%` : '—'}</dd><small>of value traded</small></div>
           <div><dt>Foreign</dt><dd>{Number.isFinite(shape.foreignParticipationPct) ? `${Math.round(shape.foreignParticipationPct)}%` : '—'}</dd><small>of turnover</small></div>
-          <div><dt>Traded</dt><dd>{shape.traded ?? '—'}</dd><small>{shape.listed ? `of ${shape.listed} listed` : 'stocks'}</small></div>
         </dl>
       )}
       {limits && (

@@ -48,7 +48,7 @@
 .home-split__bar i.is-down { background: var(--color-negative); }
 .home-split__bar i.is-flat { background: var(--border-default); }
 
-.home-shape { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0 0 10px; }
+.home-shape { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 0 0 10px; }
 .home-shape div { padding: 10px 12px; border-radius: var(--radius-md); background: var(--bg-surface); }
 .home-shape dt { color: var(--text-tertiary); font-size: var(--type-meta); }
 .home-shape dd { margin: 2px 0 0; font-family: var(--font-heading); font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }

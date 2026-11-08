@@ -110,12 +110,11 @@ describe('Home', () => {
 
   it('measures how concentrated the session was', () => {
     const shape = sessionShape({
-      breadth: { received: 957 },
-      home: { valueBreadth: { total: 1000, untradedCount: 133 } },
+      home: { valueBreadth: { total: 1000 } },
       ihsg: { value: 1000 },
       foreignFlow: { buy: 300, sell: 500 },
       movers: { mostActive: [{ value: 300 }, { value: 100 }] },
     });
-    expect(shape).toEqual({ top10SharePct: 40, foreignParticipationPct: 40, traded: 824, listed: 957 });
+    expect(shape).toEqual({ top10SharePct: 40, foreignParticipationPct: 40 });
   });
 });
