@@ -185,7 +185,13 @@ It forwards only validated public Retry-After and cache age/as-of/generation
 headers. This is provenance forwarding, not an edge cache; cookies and other
 private origin headers remain blocked.
 
-Production is deployed only from `main` to `analysis.tombaklepas.app`. Staging
+Production is deployed only from `main` to `bandarlab.site` (moved from
+`analysis.tombaklepas.app` on 2026-11-08). `www.bandarlab.site` 301s to the
+apex. The old host stays attached: its API, health checks and static assets
+keep serving open tabs, while page navigations get a handoff page that carries
+the `nalar.*` / `nalar-theme` localStorage keys to the new origin in the URL
+fragment (`worker/index.js` + `src/lib/handoff.js`; keep their key lists in
+sync). The API origin stays at `analysis-origin.tombaklepas.app`. Staging
 is deployed only from `develop` to `staging.analysis.tombaklepas.app`; normal
 feature branches merge into `develop` before promotion to `main`. Staging uses
 the existing V2 service lane on ports 8793/8788, a separate bounded database,
