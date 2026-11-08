@@ -8,6 +8,13 @@ case tracking from the retiring cockpit without duplicating backend engines.
 
 ## Boundaries
 
+- `src/features/home/` owns Home: the market read (`marketRead.js`, plain
+  sentences composed only from numbers on the page, never advice), index tape,
+  IHSG chart (`IndexChart.jsx`, repaints on theme change), breadth with ARA/ARB
+  hits, foreign leaders, Today's accumulation (radar scout, latest session,
+  lead broker >= Rp1B), sector rotation and movers. Data comes from
+  `/api/market-overview` (its `home` block) plus one radar scout call. Paired
+  panels share equal height and row counts; keep them balanced when editing.
 - `src/features/workbench/` owns ticker analysis presentation and chart views.
   Layout order is market overview, full-width market chart, then a docked
   accessible `DetailDrawer` with tabs: Setup · Indicators · Broker Flow ·
@@ -137,15 +144,14 @@ calculation. Those remain backend responsibilities.
 
 ## Routes
 
-- `/workbench`
-- `/broker-intelligence`
-- `/radar`
-- `/keterbukaan` (temporary redirect to `/news-detector` after parity)
-- `/cases`
-- `/fundamentals`
-- `/news-detector`
+- `/` Home (market read; landing page)
+- `/radar` Screener
+- `/workbench` Stock Analysis
+- `/broker-intelligence` Broker Flow
+- `/glossary`
 
-The root and unknown routes redirect to `/workbench`.
+`/fundamentals`, `/news-detector` and `/keterbukaan` are parked and redirect to
+`/workbench`, as do unknown routes. `/cases` is not routed.
 
 ## Deployment boundary
 
