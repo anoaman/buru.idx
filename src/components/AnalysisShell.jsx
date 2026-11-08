@@ -81,7 +81,7 @@ export default function AnalysisShell({ children }) {
           <span className="app-shell__logo">B</span>
           <div>
             <span className="app-shell__name">Bandarlab</span>
-            <span className="app-shell__edition">IDX ANALYSIS</span>
+            <span className="app-shell__edition">Let the bandar cooks</span>
           </div>
         </div>
         <nav className="app-shell__nav" aria-label="Primary">
