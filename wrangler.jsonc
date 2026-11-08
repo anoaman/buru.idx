@@ -13,6 +13,14 @@
   },
   "routes": [
     {
+      "pattern": "bandarlab.site",
+      "custom_domain": true
+    },
+    {
+      "pattern": "www.bandarlab.site",
+      "custom_domain": true
+    },
+    {
       "pattern": "analysis.tombaklepas.app",
       "custom_domain": true
     }

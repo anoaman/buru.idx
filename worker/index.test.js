@@ -149,3 +149,49 @@ describe('public Worker API boundary', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
+
+describe('domain move to bandarlab.site', () => {
+  const assets = { fetch: vi.fn(async () => new Response('<html>app</html>', { headers: { 'content-type': 'text/html' } })) };
+  const moveEnv = { ...env, ASSETS: assets };
+  const nav = (url, method = 'GET') => new Request(url, { method, headers: { accept: 'text/html,application/xhtml+xml' } });
+
+  it('redirects www to the apex, keeping path and query', async () => {
+    const response = await worker.fetch(nav('https://www.bandarlab.site/workbench?ticker=BBCA'), moveEnv);
+    expect(response.status).toBe(301);
+    expect(response.headers.get('location')).toBe('https://bandarlab.site/workbench?ticker=BBCA');
+  });
+
+  it('turns legacy page navigations into a settings handoff', async () => {
+    const response = await worker.fetch(nav('https://analysis.tombaklepas.app/radar?x=%22%3E'), moveEnv);
+    expect(response.status).toBe(200);
+    const body = await response.text();
+    expect(body).toContain('<script src="/__handoff.js"></script>');
+    expect(body).toContain('https://bandarlab.site/radar?x=%22%3E');
+    expect(response.headers.get('content-security-policy')).toContain("script-src 'self'");
+    expect(assets.fetch).not.toHaveBeenCalled();
+  });
+
+  it('serves the handoff script on the legacy host only', async () => {
+    const script = await worker.fetch(new Request('https://analysis.tombaklepas.app/__handoff.js'), moveEnv);
+    expect(script.headers.get('content-type')).toContain('javascript');
+    const text = await script.text();
+    expect(text).toContain("'https://bandarlab.site' + location.pathname + location.search");
+    expect(text).toContain('nalar.screener.savedScreens');
+    new Function(text); // must at least parse
+  });
+
+  it('keeps the legacy API and static assets working for open tabs', async () => {
+    const asset = await worker.fetch(new Request('https://analysis.tombaklepas.app/assets/index.js', { headers: { accept: '*/*' } }), moveEnv);
+    expect(assets.fetch).toHaveBeenCalledTimes(1);
+    expect(asset.status).toBe(200);
+    const health = await worker.fetch(nav('https://analysis.tombaklepas.app/healthz'), moveEnv);
+    expect(await health.json()).toEqual({ status: 'ok' });
+  });
+
+  it('serves the app normally on the canonical host', async () => {
+    assets.fetch.mockClear();
+    const response = await worker.fetch(nav('https://bandarlab.site/radar'), moveEnv);
+    expect(await response.text()).toBe('<html>app</html>');
+    expect(assets.fetch).toHaveBeenCalledTimes(1);
+  });
+});

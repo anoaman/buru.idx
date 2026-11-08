@@ -100,6 +100,79 @@ function secure(response) {
   return secured;
 }
 
+// The platform moved to bandarlab.site on 2026-11-08. The old host keeps its
+// API alive for tabs that are already open, and turns page navigations into a
+// handoff that carries per-browser settings across in the URL fragment.
+// Keep HANDOFF_KEYS in sync with src/lib/handoff.js.
+const CANONICAL_HOST = 'bandarlab.site';
+const LEGACY_HOSTS = new Set(['analysis.tombaklepas.app']);
+const ALIAS_HOSTS = new Set(['www.bandarlab.site']);
+const HANDOFF_SCRIPT_PATH = '/__handoff.js';
+const HANDOFF_KEYS = ['nalar.screener.savedScreens', 'nalar.chart.overlays', 'nalar-theme'];
+
+function canonicalUrl(url) {
+  return `https://${CANONICAL_HOST}${url.pathname}${url.search}`;
+}
+
+function escapeHtml(value) {
+  return value.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
+}
+
+function handoffScript() {
+  return `(function () {
+  var target = 'https://${CANONICAL_HOST}' + location.pathname + location.search;
+  try {
+    var data = {};
+    var found = false;
+    ${JSON.stringify(HANDOFF_KEYS)}.forEach(function (key) {
+      var value = localStorage.getItem(key);
+      if (value != null) { data[key] = value; found = true; }
+    });
+    if (found) {
+      var packed = encodeURIComponent(JSON.stringify(data));
+      if (packed.length <= 200000) target += '#nalar-handoff=' + packed;
+    }
+  } catch (error) { /* storage blocked: move without settings */ }
+  location.replace(target);
+})();
+`;
+}
+
+function handoffPage(url) {
+  const target = escapeHtml(canonicalUrl(url));
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Moved to bandarlab.site</title>
+<link rel="canonical" href="${target}">
+<noscript><meta http-equiv="refresh" content="0; url=${target}"></noscript>
+<script src="${HANDOFF_SCRIPT_PATH}"></script>
+<style>body{font:16px/1.5 system-ui,sans-serif;margin:20vh auto;max-width:32rem;padding:0 1.5rem;color:#222}a{color:inherit}</style>
+</head>
+<body>
+<p>This platform now lives at <a href="${target}">bandarlab.site</a>. Taking you there now.</p>
+</body>
+</html>
+`;
+}
+
+function legacyResponse(request, url) {
+  if (url.pathname === HANDOFF_SCRIPT_PATH) {
+    return new Response(handoffScript(), {
+      headers: { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-store' },
+    });
+  }
+  const accept = request.headers.get('accept') || '';
+  const isNavigation = ['GET', 'HEAD'].includes(request.method) && accept.includes('text/html');
+  if (!isNavigation) return null;
+  return new Response(request.method === 'HEAD' ? null : handoffPage(url), {
+    headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
+  });
+}
+
 function originRequest(request, env, url) {
   if (!env.API_ORIGIN || !env.CF_ACCESS_CLIENT_ID || !env.CF_ACCESS_CLIENT_SECRET) {
     throw new Error('Origin configuration is unavailable.');
@@ -135,6 +208,14 @@ export default {
     const url = new URL(request.url);
     if (url.pathname.length + url.search.length > MAX_REQUEST_TARGET_LENGTH) {
       return secure(json(414, 'Request target is too long.'));
+    }
+    if (ALIAS_HOSTS.has(url.hostname)) {
+      return secure(Response.redirect(canonicalUrl(url), 301));
+    }
+    if (LEGACY_HOSTS.has(url.hostname) && !url.pathname.startsWith('/api/')
+      && url.pathname !== '/healthz' && url.pathname !== '/readyz') {
+      const legacy = legacyResponse(request, url);
+      if (legacy) return secure(legacy);
     }
     if (url.pathname === '/healthz') {
       return secure(Response.json({ status: 'ok' }, {
