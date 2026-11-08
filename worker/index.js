@@ -146,14 +146,14 @@ function handoffPage(url) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Moved to bandarlab.site</title>
+<title>Bandarlab has moved</title>
 <link rel="canonical" href="${target}">
 <noscript><meta http-equiv="refresh" content="0; url=${target}"></noscript>
 <script src="${HANDOFF_SCRIPT_PATH}"></script>
 <style>body{font:16px/1.5 system-ui,sans-serif;margin:20vh auto;max-width:32rem;padding:0 1.5rem;color:#222}a{color:inherit}</style>
 </head>
 <body>
-<p>This platform now lives at <a href="${target}">bandarlab.site</a>. Taking you there now.</p>
+<p>Bandarlab now lives at <a href="${target}">bandarlab.site</a>. Taking you there now.</p>
 </body>
 </html>
 `;

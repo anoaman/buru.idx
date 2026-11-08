@@ -6,7 +6,7 @@ import { formatDate } from '../lib/format/market.js';
 /**
  * How old the data under this screen actually is.
  *
- * Every surface in NALAR reads delayed end-of-day data, which is fine, but
+ * Every surface in Bandarlab reads delayed end-of-day data, which is fine, but
  * "delayed" is not a number. A screen scoring on a nine-session-old broker cache
  * looks exactly like one scoring on yesterday's, and the difference decides
  * whether a result is worth acting on. The API has reported this all along under

@@ -58,6 +58,10 @@ export default function AnalysisShell({ children }) {
   });
   const location = useLocation();
   const current = NAV.find((item) => location.pathname.startsWith(item.path)) || NAV[1];
+
+  useEffect(() => {
+    document.title = `${current.label} · Bandarlab`;
+  }, [current.label]);
   const { investigationUrl, brokerFlowUrl } = useAnalysisContext();
   const navTarget = (item) => item.path === '/workbench'
     ? investigationUrl()
@@ -74,9 +78,9 @@ export default function AnalysisShell({ children }) {
     <div className={`app-shell ${mobileOpen ? 'app-shell--mobile-open' : ''}`}>
       <aside className="app-shell__sidebar">
         <div className="app-shell__brand">
-          <span className="app-shell__logo">N</span>
+          <span className="app-shell__logo">B</span>
           <div>
-            <span className="app-shell__name">NALAR</span>
+            <span className="app-shell__name">Bandarlab</span>
             <span className="app-shell__edition">IDX ANALYSIS</span>
           </div>
         </div>
@@ -97,7 +101,7 @@ export default function AnalysisShell({ children }) {
         </nav>
         <div className="app-shell__footer">
           <span className="app-shell__market"><i aria-hidden="true" />IDX workstation</span>
-          <span className="app-shell__delay-label">Private · delayed data</span>
+          <span className="app-shell__delay-label">Delayed data</span>
         </div>
       </aside>
 
@@ -112,7 +116,7 @@ export default function AnalysisShell({ children }) {
             ☰
           </button>
           <div className="app-shell__section-id">
-            <span>NALAR</span><b>/</b><h1 className="app-shell__title">{current.label}</h1>
+            <span>Bandarlab</span><b>/</b><h1 className="app-shell__title">{current.label}</h1>
           </div>
           <CommandBar />
           <button

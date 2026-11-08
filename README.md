@@ -1,6 +1,6 @@
-# Buru IDX
+# Bandarlab
 
-Buru IDX is an IDX market-analysis workstation for screening opportunities,
+Bandarlab (<https://bandarlab.site>) is an IDX market-analysis workstation for screening opportunities,
 investigating individual stocks, reading broker flow, and tracking setups. It
 combines deterministic market data with an auditable interface: the frontend
 explains the evidence it receives but does not invent scores, levels, or trade

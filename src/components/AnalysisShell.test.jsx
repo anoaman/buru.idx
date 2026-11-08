@@ -43,6 +43,14 @@ describe('AnalysisShell', () => {
     expect(screen.getByText('TLKM')).toBeInTheDocument();
   });
 
+  it('brands the shell and tab title as Bandarlab', () => {
+    renderShell('/radar');
+    expect(screen.getAllByText('Bandarlab').length).toBeGreaterThanOrEqual(2);
+    expect(screen.queryByText('NALAR')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Private/)).not.toBeInTheDocument();
+    expect(document.title).toBe('Screener · Bandarlab');
+  });
+
   it('keeps Broker Flow date controls out of the global command bar', () => {
     renderShell('/broker-intelligence?lens=stock&ticker=BBRI&days=1&date=2026-08-07');
     expect(screen.queryByRole('button', { name: '30D' })).not.toBeInTheDocument();

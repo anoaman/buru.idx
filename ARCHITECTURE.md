@@ -1,4 +1,4 @@
-# Stock Analysis Architecture
+# Bandarlab Architecture
 
 ## Purpose
 
