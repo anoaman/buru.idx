@@ -62,6 +62,7 @@ describe('AnalysisShell', () => {
 
   it('exposes the final analysis product navigation without a Story Intelligence tab', () => {
     renderShell('/radar');
+    expect(screen.getByRole('link', { name: /Home/i })).toHaveAttribute('href', '/');
     expect(screen.getByRole('link', { name: /Screener/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Stock Analysis/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Broker Flow/i })).toBeInTheDocument();

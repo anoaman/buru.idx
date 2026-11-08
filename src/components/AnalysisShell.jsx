@@ -5,6 +5,7 @@ import { useAnalysisContext } from './AnalysisContext.jsx';
 import FreshnessBar from './FreshnessBar.jsx';
 
 const NAV = [
+  { path: '/', label: 'Home', mark: 'HM' },
   { path: '/radar', label: 'Screener', mark: 'SC' },
   { path: '/workbench', label: 'Stock Analysis', mark: 'SA' },
   { path: '/broker-intelligence', label: 'Broker Flow', mark: 'BF' },
@@ -58,7 +59,7 @@ export default function AnalysisShell({ children }) {
     return saved === 'light' || saved === 'dark' ? saved : 'dark';
   });
   const location = useLocation();
-  const current = NAV.find((item) => location.pathname.startsWith(item.path)) || NAV[1];
+  const current = NAV.find((item) => (item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path))) || NAV[0];
 
   useEffect(() => {
     document.title = `${current.label} · Bandarlab`;
@@ -87,6 +88,7 @@ export default function AnalysisShell({ children }) {
             <NavLink
               key={item.path}
               to={navTarget(item)}
+              end={item.path === '/'}
               className={({ isActive }) =>
                 `app-shell__nav-item ${isActive ? 'app-shell__nav-item--active' : ''}`
               }

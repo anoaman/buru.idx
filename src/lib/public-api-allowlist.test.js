@@ -113,7 +113,6 @@ describe('public API allowlist', () => {
       '/api/trade-plans',
       '/api/journal',
       '/api/calibration',
-      '/api/market-overview',
       '/api/fca',
       // The watchlist carries private positions and thesis notes, and the
       // shortlist scan is the edge. Neither has any business on this surface.
@@ -138,6 +137,11 @@ describe('public API allowlist', () => {
       expect(result.ok).toBe(false);
       expect(result.status).toBe(404);
     }
+  });
+
+  it('serves the market overview read-only for Home, with no parameters (opened 2026-11-08)', () => {
+    expect(resolvePublicApiRequest('GET', '/api/market-overview?dbPath=/etc/passwd').path).toBe('/api/market-overview');
+    expect(resolvePublicApiRequest('POST', '/api/market-overview').status).toBe(405);
   });
 
   it('drops query parameters that are not part of the route', () => {

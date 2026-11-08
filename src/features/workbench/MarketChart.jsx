@@ -31,7 +31,7 @@ function readOverlays() {
   }
 }
 
-function readChartTheme(element) {
+export function readChartTheme(element) {
   const styles = getComputedStyle(element || document.documentElement);
   const token = (name, fallback) => styles.getPropertyValue(name).trim() || fallback;
   return {

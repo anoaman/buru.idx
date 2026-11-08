@@ -4,6 +4,7 @@ const PUBLIC_ROUTES = new Map([
   ['/api/broker-intelligence/stock', { params: ['ticker', 'days', 'date', 'preset', 'from', 'to', 'curves', 'curveFor'] }],
   ['/api/broker-intelligence/health', { params: [] }],
   ['/api/data-health', { params: [] }],
+  ['/api/market-overview', { params: [] }],
   ['/api/radar/scout/conditions', { params: [] }],
   ['/api/radar/scout', { params: [
     'recipe', 'conditions', 'asOf', 'brokerSessions', 'brokerPreset', 'brokerFrom', 'brokerTo',

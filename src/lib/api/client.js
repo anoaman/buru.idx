@@ -128,6 +128,10 @@ export function getRadarScout(options = {}) {
   return request(`/api/radar/scout?${params.toString()}`);
 }
 
+export function getMarketOverview() {
+  return request('/api/market-overview');
+}
+
 export function getRadarScoutConditions() {
   return request('/api/radar/scout/conditions');
 }

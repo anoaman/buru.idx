@@ -24,6 +24,9 @@ const PUBLIC_ROUTES = new Map([
   ['/api/analyze', { params: ['ticker'], force: { mode: 'delayed' } }],
   ['/api/risk-simulation', { params: ['entry', 'stop', 'target', 'capital', 'maxRiskPct'] }],
   ['/api/data-health', { params: [] }],
+  // Home (2026-11-08). Closed in August while nothing public used it and the
+  // payload carried an internal cache filename; that field is now removed upstream.
+  ['/api/market-overview', { params: [] }],
   ['/api/radar/scout/conditions', { params: [] }],
   ['/api/radar/scout', { params: [
     'recipe',
