@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { analyticsEnabled, resetAnalyticsForTest, startAnalytics, trackPageView } from './analytics.js';
+import { analyticsEnabled, resetAnalyticsForTest, startAnalytics } from './analytics.js';
 
 afterEach(() => {
   resetAnalyticsForTest();
@@ -19,7 +19,6 @@ describe('analytics', () => {
 
   it('does nothing off the public host', () => {
     expect(startAnalytics()).toBe(false);
-    expect(trackPageView('/radar')).toBe(false);
     expect(window.dataLayer).toBeUndefined();
     expect(document.head.querySelector('script[src*="googletagmanager"]')).toBeNull();
   });

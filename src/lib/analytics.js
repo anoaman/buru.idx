@@ -1,11 +1,11 @@
 // GA4 for the public site only. The private cockpit, staging and the legacy
-// handoff host never load the tag. Page views are sent on every router
-// navigation because the SPA never reloads; gtag's automatic one is disabled.
+// handoff host never load the tag. SPA navigations are counted by the GA
+// stream's Enhanced measurement (browser history events), so no manual
+// page_view calls: adding them double-counts every route change.
 export const GA_MEASUREMENT_ID = 'G-5NTTFZRE01';
 export const ANALYTICS_HOST = 'bandarlab.site';
 
 let started = false;
-let lastPage = null;
 
 export function analyticsEnabled(host = window.location.hostname) {
   return host === ANALYTICS_HOST;
@@ -21,7 +21,7 @@ export function startAnalytics() {
   window.dataLayer = window.dataLayer || [];
   window.gtag = gtag;
   gtag('js', new Date());
-  gtag('config', GA_MEASUREMENT_ID, { send_page_view: false });
+  gtag('config', GA_MEASUREMENT_ID);
   const script = document.createElement('script');
   script.async = true;
   script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`;
@@ -29,19 +29,6 @@ export function startAnalytics() {
   return true;
 }
 
-export function trackPageView(pathname, search = '') {
-  if (!started) return false;
-  const page = pathname + search;
-  if (page === lastPage) return false;
-  lastPage = page;
-  gtag('event', 'page_view', {
-    page_location: window.location.origin + page,
-    page_title: document.title,
-  });
-  return true;
-}
-
 export function resetAnalyticsForTest() {
   started = false;
-  lastPage = null;
 }

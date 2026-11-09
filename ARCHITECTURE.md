@@ -199,8 +199,8 @@ the `nalar.*` / `nalar-theme` localStorage keys to the new origin in the URL
 fragment (`worker/index.js` + `src/lib/handoff.js`; keep their key lists in
 sync). The API origin stays at `analysis-origin.tombaklepas.app`.
 GA4 (`G-5NTTFZRE01`, `src/lib/analytics.js`) loads only when the hostname is
-exactly `bandarlab.site` and sends one page_view per router navigation; the
-Worker CSP allows Google's tag/collect hosts. The private cockpit, staging and
+exactly `bandarlab.site`; route changes are counted by the GA stream's
+Enhanced measurement history events (no manual page_view calls). The Worker CSP allows Google's tag/collect hosts. The private cockpit, staging and
 the legacy host never load it. Staging
 is deployed only from `develop` to `staging.analysis.tombaklepas.app`; normal
 feature branches merge into `develop` before promotion to `main`. Staging uses
