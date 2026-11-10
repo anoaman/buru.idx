@@ -309,7 +309,12 @@ export default function Home() {
     <section className="home-page" aria-labelledby="home-title">
       <header className="module-heading home-heading">
         <h2 id="home-title">Market</h2>
-        {sessionDate && <span>Session {formatDate(sessionDate)} · delayed end-of-day</span>}
+        {sessionDate && (
+          <span data-testid="home-asof">
+            Data as of {formatDate(sessionDate)}.
+            {data.session?.todayPending && " Today's data will be updated by 20:00 WIB at the latest."}
+          </span>
+        )}
       </header>
 
       {overview.status === 'loading' && <Skeleton label="Reading the market" chart />}
@@ -320,9 +325,6 @@ export default function Home() {
           {overview.meta?.freshness === 'stale' && (
             <p className="home-stale">This market data is more than one session old. Numbers below may not reflect the latest close.</p>
           )}
-          <div className="home-read" data-testid="market-read">
-            {read.length ? read.map((line) => <p key={line}>{line}</p>) : <p>The market read is unavailable for this session.</p>}
-          </div>
           <Tape ihsg={data.ihsg} indices={data.indices || []} />
           <div className="home-grid home-grid--top">
             <IndexChart bars={data.home?.ihsgChart} />
@@ -335,6 +337,10 @@ export default function Home() {
           <div className="home-grid">
             <SectorRotation trends={data.home?.trends} />
             <Movers movers={data.movers} />
+          </div>
+          {/* The plain-language read sits under the panels it summarises. */}
+          <div className="home-read" data-testid="market-read">
+            {read.length ? read.map((line) => <p key={line}>{line}</p>) : <p>The market read is unavailable for this session.</p>}
           </div>
         </>
       )}

@@ -64,7 +64,16 @@ describe('Home', () => {
     expect(read).toHaveTextContent('IHSG rose +0.40% to 5,050, but the move was narrow: 437 stocks fell against 229 that rose.');
     expect(read).toHaveTextContent("Foreigners were net buyers of Rp109.3B, and BBCA alone took Rp219B, more than the whole market's net.");
     expect(read).toHaveTextContent('2 stocks closed at ARA and 1 at ARB; over five sessions Financials led IHSG');
-    expect(screen.getByText(/Session November 6, 2026/)).toBeInTheDocument();
+    expect(screen.getByTestId('home-asof')).toHaveTextContent('Data as of November 6, 2026.');
+    expect(screen.getByTestId('home-asof')).not.toHaveTextContent('updated by');
+  });
+
+  it('says when today\'s data will land, and puts the read after the panels', async () => {
+    getMarketOverview.mockResolvedValue({ ...overview, data: { ...overview.data, session: { ...overview.data.session, todayPending: true } } });
+    renderHome();
+    const read = await screen.findByTestId('market-read');
+    expect(screen.getByTestId('home-asof')).toHaveTextContent("Data as of November 6, 2026. Today's data will be updated by 20:00 WIB at the latest.");
+    expect(screen.getByLabelText('Indices').compareDocumentPosition(read) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('ranks Today\'s accumulation by lead broker net buy and links into Broker Flow', async () => {
