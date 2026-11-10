@@ -1,3 +1,5 @@
+import { withSeo } from './seo.js';
+
 const PUBLIC_ROUTES = new Map([
   ['/api/analyze', { params: ['ticker'], force: { mode: 'delayed' } }],
   ['/api/broker-intelligence/broker', { params: ['code', 'days', 'limit', 'date', 'preset', 'from', 'to', 'maxPrice', 'minAverageValue', 'minBrokerNetValue', 'foreignDirection', 'minForeignValue', 'excludeFca', 'curves', 'curveFor'] }],
@@ -305,6 +307,7 @@ export default {
       }));
     }
 
-    return secure(await env.ASSETS.fetch(request));
+    const asset = await env.ASSETS.fetch(request);
+    return secure(request.method === 'GET' ? await withSeo(asset, url.pathname) : asset);
   },
 };

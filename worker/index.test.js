@@ -195,3 +195,40 @@ describe('domain move to bandarlab.site', () => {
     expect(assets.fetch).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('crawler metadata on the SPA shell', () => {
+  const shell = '<html><head><meta\n  name="description"\n  content="old" />\n<meta property="og:title" content="Bandarlab" />\n<meta\n  property="og:description"\n  content="old" />\n<meta property="og:url" content="https://bandarlab.site/" /><title>Bandarlab</title></head><body><div id="root"></div></body></html>';
+  const seoEnv = { ...env, ASSETS: { fetch: vi.fn(async () => new Response(shell, { headers: { 'content-type': 'text/html; charset=utf-8', 'content-length': '999' } })) } };
+  const get = (path, method = 'GET') => worker.fetch(new Request(`https://bandarlab.site${path}`, { method }), seoEnv);
+
+  it('gives each public route its own title, canonical, schema and readable summary', async () => {
+    const html = await (await get('/radar?recipe=x')).text();
+    expect(html).toContain('<title>IDX stock screener · Bandarlab</title>');
+    expect(html).toContain('<link rel="canonical" href="https://bandarlab.site/radar">');
+    expect(html.match(/name="description"/g)).toHaveLength(1);
+    expect(html.match(/property="og:title"/g)).toHaveLength(1);
+    expect(html).toContain('"@type":"BreadcrumbList"');
+    expect(html).toContain('<noscript><h1>IDX stock screener · Bandarlab</h1>');
+    expect(html).not.toContain('noindex');
+  });
+
+  it('describes the app on the home page', async () => {
+    const html = await (await get('/')).text();
+    const ld = JSON.parse(html.match(/<script type="application\/ld\+json">(.*?)<\/script>/)[1]);
+    expect(ld['@graph'].map((node) => node['@type'])).toEqual(['WebSite', 'WebApplication']);
+  });
+
+  it('keeps unknown paths usable but out of the index', async () => {
+    const response = await get('/does-not-exist');
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain('<meta name="robots" content="noindex">');
+    expect(html).not.toContain('rel="canonical"');
+  });
+
+  it('leaves HEAD and non-HTML responses untouched', async () => {
+    expect(await (await get('/radar', 'HEAD')).text()).toBe(shell);
+    const css = { ...env, ASSETS: { fetch: async () => new Response('a{}', { headers: { 'content-type': 'text/css' } }) } };
+    expect(await (await worker.fetch(new Request('https://bandarlab.site/x.css'), css)).text()).toBe('a{}');
+  });
+});
