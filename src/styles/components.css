@@ -78,11 +78,11 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  min-height: 34px;
-  padding: 7px 9px;
+  min-height: 40px;
+  padding: 8px 10px;
   border-radius: 0 var(--radius-md) var(--radius-md) 0;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 500;
   border-left: 2px solid transparent;
   transition: background var(--motion-fast) var(--ease-out),
@@ -102,15 +102,23 @@
   border-left-color: var(--color-accent);
 }
 
-.app-shell__nav-mark {
-  width: 22px;
+.app-shell__nav-icon {
+  flex-shrink: 0;
+  width: 19px;
+  height: 19px;
   color: var(--text-tertiary);
-  font-family: var(--font-mono);
-  font-size: var(--type-floor);
-  letter-spacing: .04em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
-.app-shell__nav-item--active .app-shell__nav-mark {
+.app-shell__nav-item:hover .app-shell__nav-icon {
+  color: var(--text-secondary);
+}
+
+.app-shell__nav-item--active .app-shell__nav-icon {
   color: var(--color-accent);
 }
 
@@ -2457,7 +2465,6 @@
   .app-shell__nav-label,
   .app-shell__footer { display: none; }
   .app-shell__nav-item { justify-content: center; padding-inline: 8px; border-radius: 0; }
-  .app-shell__nav-mark { width: auto; }
   .analysis-command__windows { display: none; }
 }
 

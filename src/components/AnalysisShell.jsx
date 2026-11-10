@@ -5,12 +5,44 @@ import { useAnalysisContext } from './AnalysisContext.jsx';
 import FreshnessBar from './FreshnessBar.jsx';
 import Watermark from './Watermark.jsx';
 
+// Line icons (Lucide geometry, 24px grid) drawn in currentColor so they follow
+// the nav item's active and hover colours.
+const ICONS = {
+  home: (
+    <>
+      <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" />
+      <path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+    </>
+  ),
+  screener: (
+    <path d="M10 20a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14z" />
+  ),
+  analysis: (
+    <>
+      <path d="M9 5v4" /><rect width="4" height="6" x="7" y="9" rx="1" /><path d="M9 15v2" />
+      <path d="M17 3v2" /><rect width="4" height="8" x="15" y="5" rx="1" /><path d="M17 13v3" />
+      <path d="M3 3v16a2 2 0 0 0 2 2h16" />
+    </>
+  ),
+  brokerFlow: (
+    <>
+      <path d="M8 3 4 7l4 4" /><path d="M4 7h16" /><path d="m16 21 4-4-4-4" /><path d="M20 17H4" />
+    </>
+  ),
+  glossary: (
+    <>
+      <path d="M12 7v14" />
+      <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z" />
+    </>
+  ),
+};
+
 const NAV = [
-  { path: '/', label: 'Home', mark: 'HM' },
-  { path: '/radar', label: 'Screener', mark: 'SC' },
-  { path: '/workbench', label: 'Stock Analysis', mark: 'SA' },
-  { path: '/broker-intelligence', label: 'Broker Flow', mark: 'BF' },
-  { path: '/glossary', label: 'Glossary', mark: 'GL' },
+  { path: '/', label: 'Home', icon: 'home' },
+  { path: '/radar', label: 'Screener', icon: 'screener' },
+  { path: '/workbench', label: 'Stock Analysis', icon: 'analysis' },
+  { path: '/broker-intelligence', label: 'Broker Flow', icon: 'brokerFlow' },
+  { path: '/glossary', label: 'Glossary', icon: 'glossary' },
 ];
 
 function CommandBar() {
@@ -93,9 +125,13 @@ export default function AnalysisShell({ children }) {
               className={({ isActive }) =>
                 `app-shell__nav-item ${isActive ? 'app-shell__nav-item--active' : ''}`
               }
+              title={item.label}
+              aria-label={item.label}
               onClick={() => setMobileOpen(false)}
             >
-              <span className="app-shell__nav-mark" aria-hidden="true">{item.mark}</span>
+              <svg className="app-shell__nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                {ICONS[item.icon]}
+              </svg>
               <span className="app-shell__nav-label">{item.label}</span>
             </NavLink>
           ))}
