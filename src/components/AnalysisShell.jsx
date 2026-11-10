@@ -134,7 +134,7 @@ export default function AnalysisShell({ children }) {
           <FreshnessBar />
           {children}
         </main>
-        <Watermark />
+        {current.path === '/radar' && <Watermark />}
       </div>
     </div>
   );
