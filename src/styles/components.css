@@ -3620,7 +3620,7 @@
   border-radius: inherit;
   pointer-events: none;
   user-select: none;
-  container-type: inline-size;
+  container-type: size;
   color: var(--text-primary);
 }
 .watermark__mark {
@@ -3628,7 +3628,7 @@
   align-items: center;
   gap: 0.3em;
   font-family: var(--font-heading);
-  font-size: clamp(18px, 6.5cqi, 64px);
+  font-size: clamp(16px, min(6.5cqi, 22cqh), 64px);
   font-weight: 700;
   letter-spacing: -0.01em;
   line-height: 1;

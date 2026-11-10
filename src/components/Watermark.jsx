@@ -10,8 +10,9 @@ const SPACING = 700;
  * small signature in the bottom-right corner. Screenshots can't be detected
  * from a web page, so the mark is always on. It sits above the content with
  * pointer events off; the parent needs `has-watermark` (position: relative).
+ * `sign={false}` drops the corner signature on strips too short to hold it.
  */
-export default function Watermark() {
+export default function Watermark({ sign = true }) {
   const ref = useRef(null);
   const [count, setCount] = useState(1);
   useEffect(() => {
@@ -31,7 +32,7 @@ export default function Watermark() {
           <span>bandarlab.site</span>
         </span>
       ))}
-      <span className="watermark__sign"><BrandCandle />bandarlab.site</span>
+      {sign && <span className="watermark__sign"><BrandCandle />bandarlab.site</span>}
     </div>
   );
 }

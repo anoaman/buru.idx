@@ -763,7 +763,7 @@ const preset = presetParam || (date ? '' : ({ 1: 'latest', 7: '7d', 14: '14d', 3
                   </span>
                 </div>
               )}
-              <Watermark />
+              <Watermark sign={false} />
             </section>
           ) : (
             <section className="bi-summary has-watermark" aria-label="Broker window summary">
@@ -803,7 +803,7 @@ const preset = presetParam || (date ? '' : ({ 1: 'latest', 7: '7d', 14: '14d', 3
                   </div>
                 )}
               </div>
-              <Watermark />
+              <Watermark sign={false} />
             </section>
           )}
 
