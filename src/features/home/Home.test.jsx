@@ -117,4 +117,14 @@ describe('Home', () => {
     });
     expect(shape).toEqual({ top10SharePct: 40, foreignParticipationPct: 40 });
   });
+
+  it('reads foreign participation from the snapshot when the index quote is pre-open', () => {
+    const shape = sessionShape({
+      home: { valueBreadth: { total: 1000 }, foreign: { participationPct: 37.9 } },
+      ihsg: { value: 0 },
+      foreignFlow: { buy: 300, sell: 500 },
+      movers: { mostActive: [] },
+    });
+    expect(shape.foreignParticipationPct).toBe(37.9);
+  });
 });

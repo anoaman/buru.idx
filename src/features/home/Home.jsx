@@ -37,7 +37,11 @@ function Tape({ ihsg, indices }) {
         <div className="home-tape__lead">
           <span>IHSG</span>
           <strong>{ihsg.close.toLocaleString('en-US', { maximumFractionDigits: 2 })}</strong>
-          <span className="home-tape__meta"><Change value={ihsg.changePct} /> · {idr(ihsg.value)} · {(ihsg.frequency / 1e6).toFixed(2)}M trades</span>
+          <span className="home-tape__meta">
+            <Change value={ihsg.changePct} />
+            {ihsg.value > 0 && <> · {idr(ihsg.value)}</>}
+            {ihsg.frequency > 0 && <> · {(ihsg.frequency / 1e6).toFixed(2)}M trades</>}
+          </span>
         </div>
       )}
       {indices.map((item) => (
@@ -81,13 +85,17 @@ function LimitList({ title, items, count, sign }) {
 }
 
 // How concentrated the session was, from numbers already on the page.
+// Foreign participation comes from the full-market snapshot rows, the same
+// session as the rest of this block; the IHSG quote is zeroed before the open.
 export function sessionShape({ home, ihsg, foreignFlow, movers }) {
   const total = home?.valueBreadth?.total;
   const top10 = (movers?.mostActive || []).slice(0, 10).reduce((sum, row) => sum + (row.value || 0), 0);
+  const snapshotForeign = home?.foreign?.participationPct;
   return {
     top10SharePct: total > 0 && top10 > 0 ? top10 / total * 100 : null,
-    foreignParticipationPct: ihsg?.value > 0 && foreignFlow?.buy >= 0 && foreignFlow?.sell >= 0
-      ? (foreignFlow.buy + foreignFlow.sell) / (2 * ihsg.value) * 100 : null,
+    foreignParticipationPct: Number.isFinite(snapshotForeign) ? snapshotForeign
+      : ihsg?.value > 0 && foreignFlow?.buy >= 0 && foreignFlow?.sell >= 0
+        ? (foreignFlow.buy + foreignFlow.sell) / (2 * ihsg.value) * 100 : null,
   };
 }
 
