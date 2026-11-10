@@ -6,6 +6,13 @@
 
 export const GLOSSARY_UPDATED = '2026-11-10';
 
+// Kibz's stated position on where broker flow sits in an analysis. Shown as a
+// callout on the bandarmologi term and both guide pages; keep the wording here.
+export const BANDARMOLOGI_STANCE = {
+  title: 'Bandarmologi bukan ilmu pasti.',
+  text: 'Data broker adalah data pendukung, bukan dasar utama keputusan. Analisis teknikal tetap rajanya, analisis fundamental ratunya, dan bandarmologi hanyalah salah satu prajurit pendukungnya. Pakai bandarmologi untuk menguatkan atau mempertanyakan hasil analisis, bukan untuk menggantikannya.',
+};
+
 export const CATEGORIES = [
   { id: 'broker', label: 'Bandarmologi dan broker flow' },
   { id: 'rules', label: 'Aturan bursa' },
@@ -20,6 +27,7 @@ export const TERMS = [
     en: 'Broker-flow analysis',
     category: 'broker',
     short: 'Analisis jejak transaksi broker untuk membaca apakah pemain besar sedang mengumpulkan atau melepas sebuah saham.',
+    note: BANDARMOLOGI_STANCE,
     body: [
       'Bandarmologi membaca data broker summary: broker mana yang paling banyak membeli dan menjual sebuah saham, berapa nilainya, dan apakah polanya berulang dari hari ke hari. Asumsinya, pemain bermodal besar tidak bisa membeli atau menjual dalam jumlah besar tanpa meninggalkan jejak di data broker.',
       'Batasannya penting. Satu kode broker menampung transaksi banyak nasabah yang tidak saling terkait, jadi net buy besar di satu broker belum tentu berasal dari satu pihak. Bandarmologi memberi petunjuk, bukan bukti.',

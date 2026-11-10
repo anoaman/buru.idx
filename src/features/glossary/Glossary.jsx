@@ -1,5 +1,5 @@
 import { Link, useParams } from 'react-router';
-import ContentPage from '../../components/ContentPage.jsx';
+import ContentPage, { ContentNote } from '../../components/ContentPage.jsx';
 import { CATEGORIES, TERMS, TERM_BY_SLUG, termPath } from '../../content/glossary.js';
 
 export default function Glossary() {
@@ -46,6 +46,7 @@ export function GlossaryTerm() {
         <p className="content-page__lead">{term.short}</p>
         {term.en && <p className="content-page__alias">Istilah di aplikasi: {term.en}.</p>}
       </header>
+      {term.note && <ContentNote note={term.note} />}
       {term.body.map((text) => <p key={text}>{text}</p>)}
       <section className="content-page__section">
         <h2>Di Bandarlab</h2>

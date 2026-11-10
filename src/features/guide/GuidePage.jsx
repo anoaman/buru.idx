@@ -1,4 +1,4 @@
-import ContentPage from '../../components/ContentPage.jsx';
+import ContentPage, { ContentNote } from '../../components/ContentPage.jsx';
 import { GUIDE_BY_PATH } from '../../content/guides.js';
 
 // Renders one of the Indonesian guide pages (Cara kerja, Metodologi).
@@ -10,6 +10,7 @@ export default function GuidePage({ path }) {
         <h1>{guide.title}</h1>
         <p className="content-page__lead">{guide.lead}</p>
       </header>
+      {guide.note && <ContentNote note={guide.note} />}
       {guide.sections.map((section) => (
         <section key={section.heading} className="content-page__section">
           <h2>{section.heading}</h2>

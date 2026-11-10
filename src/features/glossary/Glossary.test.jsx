@@ -59,6 +59,13 @@ describe('Glossary pages', () => {
     expect(screen.getByText(/bukan rekomendasi investasi/)).toBeInTheDocument();
   });
 
+  it('puts the bandarmologi stance callout on the term page', () => {
+    renderAt('/glossary/bandarmologi');
+    const note = screen.getByRole('complementary');
+    expect(note).toHaveTextContent('Bandarmologi bukan ilmu pasti.');
+    expect(note).toHaveTextContent('Analisis teknikal tetap rajanya, analisis fundamental ratunya');
+  });
+
   it('handles an unknown term without crashing', () => {
     renderAt('/glossary/tidak-ada');
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Istilah tidak ditemukan');
@@ -69,5 +76,6 @@ describe('Glossary pages', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Metodologi dan batasan');
     expect(document.title).toBe('Metodologi dan batasan Bandarlab · Bandarlab');
     expect(screen.getByRole('heading', { name: 'Bukan ajakan jual/beli' })).toBeInTheDocument();
+    expect(screen.getByRole('complementary')).toHaveTextContent('prajurit pendukungnya');
   });
 });

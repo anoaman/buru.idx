@@ -28,3 +28,12 @@ export default function ContentPage({ testId, children }) {
     </article>
   );
 }
+
+// Highlighted statement under a page's header (mirrored as <aside> in worker/seo.js).
+export function ContentNote({ note }) {
+  return (
+    <aside className="content-page__note">
+      <p><strong>{note.title}</strong> {note.text}</p>
+    </aside>
+  );
+}

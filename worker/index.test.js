@@ -234,6 +234,7 @@ describe('crawler metadata on the SPA shell', () => {
     expect(html).toContain('<link rel="canonical" href="https://bandarlab.site/glossary/bandarmologi">');
     expect(html).toMatch(/<div id="root"><article class="seo-static" lang="id"><p><a href="\/glossary">Glossary<\/a><\/p><h1>Bandarmologi<\/h1>/);
     expect(html).toContain('bukan rekomendasi investasi atau ajakan jual/beli');
+    expect(html).toContain('<aside><p><strong>Bandarmologi bukan ilmu pasti.</strong>');
     expect(html).not.toContain('<noscript>');
     const ld = JSON.parse(html.match(/<script type="application\/ld\+json">(.*?)<\/script>/)[1]);
     const term = ld['@graph'].find((node) => node['@type'] === 'DefinedTerm');
@@ -250,6 +251,7 @@ describe('crawler metadata on the SPA shell', () => {
     expect(html).toContain('<a href="/glossary/fca">');
     const guide = await (await worker.fetch(new Request('https://bandarlab.site/metodologi'), idEnv)).text();
     expect(guide).toContain('<h1>Metodologi dan batasan Bandarlab</h1>');
+    expect(guide).toContain('Analisis teknikal tetap rajanya, analisis fundamental ratunya');
   });
 
   it('returns a real 404 for unknown glossary terms', async () => {

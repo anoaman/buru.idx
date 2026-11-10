@@ -3,12 +3,15 @@
 // src/stock-read.js, radar scout conditions, broker-intelligence methodology);
 // change them only together with that logic.
 
+import { BANDARMOLOGI_STANCE } from './glossary.js';
+
 export const GUIDES = [
   {
     path: '/cara-kerja',
     title: 'Cara kerja Bandarlab',
     description: 'Bandarlab adalah alat riset saham BEI yang hanya membaca data: screener, analisis saham dan broker flow dari data akhir hari. Bukan ajakan jual/beli.',
     lead: 'Bandarlab adalah alat riset saham Bursa Efek Indonesia yang hanya membaca data. Bandarlab membantu melihat apa yang terjadi di pasar dan di balik transaksi broker, tanpa memberi rekomendasi beli atau jual.',
+    note: BANDARMOLOGI_STANCE,
     sections: [
       {
         heading: 'Empat halaman, satu alur',
@@ -45,6 +48,7 @@ export const GUIDES = [
     title: 'Metodologi dan batasan Bandarlab',
     description: 'Bagaimana Bandarlab menghitung broker flow, label analisis, filter screener dan proyeksi rentang harga, beserta batasan datanya.',
     lead: 'Halaman ini menjelaskan bagaimana angka di Bandarlab dihitung dan apa batasannya. Semua label di Bandarlab menggambarkan data, bukan rekomendasi.',
+    note: BANDARMOLOGI_STANCE,
     sections: [
       {
         heading: 'Data',
