@@ -3606,21 +3606,19 @@
   .workbench .wb-detail-drawer__tabs button { white-space: nowrap; min-height: 44px; }
 }
 
-/* Brand watermark (components/Watermark.jsx) */
-.has-watermark { position: relative; }
+/* Brand watermark (components/Watermark.jsx), one per page in the shell */
+.app-shell__main { position: relative; }
 .watermark {
   position: absolute;
-  inset: 0;
-  z-index: 3;
+  inset: var(--header-height) 0 0 0;
+  z-index: 50;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: space-around;
+  justify-content: center;
   overflow: hidden;
-  border-radius: inherit;
   pointer-events: none;
   user-select: none;
-  container-type: size;
+  container-type: inline-size;
   color: var(--text-primary);
 }
 .watermark__mark {
@@ -3628,7 +3626,7 @@
   align-items: center;
   gap: 0.3em;
   font-family: var(--font-heading);
-  font-size: clamp(16px, min(6.5cqi, 22cqh), 64px);
+  font-size: clamp(28px, 6cqi, 80px);
   font-weight: 700;
   letter-spacing: -0.01em;
   line-height: 1;
@@ -3636,17 +3634,4 @@
   opacity: 0.05;
 }
 .watermark__mark .brand-candle { width: auto; height: 1.1em; }
-.watermark__sign {
-  position: absolute;
-  right: 10px;
-  bottom: 5px;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-family: var(--font-heading);
-  font-size: 10px;
-  font-weight: 700;
-  opacity: 0.4;
-}
-.watermark__sign .brand-candle { width: auto; height: 10px; color: var(--accent); }
-@media print { .watermark__mark { opacity: 0.08; } }
+@media print { .watermark { position: fixed; } .watermark__mark { opacity: 0.08; } }

@@ -15,7 +15,6 @@ import { formatDate, formatIDR, formatNumber, formatPrice } from '../../lib/form
 import EmptyState from '../../components/EmptyState.jsx';
 import ErrorState from '../../components/ErrorState.jsx';
 import InventoryCurve from './InventoryCurve.jsx';
-import Watermark from '../../components/Watermark.jsx';
 
 const ALLOWED_DAYS = [1, 7, 14, 30, 60];
 const RANGE_PRESETS = [['latest', 'Latest'], ['previous', 'Previous'], ['7d', '7D'], ['14d', '14D'], ['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['1y', '1Y'], ['2y', '2Y'], ['ytd', 'YTD'], ['custom', 'Custom']];
@@ -715,7 +714,7 @@ const preset = presetParam || (date ? '' : ({ 1: 'latest', 7: '7d', 14: '14d', 3
       {viewData && !lensState.loading && !mismatched && (
         <>
           {stockData ? (
-            <section className="bi-summary has-watermark" aria-label="Stock window summary">
+            <section className="bi-summary" aria-label="Stock window summary">
               <div className="bi-summary__line">
                 <strong>{stockData.ticker}</strong>
                 <span className="text-secondary">{stockData.name}</span>
@@ -763,10 +762,9 @@ const preset = presetParam || (date ? '' : ({ 1: 'latest', 7: '7d', 14: '14d', 3
                   </span>
                 </div>
               )}
-              <Watermark sign={false} />
             </section>
           ) : (
-            <section className="bi-summary has-watermark" aria-label="Broker window summary">
+            <section className="bi-summary" aria-label="Broker window summary">
               <div className="bi-summary__line">
                 <strong>{brokerData.broker.code}</strong>
                 <span className="text-secondary">
@@ -803,7 +801,6 @@ const preset = presetParam || (date ? '' : ({ 1: 'latest', 7: '7d', 14: '14d', 3
                   </div>
                 )}
               </div>
-              <Watermark sign={false} />
             </section>
           )}
 
@@ -815,7 +812,7 @@ const preset = presetParam || (date ? '' : ({ 1: 'latest', 7: '7d', 14: '14d', 3
           ) : (
             <div className="bi-workstation">
               <section
-                className="bi-rank bi-merged has-watermark"
+                className="bi-rank bi-merged"
                 aria-label={lens === 'stock' ? 'Broker net ranking' : 'Stock net ranking'}
               >
                 <h3 className="bi-rank__title">
@@ -852,7 +849,6 @@ const preset = presetParam || (date ? '' : ({ 1: 'latest', 7: '7d', 14: '14d', 3
                     </tbody>
                   </table>
                 </div>
-                <Watermark />
               </section>
 
               <div className="bi-inspect">

@@ -3,6 +3,7 @@ import { BrandCandle, BrandWordmark } from './BrandMark.jsx';
 import { NavLink, useLocation } from 'react-router';
 import { useAnalysisContext } from './AnalysisContext.jsx';
 import FreshnessBar from './FreshnessBar.jsx';
+import Watermark from './Watermark.jsx';
 
 const NAV = [
   { path: '/', label: 'Home', mark: 'HM' },
@@ -133,6 +134,7 @@ export default function AnalysisShell({ children }) {
           <FreshnessBar />
           {children}
         </main>
+        <Watermark />
       </div>
     </div>
   );

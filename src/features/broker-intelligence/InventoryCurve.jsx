@@ -1,5 +1,4 @@
 import { formatNumber } from '../../lib/format/market.js';
-import Watermark from '../../components/Watermark.jsx';
 
 /**
  * InventoryCurve — pure presentation of estimated inventory lots over a window.
@@ -65,7 +64,7 @@ export default function InventoryCurve({ points = [], identityLabel = '', loadin
   const summary = `Estimated inventory changed from ${signedLots(start)} to ${signedLots(end)} lots across ${series.length} trading days.`;
 
   return (
-    <div className="bi-curve has-watermark">
+    <div className="bi-curve">
       <div className="bi-curve__header">
         <div className="bi-curve__identity">{identityLabel}</div>
         <div className="bi-curve__range text-secondary">
@@ -130,7 +129,6 @@ export default function InventoryCurve({ points = [], identityLabel = '', loadin
       <p className="bi-curve__summary text-secondary" aria-live="polite">
         {summary}
       </p>
-      <Watermark />
     </div>
   );
 }
