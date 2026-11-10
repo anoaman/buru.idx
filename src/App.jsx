@@ -5,6 +5,8 @@ import { AnalysisProvider } from './components/AnalysisContext.jsx';
 
 const BrokerIntelligence = lazy(() => import('./features/broker-intelligence/BrokerIntelligence.jsx'));
 const Glossary = lazy(() => import('./features/glossary/Glossary.jsx'));
+const GlossaryTerm = lazy(() => import('./features/glossary/Glossary.jsx').then((module) => ({ default: module.GlossaryTerm })));
+const GuidePage = lazy(() => import('./features/guide/GuidePage.jsx'));
 const Workbench = lazy(() => import('./features/workbench/Workbench.jsx'));
 const Radar = lazy(() => import('./features/radar/Radar.jsx'));
 const Home = lazy(() => import('./features/home/Home.jsx'));
@@ -24,6 +26,9 @@ export default function App() {
               <Route path="/news-detector" element={<Navigate to="/workbench" replace />} />
               <Route path="/keterbukaan" element={<Navigate to="/workbench" replace />} />
               <Route path="/glossary" element={<Glossary />} />
+              <Route path="/glossary/:slug" element={<GlossaryTerm />} />
+              <Route path="/cara-kerja" element={<GuidePage path="/cara-kerja" />} />
+              <Route path="/metodologi" element={<GuidePage path="/metodologi" />} />
               <Route path="*" element={<Navigate to="/workbench" replace />} />
             </Routes>
           </Suspense>

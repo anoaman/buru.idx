@@ -1,4 +1,4 @@
-import { withSeo } from './seo.js';
+import { sitemapXml, withSeo } from './seo.js';
 
 const PUBLIC_ROUTES = new Map([
   ['/api/analyze', { params: ['ticker'], force: { mode: 'delayed' } }],
@@ -304,6 +304,13 @@ export default {
           ...originTimingHeaders(startedAt),
           'x-content-type-options': 'nosniff',
         },
+      }));
+    }
+
+    // Generated from the page registry so new glossary terms list themselves.
+    if (url.pathname === '/sitemap.xml' && ['GET', 'HEAD'].includes(request.method)) {
+      return secure(new Response(request.method === 'HEAD' ? null : sitemapXml(), {
+        headers: { 'content-type': 'application/xml; charset=utf-8', 'cache-control': 'public, max-age=3600' },
       }));
     }
 

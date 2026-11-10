@@ -61,6 +61,20 @@ case tracking from the retiring cockpit without duplicating backend engines.
   arrays only), and inventory curve presentation. It requests only the view
   the trader selected: no speculative prefetch of other windows or the
   counterpart lens (each was a multi-megabyte origin read).
+- `src/content/` owns the public reading content and page registry:
+  `glossary.js` (Indonesian-first terms, one page each at `/glossary/:slug`),
+  `guides.js` (`/cara-kerja`, `/metodologi`), `routes.js` (small, eager: app
+  route titles and content-path detection for the shell) and `seo.js` (full
+  registry: titles, descriptions, `lang`, sitemap entries). The Worker
+  (`worker/seo.js`) renders the same content as static HTML inside `#root`
+  for crawlers and generates `/sitemap.xml` from the registry; React replaces
+  it on mount. Rule facts in the glossary (ARA/ARB dates and brackets, fraksi,
+  FCA) and thresholds in `guides.js` mirror the backend (`src/auto-reject.js`,
+  `src/stock-read.js`, scout conditions, broker-intelligence methodology);
+  change them together. Content pages render through
+  `src/components/ContentPage.jsx`, which sets their title and `lang`; the
+  shell only titles app routes so the glossary text stays out of the main
+  bundle.
 - `src/lib/api/client.js` is the only first-party network boundary and prefixes
   every API path with `VITE_API_BASE`. Successful GET responses for
   `/api/broker-intelligence/*` and `/api/analyze` are cached ~45s with

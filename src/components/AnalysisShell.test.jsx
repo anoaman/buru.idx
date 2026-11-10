@@ -50,7 +50,22 @@ describe('AnalysisShell', () => {
     expect(screen.queryByText(/Let the bandar/)).not.toBeInTheDocument();
     expect(screen.queryByText('NALAR')).not.toBeInTheDocument();
     expect(screen.queryByText(/Private/)).not.toBeInTheDocument();
-    expect(document.title).toBe('Screener · Bandarlab');
+    expect(document.title).toBe('IDX stock screener · Bandarlab');
+    expect(document.documentElement.lang).toBe('en');
+  });
+
+  it('leaves the title and heading of content pages to the page itself', () => {
+    document.title = 'set by page';
+    renderShell('/glossary/bandarmologi');
+    expect(document.title).toBe('set by page');
+    expect(screen.getByRole('link', { name: /Glossary/i })).toHaveClass('app-shell__nav-item--active');
+    expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
+  });
+
+  it('labels guide pages and links them from the sidebar', () => {
+    renderShell('/metodologi');
+    expect(screen.getByText('Methodology', { selector: '.app-shell__title' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'How it works' })).toHaveAttribute('href', '/cara-kerja');
   });
 
   it('keeps Broker Flow date controls out of the global command bar', () => {

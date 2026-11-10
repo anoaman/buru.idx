@@ -83,3 +83,8 @@
 .home-num.is-down, .home-table .is-down, .home-flow .is-down, .home-limit .is-down { color: var(--color-negative); }
 .home-table .home-heat.is-up, .home-table .home-heat.is-down { color: var(--text-primary); }
 .home-empty { color: var(--text-tertiary); font-size: var(--type-caption); }
+
+.home-about { display: grid; gap: 4px; padding: 14px 2px 4px; border-top: 1px solid var(--border-default); color: var(--text-tertiary); font-size: var(--type-caption); line-height: 1.6; }
+.home-about p { margin: 0; max-width: 110ch; }
+.home-about a { color: var(--text-secondary); }
+.home-about a:hover { color: var(--color-accent); }

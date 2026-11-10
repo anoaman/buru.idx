@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BrandCandle, BrandWordmark } from './BrandMark.jsx';
-import { NavLink, useLocation } from 'react-router';
+import { Link, NavLink, useLocation } from 'react-router';
 import { useAnalysisContext } from './AnalysisContext.jsx';
 import FreshnessBar from './FreshnessBar.jsx';
 import Watermark from './Watermark.jsx';
+import { APP_PAGES, GUIDE_LABELS, isContentPath, normalizePath } from '../content/routes.js';
 
 // Line icons (Lucide geometry, 24px grid) drawn in currentColor so they follow
 // the nav item's active and hover colours.
@@ -93,10 +94,23 @@ export default function AnalysisShell({ children }) {
   });
   const location = useLocation();
   const current = NAV.find((item) => (item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path))) || NAV[0];
+  // App routes take their title from the same registry the Worker serves to
+  // crawlers. Content pages (glossary, guides) set their own via ContentPage.
+  const path = normalizePath(location.pathname);
+  const isContent = isContentPath(path);
+  const sectionLabel = GUIDE_LABELS.get(path) || current.label;
+  const contentRef = useRef(null);
 
   useEffect(() => {
-    document.title = `${current.label} · Bandarlab`;
-  }, [current.label]);
+    if (isContent) return;
+    document.title = APP_PAGES.get(path)?.title || `${sectionLabel} · Bandarlab`;
+    document.documentElement.lang = 'en';
+  }, [isContent, path, sectionLabel]);
+
+  // Each route starts at the top; query-only changes (ticker, filters) keep position.
+  useEffect(() => {
+    contentRef.current?.scrollTo?.(0, 0);
+  }, [location.pathname]);
   const { investigationUrl, brokerFlowUrl } = useAnalysisContext();
   const navTarget = (item) => item.path === '/workbench'
     ? investigationUrl()
@@ -139,6 +153,10 @@ export default function AnalysisShell({ children }) {
         <div className="app-shell__footer">
           <span className="app-shell__market"><i aria-hidden="true" />IDX workstation</span>
           <span className="app-shell__delay-label">Delayed data</span>
+          <span className="app-shell__guides">
+            <Link to="/cara-kerja" onClick={() => setMobileOpen(false)}>How it works</Link>
+            <Link to="/metodologi" onClick={() => setMobileOpen(false)}>Methodology</Link>
+          </span>
         </div>
       </aside>
 
@@ -153,7 +171,10 @@ export default function AnalysisShell({ children }) {
             ☰
           </button>
           <div className="app-shell__section-id">
-            <span>Bandarlab</span><b>/</b><h1 className="app-shell__title">{current.label}</h1>
+            <span>Bandarlab</span><b>/</b>
+            {isContent
+              ? <span className="app-shell__title">{sectionLabel}</span>
+              : <h1 className="app-shell__title">{sectionLabel}</h1>}
           </div>
           <CommandBar />
           <button
@@ -166,7 +187,7 @@ export default function AnalysisShell({ children }) {
             {theme === 'light' ? 'Graphite' : 'Paper'}
           </button>
         </header>
-        <main className="app-shell__content">
+        <main className="app-shell__content" ref={contentRef}>
           <FreshnessBar />
           {children}
         </main>

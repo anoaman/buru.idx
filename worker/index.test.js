@@ -226,6 +226,50 @@ describe('crawler metadata on the SPA shell', () => {
     expect(html).not.toContain('rel="canonical"');
   });
 
+  it('serves the full Indonesian article for a glossary term', async () => {
+    const response = await get('/glossary/bandarmologi');
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain('<title>Apa itu Bandarmologi? · Bandarlab</title>');
+    expect(html).toContain('<link rel="canonical" href="https://bandarlab.site/glossary/bandarmologi">');
+    expect(html).toMatch(/<div id="root"><article class="seo-static" lang="id"><p><a href="\/glossary">Glossary<\/a><\/p><h1>Bandarmologi<\/h1>/);
+    expect(html).toContain('bukan rekomendasi investasi atau ajakan jual/beli');
+    expect(html).not.toContain('<noscript>');
+    const ld = JSON.parse(html.match(/<script type="application\/ld\+json">(.*?)<\/script>/)[1]);
+    const term = ld['@graph'].find((node) => node['@type'] === 'DefinedTerm');
+    expect(term).toMatchObject({ name: 'Bandarmologi', alternateName: 'Broker-flow analysis', inLanguage: 'id' });
+  });
+
+  it('marks Indonesian pages with lang="id" and lists every term on the glossary index', async () => {
+    const shellEn = shell.replace('<html>', '<html lang="en">');
+    const idEnv = { ...env, ASSETS: { fetch: async () => new Response(shellEn, { headers: { 'content-type': 'text/html' } }) } };
+    const html = await (await worker.fetch(new Request('https://bandarlab.site/glossary/'), idEnv)).text();
+    expect(html).toContain('<html lang="id">');
+    expect(html).toContain('<link rel="canonical" href="https://bandarlab.site/glossary">');
+    expect(html).toContain('"@type":"DefinedTermSet"');
+    expect(html).toContain('<a href="/glossary/fca">');
+    const guide = await (await worker.fetch(new Request('https://bandarlab.site/metodologi'), idEnv)).text();
+    expect(guide).toContain('<h1>Metodologi dan batasan Bandarlab</h1>');
+  });
+
+  it('returns a real 404 for unknown glossary terms', async () => {
+    const response = await get('/glossary/not-a-term');
+    expect(response.status).toBe(404);
+    expect(await response.text()).toContain('<meta name="robots" content="noindex">');
+  });
+
+  it('generates the sitemap from the page registry', async () => {
+    const response = await get('/sitemap.xml');
+    expect(response.headers.get('content-type')).toContain('application/xml');
+    const xml = await response.text();
+    const locs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
+    expect(locs).toContain('https://bandarlab.site/');
+    expect(locs).toContain('https://bandarlab.site/glossary/arb');
+    expect(locs).toContain('https://bandarlab.site/cara-kerja');
+    expect(new Set(locs).size).toBe(locs.length);
+    expect(locs.length).toBeGreaterThan(40);
+  });
+
   it('leaves HEAD and non-HTML responses untouched', async () => {
     expect(await (await get('/radar', 'HEAD')).text()).toBe(shell);
     const css = { ...env, ASSETS: { fetch: async () => new Response('a{}', { headers: { 'content-type': 'text/css' } }) } };

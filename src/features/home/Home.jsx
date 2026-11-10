@@ -338,6 +338,10 @@ export default function Home() {
           </div>
         </>
       )}
+      <footer className="home-about">
+        <p>Bandarlab is a read-only research tool for the Indonesia Stock Exchange, built on delayed end-of-day price and broker summary data. Nothing here is investment advice or a recommendation to buy or sell (bukan ajakan jual/beli).</p>
+        <p><Link to="/cara-kerja">How it works</Link> · <Link to="/metodologi">Methodology</Link> · <Link to="/glossary">Glossary</Link></p>
+      </footer>
     </section>
   );
 }
