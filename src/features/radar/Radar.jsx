@@ -8,6 +8,7 @@ import { ResultsTable, ScanLoader, StockPanel, sortRows } from './ScreenerResult
 import EmptyState from '../../components/EmptyState.jsx';
 import ErrorState from '../../components/ErrorState.jsx';
 import Skeleton from '../../components/Skeleton.jsx';
+import Watermark from '../../components/Watermark.jsx';
 import { useAnalysisContext } from '../../components/AnalysisContext.jsx';
 import './Screener.css';
 
@@ -159,7 +160,7 @@ function Scout({ onInvestigate, onActors }) {
         templatesReady={templates.ready}
       />
       <div className={`sr-layout${selectedRow ? ' has-panel' : ''}`}>
-        <section className="scout-results" aria-label="Screening results" aria-busy={state.loading}>
+        <section className="scout-results has-watermark" aria-label="Screening results" aria-busy={state.loading}>
           {blocked && <p className="scout-result-status" role="status">{blocked}</p>}
           {!blocked && state.error && <ErrorState title="Screener unavailable" error={state.error} onRetry={run} />}
           {!blocked && !state.data && state.loading && <ScanLoader overlay={false} />}
@@ -178,6 +179,7 @@ function Scout({ onInvestigate, onActors }) {
               ? <EmptyState title="No stocks pass these filters" message={state.data.nearMisses.length ? 'Loosen a filter, or show the near misses to see which one kept each stock out.' : 'Loosen a filter to widen the screen.'} />
               : <ResultsTable rows={qualified} nearMisses={nearMisses} sort={sort} onSort={onSort} selected={selected} onSelect={setSelected} />}
             <div className="scout-disclosures">{state.data.disclosures.map((item) => <p key={item}>{item}</p>)}</div>
+            <Watermark />
           </>}
         </section>
         {selectedRow && state.data && (

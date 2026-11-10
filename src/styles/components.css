@@ -3605,3 +3605,48 @@
   .workbench .wb-detail-drawer__tabs { overflow-x: auto; flex-wrap: nowrap; }
   .workbench .wb-detail-drawer__tabs button { white-space: nowrap; min-height: 44px; }
 }
+
+/* Brand watermark (components/Watermark.jsx) */
+.has-watermark { position: relative; }
+.watermark {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-around;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+  user-select: none;
+  container-type: inline-size;
+  color: var(--text-primary);
+}
+.watermark__mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  font-family: var(--font-heading);
+  font-size: clamp(18px, 6.5cqi, 64px);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  white-space: nowrap;
+  opacity: 0.05;
+}
+.watermark__mark .brand-candle { width: auto; height: 1.1em; }
+.watermark__sign {
+  position: absolute;
+  right: 10px;
+  bottom: 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-heading);
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.4;
+}
+.watermark__sign .brand-candle { width: auto; height: 10px; color: var(--accent); }
+@media print { .watermark__mark { opacity: 0.08; } }

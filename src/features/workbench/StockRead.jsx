@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { formatIDR, formatPrice } from '../../lib/format/market.js';
+import Watermark from '../../components/Watermark.jsx';
 
 const shortDate = (value) => (value ? new Date(`${value}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—');
 
@@ -13,7 +14,7 @@ const away = (level, price) => (price > 0 ? ` (${signed(((level - price) / price
 export function ReadCard({ read, price, outlook = read.outlook, outlooks = {}, onHorizonChange }) {
   const { setup, summary, changes, track, watch = [] } = read;
   return (
-    <section className="sa-read" aria-label="Read and outlook">
+    <section className="sa-read has-watermark" aria-label="Read and outlook">
       <div className="sa-read__text">
         <span className={`sa-setup sa-setup--${setup.id}`}>{setup.label}</span>
         <p>{summary || setup.why}</p>
@@ -31,6 +32,7 @@ export function ReadCard({ read, price, outlook = read.outlook, outlooks = {}, o
         )}
       </div>
       <Outlook outlook={outlook} outlooks={outlooks} onHorizonChange={onHorizonChange} track={track} setupLabel={setup.label} price={price} />
+      <Watermark />
     </section>
   );
 }
@@ -113,7 +115,7 @@ export function BrokerWindows({ brokers, summary, symbol }) {
   const [active, setActive] = useState(brokers.d5 ? 'd5' : firstAvailable);
   const window = brokers[active];
   return (
-    <section className="sa-box" aria-label="Brokers">
+    <section className="sa-box has-watermark" aria-label="Brokers">
       <header>
         <h3>Brokers{symbol && <a className="sa-link" href={`/broker-intelligence?lens=stock&ticker=${encodeURIComponent(symbol)}&days=${active === 'm1' ? 30 : active === 'today' ? 1 : 7}`} target="_blank" rel="noopener noreferrer">Full broker flow ↗</a>}</h3>
         <div className="sa-seg" role="group" aria-label="Broker window">
@@ -153,6 +155,7 @@ export function BrokerWindows({ brokers, summary, symbol }) {
           <p className="sa-muted">{window.from === window.to ? shortDate(window.to) : `${shortDate(window.from)} – ${shortDate(window.to)} · ${window.sessions} sessions`}</p>
         </>
       )}
+      <Watermark />
     </section>
   );
 }
@@ -163,7 +166,7 @@ const CHECK_GROUPS = [['price', 'Price'], ['participation', 'Participation'], ['
 export function Checks({ checks }) {
   const counts = checks.reduce((acc, item) => ({ ...acc, [item.status]: (acc[item.status] || 0) + 1 }), {});
   return (
-    <section className="sa-box" aria-label="Checks">
+    <section className="sa-box has-watermark" aria-label="Checks">
       <header><h3>Decision checklist</h3><span className="sa-checks__summary"><b>{counts.bad || 0}</b> risks · <b>{counts.warn || 0}</b> watch · <b>{counts.ok || 0}</b> supportive</span></header>
       <div className="sa-check-groups">
         {CHECK_GROUPS.map(([id, label]) => {
@@ -177,6 +180,7 @@ export function Checks({ checks }) {
           ))}</ul></section>;
         })}
       </div>
+      <Watermark />
     </section>
   );
 }

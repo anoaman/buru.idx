@@ -11,6 +11,7 @@ import TechnicalEvidence from './TechnicalEvidence.jsx';
 import RiskSimulator from './RiskSimulator.jsx';
 import { BrokerWindows, Checks, ReadCard } from './StockRead.jsx';
 import './StockAnalysis.css';
+import Watermark from '../../components/Watermark.jsx';
 
 function TickerHeader({ ticker, read, asOf }) {
   if (!ticker) return null;
@@ -131,7 +132,7 @@ export default function Workbench() {
             {displayed.data.read
               ? <ReadCard read={read} price={displayed.data.ticker?.close} outlook={outlook} outlooks={outlooks} onHorizonChange={setOutlookSessions} />
               : <p className="sa-muted">The read for this stock is unavailable right now; the chart and indicators below still apply.</p>}
-            <div className="wb-chart-panel">
+            <div className="wb-chart-panel has-watermark">
               <MarketChart
                 chart={displayed.data.chart}
                 outlook={outlook}
@@ -140,6 +141,7 @@ export default function Workbench() {
                 buyerCost={displayed.data.read?.leadBuyer}
                 ticker={displayed.data.ticker}
               />
+              <Watermark />
             </div>
             {displayed.data.read && (
               <div className="sa-row">
