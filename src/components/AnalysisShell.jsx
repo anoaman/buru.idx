@@ -98,7 +98,9 @@ export default function AnalysisShell({ children }) {
   // crawlers. Content pages (glossary, guides) set their own via ContentPage.
   const path = normalizePath(location.pathname);
   const isContent = isContentPath(path);
-  const sectionLabel = GUIDE_LABELS.get(path) || current.label;
+  // Pages that carry their own <h1> (content pages, Contact) get a plain label here.
+  const ownsHeading = isContent || path === '/contact';
+  const sectionLabel = GUIDE_LABELS.get(path) || (path === '/contact' ? 'Contact' : current.label);
   const contentRef = useRef(null);
 
   useEffect(() => {
@@ -156,6 +158,7 @@ export default function AnalysisShell({ children }) {
           <span className="app-shell__guides">
             <Link to="/cara-kerja" onClick={() => setMobileOpen(false)}>How it works</Link>
             <Link to="/metodologi" onClick={() => setMobileOpen(false)}>Methodology</Link>
+            <Link to="/contact" onClick={() => setMobileOpen(false)}>Contact</Link>
           </span>
         </div>
       </aside>
@@ -172,7 +175,7 @@ export default function AnalysisShell({ children }) {
           </button>
           <div className="app-shell__section-id">
             <span>Bandarlab</span><b>/</b>
-            {isContent
+            {ownsHeading
               ? <span className="app-shell__title">{sectionLabel}</span>
               : <h1 className="app-shell__title">{sectionLabel}</h1>}
           </div>

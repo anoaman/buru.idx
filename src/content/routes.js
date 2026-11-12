@@ -29,7 +29,15 @@ export const APP_PAGES = new Map([
     description: 'Track which brokers are accumulating or distributing an IDX stock across sessions, with persistence and an estimated inventory curve.',
     summary: 'Broker Flow tracks which brokers are net buying or selling an IDX stock across 1 day to multi-month windows. Broker codes aggregate many unrelated clients, so persistence is observed flow, not proof of a single bandar.',
   }],
+  ['/contact', {
+    name: 'Contact',
+    title: 'Contact · Bandarlab',
+    description: 'Suggest a feature or report wrong data. Bandarlab is free and built by one person, so replies can be slow.',
+    summary: 'Suggest a feature or report wrong data at hello@bandarlab.site. Bandarlab is free and built by one person in their spare time, so replies can be slow.',
+  }],
 ]);
+
+export const CONTACT_EMAIL = 'hello@bandarlab.site';
 
 export const GUIDE_LABELS = new Map([
   ['/cara-kerja', 'How it works'],

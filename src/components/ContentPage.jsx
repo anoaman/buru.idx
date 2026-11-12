@@ -21,7 +21,7 @@ export default function ContentPage({ testId, children }) {
       <footer className="content-page__foot">
         <p>Bandarlab hanya membaca data tertunda. Isinya bukan rekomendasi investasi atau ajakan jual/beli.</p>
         <p>
-          <Link to="/cara-kerja">Cara kerja</Link> · <Link to="/metodologi">Metodologi</Link> · <Link to="/glossary">Glossary</Link>
+          <Link to="/cara-kerja">Cara kerja</Link> · <Link to="/metodologi">Metodologi</Link> · <Link to="/glossary">Glossary</Link> · <Link to="/contact">Contact</Link>
           {' · '}Dibuat oleh <a href="https://tombaklepas.app/">Tombak Lepas</a>
         </p>
       </footer>

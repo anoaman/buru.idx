@@ -57,7 +57,7 @@ function graphFor(path, meta) {
 
 const p = (text) => `<p>${escapeHtml(text)}</p>`;
 const a = (href, text) => `<a href="${href}">${escapeHtml(text)}</a>`;
-const footer = () => `<footer>${p(DISCLAIMER_ID)}<p>${a('/cara-kerja', 'Cara kerja')} · ${a('/metodologi', 'Metodologi')} · ${a('/glossary', 'Glossary')} · Dibuat oleh ${a('https://tombaklepas.app/', 'Tombak Lepas')}</p></footer>`;
+const footer = () => `<footer>${p(DISCLAIMER_ID)}<p>${a('/cara-kerja', 'Cara kerja')} · ${a('/metodologi', 'Metodologi')} · ${a('/glossary', 'Glossary')} · ${a('/contact', 'Contact')} · Dibuat oleh ${a('https://tombaklepas.app/', 'Tombak Lepas')}</p></footer>`;
 
 const noteHtml = (note) => (note ? `<aside><p><strong>${escapeHtml(note.title)}</strong> ${escapeHtml(note.text)}</p></aside>` : '');
 

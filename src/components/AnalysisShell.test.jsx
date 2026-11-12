@@ -68,6 +68,14 @@ describe('AnalysisShell', () => {
     expect(screen.getByRole('link', { name: 'How it works' })).toHaveAttribute('href', '/cara-kerja');
   });
 
+  it('labels the Contact page and links it from the sidebar', () => {
+    renderShell('/contact');
+    expect(document.title).toBe('Contact · Bandarlab');
+    expect(screen.getByText('Contact', { selector: '.app-shell__title' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Contact' })).toHaveAttribute('href', '/contact');
+  });
+
   it('keeps Broker Flow date controls out of the global command bar', () => {
     renderShell('/broker-intelligence?lens=stock&ticker=BBRI&days=1&date=2026-08-07');
     expect(screen.queryByRole('button', { name: '30D' })).not.toBeInTheDocument();

@@ -9,6 +9,7 @@ const GlossaryTerm = lazy(() => import('./features/glossary/Glossary.jsx').then(
 const GuidePage = lazy(() => import('./features/guide/GuidePage.jsx'));
 const Workbench = lazy(() => import('./features/workbench/Workbench.jsx'));
 const Radar = lazy(() => import('./features/radar/Radar.jsx'));
+const Contact = lazy(() => import('./features/contact/Contact.jsx'));
 const Home = lazy(() => import('./features/home/Home.jsx'));
 
 export default function App() {
@@ -19,6 +20,8 @@ export default function App() {
           <Suspense fallback={<div className="panel" role="status">Loading analysis…</div>}>
             <Routes>
               <Route path="/" element={<Home />} />
+              <Route path="/home" element={<Navigate to="/" replace />} />
+              <Route path="/contact" element={<Contact />} />
               <Route path="/radar" element={<Radar />} />
               <Route path="/workbench" element={<Workbench />} />
               <Route path="/broker-intelligence" element={<BrokerIntelligence />} />
