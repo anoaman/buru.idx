@@ -38,6 +38,8 @@ export const APP_PAGES = new Map([
 ]);
 
 export const CONTACT_EMAIL = 'hello@bandarlab.site';
+export const INSTAGRAM_URL = 'https://www.instagram.com/bandar_lab/';
+export const INSTAGRAM_HANDLE = '@bandar_lab';
 
 export const GUIDE_LABELS = new Map([
   ['/cara-kerja', 'How it works'],

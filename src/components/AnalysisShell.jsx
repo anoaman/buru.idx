@@ -4,7 +4,7 @@ import { Link, NavLink, useLocation } from 'react-router';
 import { useAnalysisContext } from './AnalysisContext.jsx';
 import FreshnessBar from './FreshnessBar.jsx';
 import Watermark from './Watermark.jsx';
-import { APP_PAGES, GUIDE_LABELS, isContentPath, normalizePath } from '../content/routes.js';
+import { APP_PAGES, GUIDE_LABELS, INSTAGRAM_URL, isContentPath, normalizePath } from '../content/routes.js';
 
 // Line icons (Lucide geometry, 24px grid) drawn in currentColor so they follow
 // the nav item's active and hover colours.
@@ -155,7 +155,12 @@ export default function AnalysisShell({ children }) {
         <div className="app-shell__footer">
           <span className="app-shell__guides">
             <Link to="/cara-kerja" onClick={() => setMobileOpen(false)}>How it works</Link>
-            <Link to="/contact" onClick={() => setMobileOpen(false)}>Contact</Link>
+            <span className="app-shell__guides-row">
+              <Link to="/contact" onClick={() => setMobileOpen(false)}>Contact</Link>
+              <a className="app-shell__social" href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" aria-label="Bandarlab on Instagram" title="Instagram">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="1" /></svg>
+              </a>
+            </span>
           </span>
         </div>
       </aside>

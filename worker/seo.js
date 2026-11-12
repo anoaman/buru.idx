@@ -7,6 +7,7 @@
 import { CATEGORIES, TERMS, TERM_BY_SLUG, termPath } from '../src/content/glossary.js';
 import { GUIDE_BY_PATH } from '../src/content/guides.js';
 import { CONTENT_UPDATED, ORIGIN, PAGES, SITE_DESCRIPTION, normalizePath, pageMeta } from '../src/content/seo.js';
+import { INSTAGRAM_URL } from '../src/content/routes.js';
 
 const ORG = { '@type': 'Organization', '@id': 'https://tombaklepas.app/#org', name: 'Tombak Lepas', url: 'https://tombaklepas.app/' };
 const DISCLAIMER_ID = 'Bandarlab hanya membaca data tertunda. Isinya bukan rekomendasi investasi atau ajakan jual/beli.';
@@ -15,11 +16,11 @@ const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (c) => ({ '&': '
 // JSON-LD sits inside <script>; escape "<" so data can never close the tag.
 const jsonLd = (value) => JSON.stringify(value).replace(/</g, '\\u003c');
 
-const WEBSITE = { '@type': 'WebSite', '@id': ORIGIN + '/#website', name: 'Bandarlab', url: ORIGIN + '/', inLanguage: ['en', 'id'], publisher: { '@id': ORG['@id'] } };
+const WEBSITE = { '@type': 'WebSite', '@id': ORIGIN + '/#website', name: 'Bandarlab', url: ORIGIN + '/', inLanguage: ['en', 'id'], publisher: { '@id': ORG['@id'] }, sameAs: [INSTAGRAM_URL] };
 const APP = {
   '@type': 'WebApplication', '@id': ORIGIN + '/#app', name: 'Bandarlab', url: ORIGIN + '/',
   description: SITE_DESCRIPTION, applicationCategory: 'FinanceApplication', operatingSystem: 'Web',
-  isAccessibleForFree: true, inLanguage: 'en', creator: ORG, publisher: { '@id': ORG['@id'] },
+  isAccessibleForFree: true, inLanguage: 'en', creator: ORG, publisher: { '@id': ORG['@id'] }, sameAs: [INSTAGRAM_URL],
 };
 const TERM_SET_ID = ORIGIN + '/glossary#terms';
 

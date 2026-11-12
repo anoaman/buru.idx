@@ -216,6 +216,7 @@ describe('crawler metadata on the SPA shell', () => {
     const html = await (await get('/')).text();
     const ld = JSON.parse(html.match(/<script type="application\/ld\+json">(.*?)<\/script>/)[1]);
     expect(ld['@graph'].map((node) => node['@type'])).toEqual(['WebSite', 'WebApplication']);
+    expect(ld['@graph'][0].sameAs).toEqual(['https://www.instagram.com/bandar_lab/']);
   });
 
   it('keeps unknown paths usable but out of the index', async () => {

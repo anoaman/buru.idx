@@ -74,6 +74,7 @@ describe('AnalysisShell', () => {
     expect(screen.getByText('Contact', { selector: '.app-shell__title' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Contact' })).toHaveAttribute('href', '/contact');
+    expect(screen.getByRole('link', { name: 'Bandarlab on Instagram' })).toHaveAttribute('href', 'https://www.instagram.com/bandar_lab/');
   });
 
   it('keeps Broker Flow date controls out of the global command bar', () => {

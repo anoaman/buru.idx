@@ -3421,6 +3421,10 @@
 .app-shell__guides { display: grid; gap: 7px; padding-bottom: 3px; font-size: 13.5px; }
 .app-shell__guides a { color: var(--text-tertiary); text-decoration: none; white-space: nowrap; }
 .app-shell__guides a:hover { color: var(--text-primary); text-decoration: underline; }
+.app-shell__guides-row { display: flex; align-items: center; gap: 10px; }
+.app-shell__social { display: inline-flex; }
+.app-shell__social svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.app-shell__social circle:last-child { fill: currentColor; stroke: none; }
 @media (max-width: 760px) { .nd-header { align-items: stretch; flex-direction: column; } }
 
 /* ============================================
