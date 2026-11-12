@@ -153,8 +153,6 @@ export default function AnalysisShell({ children }) {
           ))}
         </nav>
         <div className="app-shell__footer">
-          <span className="app-shell__market"><i aria-hidden="true" />IDX workstation</span>
-          <span className="app-shell__delay-label">Delayed data</span>
           <span className="app-shell__guides">
             <Link to="/cara-kerja" onClick={() => setMobileOpen(false)}>How it works</Link>
             <Link to="/metodologi" onClick={() => setMobileOpen(false)}>Methodology</Link>

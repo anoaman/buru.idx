@@ -136,9 +136,6 @@
   border-top: 1px solid var(--border-default);
 }
 
-.app-shell__market { display: flex; align-items: center; gap: 6px; color: var(--text-secondary); font-size: 10.5px; }
-.app-shell__market i { width: 6px; height: 6px; border-radius: 50%; background: var(--text-tertiary); }
-.app-shell__delay-label { color: var(--text-tertiary); font-size: 9.5px; }
 
 .app-shell__main {
   flex: 1;
@@ -3421,7 +3418,7 @@
 .seo-static aside { margin: 0 0 20px; padding: 12px 16px; border-left: 3px solid var(--color-accent); }
 .seo-static footer { margin-top: 40px; color: var(--text-tertiary); font-size: var(--type-control); }
 
-.app-shell__guides { display: flex; flex-wrap: wrap; gap: 4px var(--space-3); margin-top: 6px; font-size: 11px; }
+.app-shell__guides { display: grid; gap: 7px; padding-bottom: 3px; font-size: 13.5px; }
 .app-shell__guides a { color: var(--text-tertiary); text-decoration: none; white-space: nowrap; }
 .app-shell__guides a:hover { color: var(--text-primary); text-decoration: underline; }
 @media (max-width: 760px) { .nd-header { align-items: stretch; flex-direction: column; } }
