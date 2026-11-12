@@ -155,7 +155,6 @@ export default function AnalysisShell({ children }) {
         <div className="app-shell__footer">
           <span className="app-shell__guides">
             <Link to="/cara-kerja" onClick={() => setMobileOpen(false)}>How it works</Link>
-            <Link to="/metodologi" onClick={() => setMobileOpen(false)}>Methodology</Link>
             <Link to="/contact" onClick={() => setMobileOpen(false)}>Contact</Link>
           </span>
         </div>
